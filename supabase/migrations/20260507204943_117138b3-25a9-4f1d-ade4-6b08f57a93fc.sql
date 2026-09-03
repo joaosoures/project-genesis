@@ -1,0 +1,2 @@
+-- No changes needed to the table structure, but let's ensure the registrarDesempenho can accept a timestamp if we wanted to.
+-- Actually, the current registrarDesempenho doesn't take a timestamp. Let's update it to accept an optional one.

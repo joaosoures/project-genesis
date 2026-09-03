@@ -1,0 +1,1 @@
+ALTER TABLE public.temp_oqs ADD COLUMN variacoes TEXT;
