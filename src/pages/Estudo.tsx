@@ -563,7 +563,7 @@ export default function Estudo() {
           </div>
 
           <div className="shrink-0 z-40 pb-4 md:pb-6">
-            <div className="bg-background/80 backdrop-blur border border-border/50 rounded-[28px] p-4 md:p-6 space-y-3 shadow-sm">
+            <div className="bg-background/80 backdrop-blur border border-border/50 rounded-[28px] p-4 md:p-6 space-y-3 shadow-none">
 
               {(card.modo === "lacuna" || card.modo === "oq_falta") && !modoState.finalized && (
                 <div className="console-well px-4 py-3 flex items-center gap-3">
