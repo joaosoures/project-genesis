@@ -71,7 +71,7 @@ function AppSidebar() {
           {!collapsed ? (
             <div className="flex flex-col items-center">
               <Logo size={180} shadow="lg" />
-              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-accent mt-2 animate-pulse">Code Splitting</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-accent mt-2 animate-pulse">Estudo eficiente</span>
             </div>
           ) : (
             <Logo size={42} shadow="md" />
