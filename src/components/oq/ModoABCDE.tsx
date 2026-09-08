@@ -110,7 +110,7 @@ const ModoABCDE = forwardRef<ModoHandle, ModoProps>(function ModoABCDE({ card, o
               disabled={isElim || finalized}
               onClick={() => { if (!finalized && !isElim) { feedback("flip"); setSelecionada(a.letra); } }}
               className={cn(
-                "w-full text-left p-4 rounded-2xl border bg-white transition-all duration-200 flex gap-3 items-start",
+                "w-full text-left p-4 rounded-2xl border border-border/60 bg-[hsl(var(--card))] text-[hsl(var(--foreground))] transition-all duration-200 flex gap-3 items-start",
                 "shadow-[0_1px_2px_hsl(230_30%_20%/0.06)]",
                 "hover:border-[hsl(var(--accent))]/40 hover:-translate-y-[1px] hover:shadow-md",
                 isSelected && !finalized && "border-[hsl(var(--accent))] bg-[hsl(var(--accent))/0.06] shadow-neon-blue",
