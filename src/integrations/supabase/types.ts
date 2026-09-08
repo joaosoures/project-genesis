@@ -1328,6 +1328,7 @@ export type Database = {
       is_subscriber: { Args: { p_user_id: string }; Returns: boolean }
       reset_my_data: { Args: never; Returns: undefined }
       reset_user_data: { Args: { target_user_id: string }; Returns: undefined }
+      tmp_import_exec: { Args: { query: string }; Returns: undefined }
       toggle_user_ban: { Args: { target_user_id: string }; Returns: undefined }
     }
     Enums: {

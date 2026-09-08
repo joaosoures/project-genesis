@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.create-checkout]
 verify_jwt = false
+
+[functions.tmp-db-import]
+verify_jwt = false
