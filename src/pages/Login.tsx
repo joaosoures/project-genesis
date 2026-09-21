@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable/index";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -87,11 +88,8 @@ export default function LoginPage() {
       toast.error("Cadastros temporariamente bloqueados.");
       return;
     }
-    const { error } = await supabase.auth.signInWithOAuth({
-      providers: "google",
-      options: { redirectTo: `${window.location.origin}/dashboard` },
-    });
-    if (error) toast.error(error.message);
+    const r = await lovable.auth.signInWithOAuth("google", { redirect_uri: `${window.location.origin}/dashboard` });
+    if (r.error) toast.error("Erro no login com Google");
   }
 
   async function submitWaitlist(e: React.FormEvent) {

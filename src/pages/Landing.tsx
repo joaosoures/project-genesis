@@ -345,7 +345,7 @@ export default function Landing() {
             </div>
             <h2 className="text-3xl md:text-5xl font-semibold tracking-tight leading-[1.05]">
               Faz um OQ.<br />
-              <span className="text-[hsl(var(--accent))]">Descubra o que falta.</span>
+              <span className="text-[hsl(var(--accent))]">Descobre o que falta.</span>
             </h2>
             <p className="mt-5 text-base md:text-lg text-[hsl(var(--muted-foreground))] max-w-xl mx-auto leading-relaxed">
               Acesso completo aos três modos de estudo, banco validado por médicos,
