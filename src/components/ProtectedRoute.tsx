@@ -9,7 +9,6 @@ export function ProtectedRoute({ children, adminOnly = false }: { children: Reac
   
   if (!session || isBanned) return <Navigate to="/login" replace />;
   
-  // Temporary bypass for Admin access during configuration
-  if (adminOnly && !isAdmin && session?.user?.email !== 'joaoresende2603@gmail.com') return <Navigate to="/estudo" replace />;
+  if (adminOnly && !isAdmin) return <Navigate to="/estudo" replace />;
   return <>{children}</>;
 }

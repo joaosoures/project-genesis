@@ -26,17 +26,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(s);
       if (s?.user) {
         setTimeout(async () => {
-          if (s.user.email === 'joaoresende2603@gmail.com') {
-            setIsAdmin(true);
-          } else {
-            const { data: roleData } = await supabase
-              .from("user_roles")
-              .select("role")
-              .eq("user_id", s.user.id)
-              .eq("role", "admin")
-              .maybeSingle();
-            setIsAdmin(!!roleData);
-          }
+          const { data: roleData } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", s.user.id)
+            .eq("role", "admin")
+            .maybeSingle();
+          setIsAdmin(!!roleData);
+
 
           const { data: profileData } = await supabase
             .from("profiles")
