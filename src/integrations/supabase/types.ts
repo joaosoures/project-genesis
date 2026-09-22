@@ -446,6 +446,7 @@ export type Database = {
         Row: {
           acertou: boolean
           card_id: string
+          conta_meta_diaria: boolean
           id: string
           nivel_pista: number | null
           nota: number
@@ -455,6 +456,7 @@ export type Database = {
         Insert: {
           acertou: boolean
           card_id: string
+          conta_meta_diaria?: boolean
           id?: string
           nivel_pista?: number | null
           nota: number
@@ -464,6 +466,7 @@ export type Database = {
         Update: {
           acertou?: boolean
           card_id?: string
+          conta_meta_diaria?: boolean
           id?: string
           nivel_pista?: number | null
           nota?: number

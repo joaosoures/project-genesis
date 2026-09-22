@@ -61,9 +61,12 @@ export default function Estudo() {
   const modoRef = useRef<ModoHandle>(null);
   const cardScrollRef = useRef<HTMLDivElement>(null);
 
+  const tipoFila = params.get("tipo");
+  const contaMetaDiaria = tipoFila !== "aula";
+
   const filtro: QueueFilter = (() => {
     const esp = params.get("esp") as Especialidade | null;
-    const tipo = params.get("tipo");
+    const tipo = tipoFila;
     const aulaId = params.get("aula_id");
     const baralho = params.get("baralho");
 
@@ -134,14 +137,16 @@ export default function Estudo() {
   async function onFinalizar(r: { acertou: boolean; nivelPista: number; tentativas: number }) {
     if (!user || !card) return;
     const nota = calcularNota(r);
-    
-    // Optimistic progress update
-    setProgressoDiario(prev => prev + 1);
+
+    if (contaMetaDiaria) {
+      setProgressoDiario(prev => prev + 1);
+    }
 
     await registrarDesempenho({
       userId: user.id, cardId: card.id,
       acertou: r.acertou, nivelPista: r.nivelPista, nota,
       pesoImportancia: card.peso_importancia,
+      contaMetaDiaria,
     });
     window.dispatchEvent(new Event("oqmed:review-updated"));
     

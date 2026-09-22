@@ -181,20 +181,21 @@ export function useTrilhaPlano() {
     const lastMonday = new Date(monday);
     lastMonday.setDate(monday.getDate() - 7);
 
-    // 1. Histórico recente para métricas da semana (Rápido: apenas últimas 2 semanas)
+    // 1. A meta considera apenas respostas feitas nas filas gerais.
+    // Respostas abertas diretamente por uma matéria continuam valendo para concluí-la.
     const { data: recentHist } = await supabase
       .from("historico_estudo")
-      .select("card_id, timestamp, acertou")
+      .select("timestamp, conta_meta_diaria")
       .eq("usuario_id", user.id)
+      .eq("conta_meta_diaria", true)
       .gte("timestamp", lastMonday.toISOString());
 
-    let cw = 0, lw = 0;
+    let cw = 0;
+    let lw = 0;
     const recentAulaStats: Record<string, { count: number; acertos: number }> = {};
-    const recentCardIds = new Set<string>();
 
     (recentHist ?? []).forEach((h) => {
       const t = new Date(h.timestamp!);
-      recentCardIds.add(h.card_id as string);
       if (t >= monday) cw++;
       else lw++;
     });
@@ -326,6 +327,7 @@ export function useTrilhaPlano() {
         nota: 70,
         acertou: true,
         nivel_pista: 0,
+        conta_meta_diaria: false,
       }));
       if (rows.length) {
         await supabase.from("historico_estudo").insert(rows);

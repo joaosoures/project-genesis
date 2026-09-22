@@ -289,6 +289,7 @@ export async function registrarDesempenho(opts: {
   nivelPista: number;
   nota: number;
   pesoImportancia: number;
+  contaMetaDiaria: boolean;
   timestamp?: string;
 }) {
   // Offline resilience - only queue if it's a new result (not already from sync)
@@ -297,7 +298,7 @@ export async function registrarDesempenho(opts: {
     return;
   }
 
-  const { userId, cardId, acertou, nivelPista, nota, pesoImportancia, timestamp } = opts;
+  const { userId, cardId, acertou, nivelPista, nota, pesoImportancia, contaMetaDiaria, timestamp } = opts;
 
   // Busca atual
   const { data: existing } = await supabase
@@ -358,7 +359,8 @@ export async function registrarDesempenho(opts: {
     acertou,
     nota,
     nivel_pista: nivelPista,
-    timestamp: now
+    timestamp: now,
+    conta_meta_diaria: contaMetaDiaria,
   });
 
   if (histError) {

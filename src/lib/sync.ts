@@ -10,6 +10,7 @@ interface SyncItem {
   nivelPista: number;
   nota: number;
   pesoImportancia: number;
+  contaMetaDiaria?: boolean;
   timestamp: string;
 }
 
@@ -38,7 +39,10 @@ export async function processSyncQueue() {
   
   for (const item of queue) {
     try {
-      await registrarDesempenho(item);
+      await registrarDesempenho({
+        ...item,
+        contaMetaDiaria: item.contaMetaDiaria ?? true,
+      });
     } catch (error) {
       console.error("Failed to sync OQ result:", error);
       remainingQueue.push(item);
