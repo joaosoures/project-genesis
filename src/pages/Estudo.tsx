@@ -86,14 +86,32 @@ export default function Estudo() {
     if (!user) return;
     setLoading(true);
 
-    const atrasados = await buscarPool(user.id, filtro, "overdue");
-    const initialMode: StudyQueueMode = atrasados.length > 0 ? "overdue" : "priority";
-    const p = initialMode === "overdue" ? atrasados : await buscarPool(user.id, filtro, "priority");
+    let initialMode: StudyQueueMode = "priority";
+    let atrasados: CardRow[] = [];
+    let p: CardRow[];
+
+    if (filtro.tipo === "aula") {
+      // O estudo direto da trilha deve trazer todos os OQs da matéria,
+      // independentemente de já terem desempenho ou revisão agendada.
+      p = await buscarPool(user.id, filtro);
+    } else {
+      atrasados = await buscarPool(user.id, filtro, "overdue");
+      if (atrasados.length > 0) {
+        initialMode = "overdue";
+        p = atrasados;
+      } else {
+        p = await buscarPool(user.id, filtro, "priority");
+        // Alunos novos ainda não possuem desempenho. Nesse caso, inicia
+        // com os OQs inéditos disponíveis no filtro escolhido.
+        if (p.length === 0) p = await buscarPool(user.id, filtro);
+      }
+    }
+
     const progresso = await getDailyProgress(user.id);
 
     setQueueMode(initialMode);
     setReviewTotal(atrasados.length);
-    setShowPriorityAlert(initialMode === "priority" && p.length > 0);
+    setShowPriorityAlert(filtro.tipo !== "aula" && initialMode === "priority" && p.length > 0);
     setProgressoDiario(progresso);
     setPool(p);
     setIdx(0);
@@ -161,12 +179,20 @@ export default function Estudo() {
       return;
     }
 
+    if (filtro.tipo === "aula") {
+      const p = await buscarPool(user.id, filtro);
+      setPool(p);
+      setIdx(0);
+      return;
+    }
+
     if (queueMode === "overdue" && user) {
       setShowPriorityAlert(true);
       return;
     }
 
-    const p = await buscarPool(user.id, filtro, "priority");
+    let p = await buscarPool(user.id, filtro, "priority");
+    if (p.length === 0) p = await buscarPool(user.id, filtro);
     setPool(p);
     setIdx(0);
   }
@@ -175,7 +201,8 @@ export default function Estudo() {
     if (!user) return;
     setShowPriorityAlert(false);
     setRefreshing(true);
-    const p = await buscarPool(user.id, filtro, "priority");
+    let p = await buscarPool(user.id, filtro, "priority");
+    if (p.length === 0) p = await buscarPool(user.id, filtro);
     setQueueMode("priority");
     setPool(p);
     setIdx(0);
@@ -186,7 +213,8 @@ export default function Estudo() {
     if (!user) return;
     setShowCoffeeBreak(false);
     setRefreshing(true);
-    const p = await buscarPool(user.id, filtro, "priority");
+    let p = await buscarPool(user.id, filtro, "priority");
+    if (p.length === 0) p = await buscarPool(user.id, filtro);
     const progresso = await getDailyProgress(user.id);
     setProgressoDiario(progresso);
     setQueueMode("priority");
