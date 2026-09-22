@@ -7,7 +7,7 @@ import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { CardRow, Especialidade, calcularNota, ESPECIALIDADE_LABEL, MODO_LABEL } from "@/lib/oq";
-import { buscarPool, registrarDesempenho, QueueFilter, getDailyProgress } from "@/lib/queue";
+import { buscarPool, registrarDesempenho, QueueFilter, getDailyProgress, StudyQueueMode } from "@/lib/queue";
 import { supabase } from "@/integrations/supabase/client";
 import { ModoHandle } from "@/types/modo";
 
@@ -38,6 +38,9 @@ export default function Estudo() {
   const [idx, setIdx] = useState(0);
   const [loading, setLoading] = useState(true);
   const [favSet, setFavSet] = useState<Set<string>>(new Set());
+  const [queueMode, setQueueMode] = useState<StudyQueueMode>("overdue");
+  const [reviewTotal, setReviewTotal] = useState(0);
+  const [showPriorityAlert, setShowPriorityAlert] = useState(false);
   
   // Progress tracking
   const [progressoDiario, setProgressoDiario] = useState(0);
@@ -76,38 +79,31 @@ export default function Estudo() {
     return { tipo: "todas" };
   })();
 
-  const carregar = useCallback(async (isBackground = false) => {
+  const carregar = useCallback(async () => {
     if (!user) return;
-    if (!isBackground) setLoading(true);
-    else setRefreshing(true);
+    setLoading(true);
 
-    const p = await buscarPool(user.id, filtro);
-    
-    // Always refresh daily progress from DB to keep count accurate
+    const atrasados = await buscarPool(user.id, filtro, "overdue");
+    const initialMode: StudyQueueMode = atrasados.length > 0 ? "overdue" : "priority";
+    const p = initialMode === "overdue" ? atrasados : await buscarPool(user.id, filtro, "priority");
     const progresso = await getDailyProgress(user.id);
+
+    setQueueMode(initialMode);
+    setReviewTotal(atrasados.length);
+    setShowPriorityAlert(initialMode === "priority" && p.length > 0);
     setProgressoDiario(progresso);
-
-    if (isBackground) {
-      setPool(prev => {
-        const seenIds = new Set(prev.slice(0, idx + 1).map(c => c.id));
-        const filteredNext = p.filter(c => !seenIds.has(c.id));
-        return [...prev.slice(0, idx + 1), ...filteredNext];
-      });
-      setRefreshing(false);
-    } else {
-      setPool(p);
-      setIdx(0);
-      const { data: favs } = await supabase.from("favoritos").select("card_id").eq("usuario_id", user.id);
-      setFavSet(new Set((favs ?? []).map((f: any) => f.card_id)));
-      setTimeout(() => setLoading(false), 600);
-    }
-  }, [user, filtro, idx]);
-
-  useEffect(() => { 
-    carregar(false); 
-    document.title = "Estudar — Code Splitting"; 
-    processSyncQueue();
+    setPool(p);
+    setIdx(0);
+    const { data: favs } = await supabase.from("favoritos").select("card_id").eq("usuario_id", user.id);
+    setFavSet(new Set((favs ?? []).map((f: any) => f.card_id)));
+    setTimeout(() => setLoading(false), 600);
   }, [user, params.toString()]);
+
+  useEffect(() => {
+    carregar();
+    document.title = "Estudar — OQmed";
+    processSyncQueue();
+  }, [carregar]);
 
   const card = pool[idx];
 
@@ -147,28 +143,48 @@ export default function Estudo() {
       acertou: r.acertou, nivelPista: r.nivelPista, nota,
       pesoImportancia: card.peso_importancia,
     });
+    window.dispatchEvent(new Event("oqmed:review-updated"));
     
     if (r.acertou) { setShowStar(true); setTimeout(() => setShowStar(false), 1100); }
     // Nota: não recarregamos a fila aqui para não trocar o card que o aluno está vendo.
     // A fila só é atualizada quando o aluno termina os OQs da sessão (coffee break).
   }
 
-  function proximo() {
-    if (idx + 1 >= pool.length) {
-      // Fim da sessão (ex.: 20 OQs) → pausa para o café antes de recarregar a fila
-      setShowCoffeeBreak(true);
+  async function proximo() {
+    if (idx + 1 < pool.length) {
+      setIdx(idx + 1);
       return;
     }
-    setIdx(idx + 1);
+
+    if (queueMode === "overdue" && user) {
+      setShowPriorityAlert(true);
+      return;
+    }
+
+    const p = await buscarPool(user.id, filtro, "priority");
+    setPool(p);
+    setIdx(0);
+  }
+
+  async function entrarModoPrioridade() {
+    if (!user) return;
+    setShowPriorityAlert(false);
+    setRefreshing(true);
+    const p = await buscarPool(user.id, filtro, "priority");
+    setQueueMode("priority");
+    setPool(p);
+    setIdx(0);
+    setRefreshing(false);
   }
 
   async function continuarAposCafe() {
     if (!user) return;
     setShowCoffeeBreak(false);
     setRefreshing(true);
-    const p = await buscarPool(user.id, filtro);
+    const p = await buscarPool(user.id, filtro, "priority");
     const progresso = await getDailyProgress(user.id);
     setProgressoDiario(progresso);
+    setQueueMode("priority");
     setPool(p);
     setIdx(0);
     const { data: favs } = await supabase.from("favoritos").select("card_id").eq("usuario_id", user.id);
@@ -276,9 +292,15 @@ export default function Estudo() {
             <div className="shrink-0 pt-2 mb-4 px-12 md:px-0">
               <div className="mb-4 flex items-center gap-3">
                 <span className="text-xs font-mono text-muted-foreground tabular-nums">
-                  {String(idx + 1).padStart(2, "0")}/{String(pool.length).padStart(2, "0")}
+                  {queueMode === "overdue"
+                    ? `${String(idx + 1).padStart(2, "0")}/${String(reviewTotal).padStart(2, "0")}`
+                    : `Prioridade ${String(idx + 1).padStart(2, "0")}/${String(pool.length).padStart(2, "0")}`}
                 </span>
-                <NeonProgressBar value={idx + 1} total={pool.length} className="flex-1" />
+                <NeonProgressBar
+                  value={idx + 1}
+                  total={queueMode === "overdue" ? reviewTotal : pool.length}
+                  className="flex-1"
+                />
               </div>
 
               <div className="flex items-center justify-between text-xs">
@@ -459,6 +481,32 @@ export default function Estudo() {
             )}
 
             <AnimatePresence>
+              {showPriorityAlert && (
+                <motion.div
+                  key="priority-alert"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 z-[90] flex items-center justify-center p-4 bg-background/75 backdrop-blur-md"
+                >
+                  <motion.div
+                    initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.92, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    className="paper-card w-full max-w-md p-8 text-center border-2 border-emerald-500/30 shadow-2xl"
+                  >
+                    <div className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-emerald-500/10 text-emerald-600">
+                      <CheckCircle2 className="h-9 w-9" />
+                    </div>
+                    <h2 className="font-display text-2xl font-black mb-3">Fila concluída!</h2>
+                    <p className="text-muted-foreground mb-7">
+                      Você concluiu a fila de revisões! Entrando no modo de treino com algoritmo de prioridade.
+                    </p>
+                    <TactileButton variant="primary" size="lg" onClick={entrarModoPrioridade} className="w-full">
+                      Entrar no modo prioridade
+                    </TactileButton>
+                  </motion.div>
+                </motion.div>
+              )}
               {showCoffeeBreak && (
                 reduceMotion ? (
                   <div className="absolute inset-0 z-[80] flex items-center justify-center p-4 bg-background/70 backdrop-blur-md">

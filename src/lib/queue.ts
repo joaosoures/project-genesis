@@ -2,8 +2,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { CardRow, calcularScore, Especialidade } from "./oq";
 import { addToSyncQueue } from "./sync";
 
-const POOL_SIZE = 20;
+export type StudyQueueMode = "overdue" | "priority";
 
+export function getEndOfTodayIso(): string {
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+  return endOfToday.toISOString();
+}
 
 export async function getDailyProgress(userId: string): Promise<number> {
   const { data, error } = await supabase.rpc("get_daily_progress", { p_user_id: userId });
@@ -27,8 +32,94 @@ export type QueueFilter =
   | { tipo: "aula"; aulaId: string }
   | { tipo: "baralho"; baralho: string };
 
-export async function buscarPool(userId: string, filter: QueueFilter): Promise<CardRow[]> {
-  const fields = "id, modo, especialidade, comando, alternativa_a, alternativa_b, alternativa_c, alternativa_d, alternativa_e, alternativa_correta, info_1, var_1, info_2, var_2, info_3, var_3, info_4, var_4, info_5, var_5, peso_importancia, origem, verificado, criado_por_usuario_id, aula_id, baralho";
+const CARD_FIELDS = "id, modo, especialidade, comando, alternativa_a, alternativa_b, alternativa_c, alternativa_d, alternativa_e, alternativa_correta, info_1, var_1, info_2, var_2, info_3, var_3, info_4, var_4, info_5, var_5, peso_importancia, origem, verificado, criado_por_usuario_id, aula_id, baralho";
+const FETCH_PAGE_SIZE = 1000;
+
+type QueuePerformance = {
+  card_id: string;
+  score_prioridade: number;
+  proxima_revisao: string | null;
+};
+
+async function fetchQueuePerformances(userId: string, mode: StudyQueueMode): Promise<QueuePerformance[]> {
+  const rows: QueuePerformance[] = [];
+  for (let from = 0; ; from += FETCH_PAGE_SIZE) {
+    let query = supabase
+      .from("desempenho_cards")
+      .select("card_id, score_prioridade, proxima_revisao")
+      .eq("usuario_id", userId)
+      .order(mode === "overdue" ? "proxima_revisao" : "score_prioridade", { ascending: mode === "overdue" })
+      .range(from, from + FETCH_PAGE_SIZE - 1);
+    if (mode === "overdue") query = query.lte("proxima_revisao", getEndOfTodayIso());
+    const { data, error } = await query;
+    if (error) throw error;
+    rows.push(...((data ?? []) as QueuePerformance[]));
+    if (!data || data.length < FETCH_PAGE_SIZE) break;
+  }
+  return rows;
+}
+
+async function fetchCardsByIds(ids: string[]): Promise<CardRow[]> {
+  const cards: CardRow[] = [];
+  for (let from = 0; from < ids.length; from += 200) {
+    const { data, error } = await supabase
+      .from("cards")
+      .select(CARD_FIELDS)
+      .in("id", ids.slice(from, from + 200));
+    if (error) throw error;
+    cards.push(...((data ?? []) as CardRow[]));
+  }
+  return cards;
+}
+
+async function applyQueueFilter(userId: string, cards: CardRow[], filter: QueueFilter): Promise<CardRow[]> {
+  let filtered = cards;
+  const especialidade = "especialidade" in filter ? filter.especialidade : undefined;
+  if (especialidade) filtered = filtered.filter((card) => card.especialidade === especialidade);
+  if (filter.tipo === "aula") filtered = filtered.filter((card) => card.aula_id === filter.aulaId);
+  if (filter.tipo === "baralho") filtered = filtered.filter((card) => card.baralho === filter.baralho && card.criado_por_usuario_id === userId);
+  if (filter.tipo === "favoritos") {
+    const { data } = await supabase.from("favoritos").select("card_id").eq("usuario_id", userId);
+    const favoriteIds = new Set((data ?? []).map((item) => item.card_id));
+    filtered = filtered.filter((card) => favoriteIds.has(card.id));
+  }
+  return filtered;
+}
+
+export async function getOverdueCounts(userId: string): Promise<Record<Especialidade | "total", number>> {
+  const performances = await fetchQueuePerformances(userId, "overdue");
+  const cards = await fetchCardsByIds(performances.map((item) => item.card_id));
+  const counts: Record<Especialidade | "total", number> = {
+    total: cards.length,
+    clinica_medica: 0,
+    cirurgia_geral: 0,
+    pediatria: 0,
+    ginecologia_obstetricia: 0,
+    medicina_preventiva: 0,
+    saude_mental: 0,
+  };
+  cards.forEach((card) => { counts[card.especialidade] += 1; });
+  return counts;
+}
+
+export async function buscarPool(userId: string, filter: QueueFilter, studyMode?: StudyQueueMode): Promise<CardRow[]> {
+  const fields = CARD_FIELDS;
+
+  if (studyMode) {
+    const [performances, excludedResult] = await Promise.all([
+      fetchQueuePerformances(userId, studyMode),
+      supabase.from("user_excluded_cards").select("card_id").eq("user_id", userId),
+    ]);
+    const excludedIds = new Set((excludedResult.data ?? []).map((item) => item.card_id));
+    const activePerformances = performances.filter((item) => !excludedIds.has(item.card_id));
+    const cards = await fetchCardsByIds(activePerformances.map((item) => item.card_id));
+    const filteredCards = await applyQueueFilter(userId, cards, filter);
+    const cardMap = new Map(filteredCards.map((card) => [card.id, card]));
+    return activePerformances.flatMap((item) => {
+      const card = cardMap.get(item.card_id);
+      return card ? [card] : [];
+    });
+  }
 
   // FAST PATH: modo retrógrado — só OQs já realizados, scoring direto do desempenho
   if (filter.tipo === "retrogrado") {
@@ -60,30 +151,30 @@ export async function buscarPool(userId: string, filter: QueueFilter): Promise<C
       return { card_id: d.card_id, score };
     });
     scoredIds.sort((a, b) => b.score - a.score);
-    const topIds = scoredIds.slice(0, POOL_SIZE * 2).map((s) => s.card_id);
-
-    let cq: any = supabase.from("cards").select(fields).in("id", topIds);
-    if (filter.especialidade) cq = cq.eq("especialidade", filter.especialidade);
-    const { data: cardsRetro } = await cq;
-    if (!cardsRetro) return [];
-
-    const cardMap = new Map<string, any>(cardsRetro.map((c: any) => [c.id, c]));
-    const ordered: CardRow[] = [];
-    for (const s of scoredIds) {
-      const c = cardMap.get(s.card_id);
-      if (c) ordered.push(c as CardRow);
-      if (ordered.length >= POOL_SIZE) break;
-    }
-    return ordered;
+    const orderedIds = scoredIds.map((s) => s.card_id);
+    const cardsRetro = await fetchCardsByIds(orderedIds);
+    const filteredCards = filter.especialidade
+      ? cardsRetro.filter((card) => card.especialidade === filter.especialidade)
+      : cardsRetro;
+    const cardMap = new Map<string, CardRow>(filteredCards.map((card) => [card.id, card]));
+    return orderedIds.flatMap((id) => {
+      const card = cardMap.get(id);
+      return card ? [card] : [];
+    });
   }
 
   // 1. Carrega todos os cards visíveis (verificados ou próprios)
-  let q: any = supabase.from("cards").select(fields).limit(500);
-  if (filter.tipo === "especialidade") q = q.eq("especialidade", filter.especialidade);
-  if (filter.tipo === "aula") q = q.eq("aula_id", filter.aulaId);
-  if (filter.tipo === "baralho") q = q.eq("baralho", filter.baralho).eq("criado_por_usuario_id", userId);
-  const { data: cards, error } = await q;
-  if (error || !cards) return [];
+  const cards: CardRow[] = [];
+  for (let from = 0; ; from += FETCH_PAGE_SIZE) {
+    let q: any = supabase.from("cards").select(fields).range(from, from + FETCH_PAGE_SIZE - 1);
+    if (filter.tipo === "especialidade") q = q.eq("especialidade", filter.especialidade);
+    if (filter.tipo === "aula") q = q.eq("aula_id", filter.aulaId);
+    if (filter.tipo === "baralho") q = q.eq("baralho", filter.baralho).eq("criado_por_usuario_id", userId);
+    const { data, error } = await q;
+    if (error || !data) return [];
+    cards.push(...(data as CardRow[]));
+    if (data.length < FETCH_PAGE_SIZE) break;
+  }
 
 
   // 1.1 Filtrar cards excluídos pelo usuário
@@ -177,7 +268,7 @@ export async function buscarPool(userId: string, filter: QueueFilter): Promise<C
     return new Date(a.ultima).getTime() - new Date(b.ultima).getTime();
   });
 
-  return scored.slice(0, POOL_SIZE).map((s) => s.card);
+  return scored.map((s) => s.card);
 }
 
 export async function fetchExplicacao(cardId: string): Promise<string> {

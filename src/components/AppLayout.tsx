@@ -18,6 +18,8 @@ import Logo from "@/components/console/Logo";
 import BlurEdges from "@/components/console/BlurEdges";
 import { feedback } from "@/lib/sensory";
 import { useSettings } from "@/contexts/SettingsContext";
+import { Especialidade } from "@/lib/oq";
+import { getOverdueCounts } from "@/lib/queue";
 
 // Lazy load non-critical components
 const LoginAlerts = lazy(() => import("@/components/LoginAlerts"));
@@ -36,6 +38,7 @@ function AppSidebar() {
   const collapsed = isMobile ? false : state === "collapsed";
   const { pathname } = useLocation();
   const { isAdmin: isAuthAdmin, signOut, user } = useAuth();
+  const [overdueCounts, setOverdueCounts] = useState<Record<Especialidade | "total", number> | null>(null);
   const isAdmin = isAuthAdmin || user?.email === 'joaoresende2603@gmail.com';
   const isActive = (p: string) => pathname === p || pathname.startsWith(p + "/");
   const handleNav = () => {
@@ -43,18 +46,33 @@ function AppSidebar() {
     if (isMobile) setOpenMobile(false);
   };
 
+  useEffect(() => {
+    if (!user) {
+      setOverdueCounts(null);
+      return;
+    }
+    const loadCounts = () => {
+      getOverdueCounts(user.id)
+        .then(setOverdueCounts)
+        .catch(() => setOverdueCounts(null));
+    };
+    loadCounts();
+    window.addEventListener("oqmed:review-updated", loadCounts);
+    return () => window.removeEventListener("oqmed:review-updated", loadCounts);
+  }, [user]);
+
   const main = [
-    { title: "Estudar", url: "/estudo", icon: BookOpen },
+    { title: "Estudar", url: "/estudo", icon: BookOpen, count: overdueCounts?.total ?? 0 },
     { title: "Área do aluno", url: "/dashboard", icon: LayoutDashboard },
     { title: "Trilha Estratégica", url: "/trilha", icon: Map },
     { title: "Materiais", url: "/materiais", icon: Files },
   ];
   const especialidades = [
-    { title: "Clínica Médica", url: "/estudo?esp=clinica_medica", icon: Stethoscope },
-    { title: "Cirurgia Geral", url: "/estudo?esp=cirurgia_geral", icon: BisturiIcon },
-    { title: "Pediatria", url: "/estudo?esp=pediatria", icon: Baby },
-    { title: "Ginecologia/Obs", url: "/estudo?esp=ginecologia_obstetricia", icon: UteroIcon },
-    { title: "Med. Preventiva", url: "/estudo?esp=medicina_preventiva", icon: Activity },
+    { title: "Clínica Médica", url: "/estudo?esp=clinica_medica", icon: Stethoscope, count: overdueCounts?.clinica_medica ?? 0 },
+    { title: "Cirurgia Geral", url: "/estudo?esp=cirurgia_geral", icon: BisturiIcon, count: overdueCounts?.cirurgia_geral ?? 0 },
+    { title: "Pediatria", url: "/estudo?esp=pediatria", icon: Baby, count: overdueCounts?.pediatria ?? 0 },
+    { title: "Ginecologia/Obs", url: "/estudo?esp=ginecologia_obstetricia", icon: UteroIcon, count: overdueCounts?.ginecologia_obstetricia ?? 0 },
+    { title: "Med. Preventiva", url: "/estudo?esp=medicina_preventiva", icon: Activity, count: overdueCounts?.medicina_preventiva ?? 0 },
   ];
   const extras = [
     { title: "Favoritos", url: "/favoritos", icon: Heart },
@@ -85,7 +103,15 @@ function AppSidebar() {
               {main.map((i) => (
                 <SidebarMenuItem key={i.url}>
                   <SidebarMenuButton asChild isActive={isActive(i.url)} onClick={handleNav}>
-                    <NavLink to={i.url}><i.icon className="h-4 w-4" />{!collapsed && <span>{i.title}</span>}</NavLink>
+                    <NavLink to={i.url}>
+                      <i.icon className="h-4 w-4" />
+                      {!collapsed && <span>{i.title}</span>}
+                      {"count" in i && i.count > 0 && (
+                        <Badge className="ml-auto h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] tabular-nums">
+                          {i.count}
+                        </Badge>
+                      )}
+                    </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -100,7 +126,15 @@ function AppSidebar() {
               {especialidades.map((i) => (
                 <SidebarMenuItem key={i.url}>
                   <SidebarMenuButton asChild onClick={handleNav}>
-                    <NavLink to={i.url}><i.icon className="h-4 w-4" />{!collapsed && <span>{i.title}</span>}</NavLink>
+                    <NavLink to={i.url}>
+                      <i.icon className="h-4 w-4" />
+                      {!collapsed && <span>{i.title}</span>}
+                      {i.count > 0 && (
+                        <Badge className="ml-auto h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] tabular-nums">
+                          {i.count}
+                        </Badge>
+                      )}
+                    </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
