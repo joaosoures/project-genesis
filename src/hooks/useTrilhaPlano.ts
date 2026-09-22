@@ -45,6 +45,10 @@ export interface TrilhaSettings {
   perdidos?: string[];
   /** Aulas marcadas como concluídas pelo aluno. */
   completos?: string[];
+  /** Semana em que uma aula foi concluída, sem mover sua posição no plano. */
+  completos_semana?: Record<string, number>;
+  /** Snapshot imutável das aulas efetivamente apresentadas em cada semana. */
+  planos_semanais?: Record<string, string[]>;
   /** Cache das estatísticas globais para evitar processamento pesado. */
   stats_cache?: Record<string, { count: number; acertos: number }>;
   /** Timestamp da última sincronização do histórico. */
@@ -72,6 +76,8 @@ export const TRILHA_DEFAULT: TrilhaSettings = {
   plano_overrides: {},
   perdidos: [],
   completos: [],
+  completos_semana: {},
+  planos_semanais: {},
   stats_cache: {},
   last_sync_timestamp: null,
 };
@@ -278,12 +284,30 @@ export function useTrilhaPlano() {
 
   const marcarConcluida = useCallback(async (aulaId: string) => {
     const list = Array.from(new Set([...(settings.completos ?? []), aulaId]));
-    await salvarSettings({ ...settings, completos: list });
+    const semanaAtual = (() => {
+      const startOfWeek = (date: Date) => {
+        const value = new Date(date);
+        value.setHours(0, 0, 0, 0);
+        value.setDate(value.getDate() - ((value.getDay() + 6) % 7));
+        return value;
+      };
+      const inicio = settings.data_inicio_plano
+        ? startOfWeek(new Date(`${settings.data_inicio_plano}T00:00:00`))
+        : startOfWeek(new Date());
+      return Math.max(0, Math.floor((startOfWeek(new Date()).getTime() - inicio.getTime()) / (7 * 86400000)));
+    })();
+    await salvarSettings({
+      ...settings,
+      completos: list,
+      completos_semana: { ...(settings.completos_semana ?? {}), [aulaId]: semanaAtual },
+    });
   }, [settings, salvarSettings]);
 
   const desmarcarConcluida = useCallback(async (aulaId: string) => {
     const list = (settings.completos ?? []).filter((x) => x !== aulaId);
-    await salvarSettings({ ...settings, completos: list });
+    const completosSemana = { ...(settings.completos_semana ?? {}) };
+    delete completosSemana[aulaId];
+    await salvarSettings({ ...settings, completos: list, completos_semana: completosSemana });
   }, [settings, salvarSettings]);
 
   /** Marca aula como "dominada": registra até 20 OQs com nota 70 e adiciona a completos. */
@@ -306,13 +330,12 @@ export function useTrilhaPlano() {
       if (rows.length) {
         await supabase.from("historico_estudo").insert(rows);
       }
-      const list = Array.from(new Set([...(settings.completos ?? []), aulaId]));
-      await salvarSettings({ ...settings, completos: list });
+      await marcarConcluida(aulaId);
       await carregar();
     } catch (e) {
       console.error("marcarDominada falhou", e);
     }
-  }, [user, settings, salvarSettings, carregar]);
+  }, [user, marcarConcluida, carregar]);
 
 
   // Plano da semana
@@ -393,240 +416,112 @@ export function useTrilhaPlano() {
 
   const tierMax = maxTierFor(settings.foco_incidencia);
 
-  // Hash para controle de cache do plano
-  const planoHash = useMemo(() => {
-    return JSON.stringify({
-      setup: settings.setup_done,
-      prova: settings.prova_data,
-      perfil: settings.perfil,
-      rodizio: settings.rodizio_atual,
-      proximos: settings.proximos_rodizios,
-      disp: settings.disponibilidade,
-      foco: settings.foco_incidencia,
-      inicio: settings.data_inicio_plano,
-      overrides: settings.plano_overrides,
-      perdidos: settings.perdidos,
-      completosCount: completosSet.size,
-      aulasCount: aulas.length,
-      totalSemanas,
-      currentWeekIndex
-    });
-  }, [settings, completosSet.size, aulas.length, totalSemanas, currentWeekIndex]);
-
-  const { planoSemanaPorAula, baselinePlano, pendenciasIds } = useMemo(() => {
-    if (!aulas.length || !settings.setup_done) return { planoSemanaPorAula: {}, baselinePlano: {}, pendenciasIds: new Set<string>() };
-    
-    // Tentar recuperar do cache persistente
-    if (settings.plano_cache && settings.plano_cache.hash === planoHash) {
-      return {
-        planoSemanaPorAula: settings.plano_cache.planoSemanaPorAula,
-        baselinePlano: settings.plano_cache.baselinePlano,
-        pendenciasIds: new Set(settings.plano_cache.pendenciasIds)
-      };
+  const { planoSemanaPorAula, baselinePlano, pendenciasIds, currentWeekIds } = useMemo(() => {
+    if (!aulas.length || !settings.setup_done) {
+      return { planoSemanaPorAula: {}, baselinePlano: {}, pendenciasIds: new Set<string>(), currentWeekIds: [] as string[] };
     }
 
-
-    
-    // 1. Pool total de aulas (Inclui TODAS as matérias para garantir que nada escape da trilha)
-    const poolGeral = aulas.filter(a => 
-      a.total_oqs > 0 && 
-      !perdidosSet.has(a.id)
-    ).sort((a, b) => a.tier - b.tier);
-
-    const totalRemainingAulas = poolGeral.filter(a => !completosSet.has(a.id)).length;
-    const remainingWeeksCount = Math.max(1, totalSemanas - currentWeekIndex);
-    const targetK = Math.ceil(totalRemainingAulas / remainingWeeksCount);
-
-    // 2. Calcular Baseline (Simulação ideal sem rodízios)
+    const eligible = aulas
+      .filter((a) => a.total_oqs > 0 && a.tier <= tierMax && !perdidosSet.has(a.id))
+      .sort((a, b) => a.tier - b.tier || a.nome.localeCompare(b.nome));
+    const eligibleIds = new Set(eligible.map((a) => a.id));
+    const snapshots = settings.planos_semanais ?? {};
+    const res: Record<string, number> = {};
     const baseline: Record<string, number> = {};
-    let wkBase = currentWeekIndex;
-    let poolBaseRef = poolGeral.filter(a => !completosSet.has(a.id));
-    while (poolBaseRef.length > 0 && wkBase < totalSemanas + 52) {
-      let count = 0;
-      for (let i = 0; i < poolBaseRef.length; i++) {
-        baseline[poolBaseRef[i].id] = wkBase;
-        poolBaseRef.splice(i, 1);
-        i--;
-        count++;
-        if (count >= targetK) break;
-      }
-      wkBase++;
-    }
-
-    // 3. Calcular Plano Real (Com Rodízios, Overrides e Preservação de Completos)
-    const res: Record<string, number> = { ...overrides };
-    
-    // 3.1 Mapear aulas completas para suas semanas de origem
-    const poolFullForMapping = [...poolGeral];
-    let wkMapping = 0;
-    while (poolFullForMapping.length > 0 && wkMapping <= currentWeekIndex) {
-      let count = 0;
-      const targetKHist = Math.ceil(poolGeral.length / totalSemanas);
-      for (let i = 0; i < poolFullForMapping.length && count < targetKHist; i++) {
-        const a = poolFullForMapping[i];
-        if (completosSet.has(a.id)) {
-          // Se a aula está completa, ela fica "fixada" na semana em que foi distribuída originalmente.
-          // Importante: wkMapping pode chegar até currentWeekIndex.
-          res[a.id] = wkMapping;
-        }
-        poolFullForMapping.splice(i, 1);
-        i--;
-        count++;
-      }
-      wkMapping++;
-    }
-
-    const poolSemOverride = poolGeral.filter(a => 
-      !completosSet.has(a.id) && 
-      overrides[a.id] === undefined
-    );
-
-
-    const remainingPool = [...poolSemOverride];
-    let wk = currentWeekIndex;
-    
-    const specialtyWeeksLeft: Record<string, number> = {};
-    for (let w = currentWeekIndex; w < totalSemanas + 52; w++) {
-      const r = getRodizioItemForWeek(w);
-      if (r) {
-        const k = rodizioKey(r);
-        specialtyWeeksLeft[k] = (specialtyWeeksLeft[k] || 0) + 1;
-      }
-    }
-
-    while (remainingPool.length > 0 && wk < totalSemanas + 52) {
-      const rodWk = getRodizioItemForWeek(wk);
-      let count = 0;
-
-      // Prioridade: Aulas de Rodízio
-      if (rodWk) {
-        const key = rodizioKey(rodWk);
-        const poolEspecialidade = rodWk.aulas_ids && rodWk.aulas_ids.length
-          ? remainingPool.filter((a) => rodWk.aulas_ids!.includes(a.id))
-          : remainingPool.filter((a) => a.especialidade === rodWk.especialidade);
-        
-        const weeksLeftForThisSpec = specialtyWeeksLeft[key] || 1;
-        const shareIdeal = Math.ceil(poolEspecialidade.length / weeksLeftForThisSpec);
-        const limitRodizio = Math.min(shareIdeal, targetK);
-
-        const idsPrioridade = new Set(
-          [...poolEspecialidade]
-            .sort((a, b) => a.tier - b.tier)
-            .slice(0, limitRodizio)
-            .map((a) => a.id),
-        );
-
-        for (let i = 0; i < remainingPool.length && count < limitRodizio; i++) {
-          if (idsPrioridade.has(remainingPool[i].id)) {
-            res[remainingPool[i].id] = wk;
-            remainingPool.splice(i, 1);
-            i--;
-            count++;
-          }
-        }
-        specialtyWeeksLeft[key]--;
-      }
-
-      // Preencher até o targetK com Tiers
-      const tiers = [1, 2, 3];
-      for (const tier of tiers) {
-        if (count >= targetK) break;
-        for (let i = 0; i < remainingPool.length; i++) {
-          if (remainingPool[i].tier === tier) {
-            res[remainingPool[i].id] = wk;
-            remainingPool.splice(i, 1);
-            i--;
-            count++;
-            if (count >= targetK) break;
-          }
-        }
-      }
-
-      // Fallback
-      while (count < targetK && remainingPool.length > 0) {
-        res[remainingPool[0].id] = wk;
-        remainingPool.splice(0, 1);
-        count++;
-      }
-      wk++;
-    }
-
-    // 4. PENDÊNCIAS E HISTÓRICO (Simulação retrospectiva rigorosa)
     const pendSet = new Set<string>();
-    const historicoFixadoIds = new Set<string>();
-    
-    // Simulação do passado para atribuir semanas a aulas completas e identificar pendências reais
-    // Simulação do passado considerando TODAS as aulas do pool geral (incluindo base e fixadas)
-    const poolRet = [...poolGeral];
-    let wkRet = 0;
-    
-    // IMPORTANTE: Simulamos desde a semana 0 até a semana anterior à atual
-    while (poolRet.length > 0 && wkRet < currentWeekIndex) {
-      let count = 0;
-      // Meta histórica baseada na distribuição inicial
-      const targetKHist = Math.ceil(poolGeral.length / totalSemanas);
-      
-      for (let i = 0; i < poolRet.length && count < targetKHist; i++) {
-        const a = poolRet[i];
-        
-        // Se a aula foi marcada como completa (ou atingiu meta de OQs), ela pertence a esta semana passada
-        if (!completosSet.has(a.id)) {
-          // Se NÃO está completa e deveria ter sido feita, é uma pendência
-          // A MENOS que tenha um override futuro
-          if (overrides[a.id] === undefined) {
-            pendSet.add(a.id);
-          } else if (overrides[a.id] < currentWeekIndex) {
-            // Se tem um override mas é para o passado e não foi concluído, continua pendente
-            pendSet.add(a.id);
-          }
-        } else {
-          // Se está completa, ela NÃO deve ser pendência e DEVE estar na semana wkRet
-          res[a.id] = wkRet;
-          historicoFixadoIds.add(a.id);
-        }
+    const historicallyPlanned = new Set<string>();
 
-        poolRet.splice(i, 1);
-        i--;
-        count++;
-      }
-      wkRet++;
-    }
-
-    // Aulas que foram concluídas na semana atual ou redistribuídas para o passado por engano
-    // devem ser garantidas como "feitas" na UI mesmo se não estiverem no pool ideal.
-    // O usuário relatou que matérias concluídas somem; garantimos que permaneçam na semana atual ou 0.
-    completosSet.forEach(aid => {
-      if (res[aid] === undefined || res[aid] > currentWeekIndex) {
-        // Se a aula está completa mas não foi atribuída ao passado ou semana atual,
-        // vamos garantir que ela seja vista como concluída na semana em que ela foi concluída.
-        // Se não sabemos a semana exata, mantemos na semana atual para que apareça como "concluída" onde o usuário está.
-        if (!historicoFixadoIds.has(aid)) {
-           res[aid] = currentWeekIndex;
+    Object.entries(snapshots).forEach(([weekKey, ids]) => {
+      const week = Number(weekKey);
+      if (!Number.isInteger(week) || week > currentWeekIndex) return;
+      ids.filter((id) => eligibleIds.has(id)).forEach((id) => {
+        historicallyPlanned.add(id);
+        res[id] = week;
+        if (
+          week < currentWeekIndex &&
+          !completosSet.has(id) &&
+          !(overrides[id] !== undefined && overrides[id] >= currentWeekIndex)
+        ) {
+          pendSet.add(id);
         }
-      }
+      });
     });
 
-    return { planoSemanaPorAula: res, baselinePlano: baseline, pendenciasIds: pendSet };
-  }, [aulas, settings, currentWeekIndex, totalSemanas, dailyGoal, overrides, completosSet, perdidosSet, tierMax, planoHash]);
+    const remainingWeeks = Math.max(1, totalSemanas - currentWeekIndex);
+    const available = eligible.filter((a) => !historicallyPlanned.has(a.id) && !completosSet.has(a.id));
+    const targetK = Math.max(1, Math.ceil(available.length / remainingWeeks));
+    const currentSnapshot = snapshots[String(currentWeekIndex)]?.filter((id) => eligibleIds.has(id));
+    const explicitCurrent = available.filter((a) => overrides[a.id] === currentWeekIndex);
+    const currentRotation = getRodizioItemForWeek(currentWeekIndex);
+    const rotationCandidates = available.filter((a) =>
+      currentRotation?.aulas_ids?.length
+        ? currentRotation.aulas_ids.includes(a.id)
+        : currentRotation?.especialidade === a.especialidade,
+    );
+    const generatedCandidates = [...explicitCurrent, ...rotationCandidates, ...available].filter(
+      (a, index, list) =>
+        list.findIndex((item) => item.id === a.id) === index &&
+        (overrides[a.id] === undefined || explicitCurrent.some((item) => item.id === a.id)),
+    );
+    const snapshotted = currentSnapshot
+      ? currentSnapshot.map((id) => eligible.find((a) => a.id === id)!).filter(Boolean)
+      : [];
+    const currentWeekPool = [
+      ...snapshotted,
+      ...explicitCurrent.filter((a) => !snapshotted.some((item) => item.id === a.id)),
+      ...(currentSnapshot ? [] : generatedCandidates.slice(0, Math.max(targetK, explicitCurrent.length))),
+    ];
 
-  // Efeito para persistir o cache calculado
+    currentWeekPool.forEach((a) => {
+      res[a.id] = currentWeekIndex;
+      baseline[a.id] = currentWeekIndex;
+    });
+
+    const assigned = new Set([...historicallyPlanned, ...currentWeekPool.map((a) => a.id)]);
+    const future = eligible.filter((a) => !assigned.has(a.id) && !completosSet.has(a.id));
+    future.forEach((a, index) => {
+      const week = overrides[a.id] !== undefined && overrides[a.id] > currentWeekIndex
+        ? overrides[a.id]
+        : currentWeekIndex + 1 + Math.floor(index / targetK);
+      res[a.id] = week;
+      baseline[a.id] = currentWeekIndex + 1 + Math.floor(index / targetK);
+    });
+
+    return {
+      planoSemanaPorAula: res,
+      baselinePlano: baseline,
+      pendenciasIds: pendSet,
+      currentWeekIds: currentWeekPool.map((a) => a.id),
+    };
+  }, [
+    aulas,
+    settings.setup_done,
+    settings.planos_semanais,
+    settings.rodizio_atual,
+    settings.proximos_rodizios,
+    currentWeekIndex,
+    totalSemanas,
+    overrides,
+    completosSet,
+    perdidosSet,
+    tierMax,
+  ]);
+
+  // Congela a composição da semana assim que ela é apresentada. A virada semanal
+  // passa a usar esse snapshot, em vez de reconstruir retroativamente o passado.
   useEffect(() => {
-    if (aulas.length > 0 && settings.setup_done && (!settings.plano_cache || settings.plano_cache.hash !== planoHash)) {
-      const timer = setTimeout(() => {
-        salvarSettings({
-
-          ...settings,
-          plano_cache: {
-            hash: planoHash,
-            planoSemanaPorAula,
-            baselinePlano,
-            pendenciasIds: Array.from(pendenciasIds)
-          }
-        });
-      }, 2000); // Delay para não salvar a cada pequena mudança
-      return () => clearTimeout(timer);
-    }
-  }, [planoHash, settings, planoSemanaPorAula, baselinePlano, pendenciasIds, salvarSettings, aulas.length]);
+    if (!settings.setup_done || currentWeekIds.length === 0) return;
+    const key = String(currentWeekIndex);
+    if (settings.planos_semanais?.[key]) return;
+    const timer = setTimeout(() => {
+      salvarSettings({
+        ...settings,
+        planos_semanais: { ...(settings.planos_semanais ?? {}), [key]: currentWeekIds },
+        plano_cache: undefined,
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [settings, currentWeekIndex, currentWeekIds, salvarSettings]);
 
 
   const aulasPorIndice = (wk: number) =>

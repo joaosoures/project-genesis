@@ -314,10 +314,16 @@ export default function TrilhaEstrategica() {
   }
 
   function fazerAgoraPendencia(aulaId: string) {
-    // Move a aula para a semana atual (override = currentWeekIndex)
-    const novosOverrides = { ...(settings.plano_overrides ?? {}) };
-    novosOverrides[aulaId] = currentWeekIndex;
-    salvarSettings({ ...settings, plano_overrides: novosOverrides });
+    const novosOverrides = { ...(settings.plano_overrides ?? {}), [aulaId]: currentWeekIndex };
+    const semanaKey = String(currentWeekIndex);
+    const semanaAtual = Array.from(
+      new Set([...(settings.planos_semanais?.[semanaKey] ?? aulasSemanaAtual.map((a) => a.id)), aulaId]),
+    );
+    salvarSettings({
+      ...settings,
+      plano_overrides: novosOverrides,
+      planos_semanais: { ...(settings.planos_semanais ?? {}), [semanaKey]: semanaAtual },
+    });
   }
 
   function handleCheckClick(aula: { id: string; nome: string }) {
