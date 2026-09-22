@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -83,13 +82,28 @@ export default function LoginPage() {
     finally { setLoading(false); }
   }
 
-  async function google() {
+  async function signInWithGoogle() {
     if (mode === "signup" && !cadastrosAbertos) {
       toast.error("Cadastros temporariamente bloqueados.");
       return;
     }
-    const r = await lovable.auth.signInWithOAuth("google", { redirect_uri: `${window.location.origin}/dashboard` });
-    if (r.error) toast.error("Erro no login com Google");
+
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/login`,
+        queryParams: {
+          access_type: "offline",
+          prompt: "consent",
+        },
+      },
+    });
+
+    if (error) {
+      setLoading(false);
+      toast.error(error.message || "Não foi possível iniciar o login com Google.");
+    }
   }
 
   async function submitWaitlist(e: React.FormEvent) {
@@ -201,8 +215,8 @@ export default function LoginPage() {
                 <span className="text-xs text-muted-foreground">ou</span>
                 <div className="h-px bg-border flex-1" />
               </div>
-              <TactileButton onClick={google} variant="neutral" size="lg" className="w-full">
-                Entrar com Google
+              <TactileButton type="button" onClick={signInWithGoogle} disabled={loading} variant="neutral" size="lg" className="w-full">
+                {loading ? "Redirecionando..." : "Entrar com Google"}
               </TactileButton>
               <button
                 type="button"

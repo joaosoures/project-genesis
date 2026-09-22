@@ -22,8 +22,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isBanned, setIsBanned] = useState(false);
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => {
-      setSession(s);
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+        setSession(s);
+      } else if (event === "SIGNED_OUT") {
+        setSession(null);
+      }
+
       if (s?.user) {
         setTimeout(async () => {
           const { data: roleData } = await supabase
