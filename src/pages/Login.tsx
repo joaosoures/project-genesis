@@ -12,9 +12,23 @@ import { useReferralCapture, registerStoredReferral, getStoredReferral } from "@
 
 
 const schema = z.object({
-  email: z.string().trim().email("Email inválido").max(255),
+  email: z.string().trim().email("E-mail inválido").max(255),
   senha: z.string().min(6, "Mínimo 6 caracteres").max(100),
 });
+
+const signupSchema = schema.extend({
+  nome: z.string().trim().min(2, "Informe seu nome de usuário").max(100),
+  telefone: z.string().trim().refine(
+    (value) => value === "" || /^\(\d{2}\) \d{9}$/.test(value),
+    "Informe o celular no formato (DDD) 999999999",
+  ),
+});
+
+function formatCellphone(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 2) return digits ? `(${digits}` : "";
+  return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+}
 
 export default function LoginPage() {
   const nav = useNavigate();
@@ -24,9 +38,8 @@ export default function LoginPage() {
   const [senha, setSenha] = useState("");
   const [confirmarSenha, setConfirmarSenha] = useState("");
   const [nome, setNome] = useState("");
+  const [telefone, setTelefone] = useState("");
   const [loading, setLoading] = useState(false);
-  const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
-  const [resending, setResending] = useState(false);
   const [cadastrosAbertos, setCadastrosAbertos] = useState(true);
   const [waitlistName, setWaitlistName] = useState("");
   const [waitlistEmail, setWaitlistEmail] = useState("");
@@ -66,7 +79,9 @@ export default function LoginPage() {
       toast.error("Cadastros temporariamente bloqueados. Entre na lista de espera abaixo.");
       return;
     }
-    const parsed = schema.safeParse({ email, senha });
+    const parsed = mode === "signup"
+      ? signupSchema.safeParse({ email, senha, nome, telefone })
+      : schema.safeParse({ email, senha });
     if (!parsed.success) { toast.error(parsed.error.errors[0].message); return; }
     if (mode === "signup" && senha !== confirmarSenha) {
       toast.error("As senhas não coincidem.");
@@ -76,46 +91,46 @@ export default function LoginPage() {
     try {
       if (mode === "signup") {
         const normalizedEmail = email.trim().toLowerCase();
+        const normalizedPhone = telefone.trim();
+        const userMetadata: Record<string, string> = { nome: nome.trim() };
+        if (normalizedPhone) userMetadata.telefone = normalizedPhone;
+
         const { data, error } = await supabase.auth.signUp({
           email: normalizedEmail,
           password: senha,
-          options: {
-            emailRedirectTo: `${window.location.origin}/login`,
-            data: { nome: nome.trim() || normalizedEmail.split("@")[0] },
-          },
+          options: { data: userMetadata },
         });
-        if (error) throw error;
-
-        if (data.session) {
-          toast.success("Conta criada com sucesso.");
-        } else {
-          setConfirmationEmail(normalizedEmail);
-          toast.success("Enviamos um link de confirmação para seu e-mail.");
+        if (error) {
+          const duplicateEmail = error.code === "user_already_exists"
+            || error.code === "email_exists"
+            || /already registered|already exists|user already registered|email.*(?:used|taken|registered)/i.test(error.message);
+          if (duplicateEmail) {
+            toast.error("Este e-mail já está em uso. Entre na sua conta ou utilize outro e-mail.");
+            return;
+          }
+          throw error;
         }
+        if (data.user?.identities?.length === 0) {
+          toast.error("Este e-mail já está em uso. Entre na sua conta ou utilize outro e-mail.");
+          return;
+        }
+
+        if (!data.session) {
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: normalizedEmail,
+            password: senha,
+          });
+          if (signInError) throw signInError;
+        }
+
+        toast.success("Conta criada com sucesso.");
+        nav("/dashboard", { replace: true });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: senha });
         if (error) throw error;
       }
     } catch (err: any) { toast.error(err.message ?? "Não foi possível concluir a operação."); }
     finally { setLoading(false); }
-  }
-
-  async function resendConfirmationEmail() {
-    if (!confirmationEmail) return;
-
-    setResending(true);
-    const { error } = await supabase.auth.resend({
-      type: "signup",
-      email: confirmationEmail,
-      options: { emailRedirectTo: `${window.location.origin}/login` },
-    });
-    setResending(false);
-
-    if (error) {
-      toast.error(error.message || "Não foi possível reenviar o e-mail.");
-      return;
-    }
-    toast.success("E-mail reenviado. Verifique também a caixa de spam.");
   }
 
   async function signInWithGoogle() {
@@ -178,41 +193,7 @@ export default function LoginPage() {
         )}
 
         <div className="paper-card p-7 md:p-8">
-          {confirmationEmail ? (
-            <div className="text-center space-y-4 py-4">
-              <div className="text-4xl">✉️</div>
-              <div className="space-y-2">
-                <h2 className="font-bold text-lg">Confirme seu e-mail</h2>
-                <p className="text-sm text-muted-foreground">
-                  Enviamos um link de confirmação para <strong className="text-foreground">{confirmationEmail}</strong>.
-                  Abra o link para ativar sua conta.
-                </p>
-                <p className="text-xs text-muted-foreground">Confira também as abas Spam, Lixeira e Promoções.</p>
-              </div>
-              <TactileButton
-                type="button"
-                onClick={resendConfirmationEmail}
-                disabled={resending}
-                variant="neutral"
-                size="md"
-                className="w-full"
-              >
-                {resending ? "Reenviando..." : "Reenviar e-mail de confirmação"}
-              </TactileButton>
-              <button
-                type="button"
-                onClick={() => {
-                  setConfirmationEmail(null);
-                  setMode("login");
-                  setSenha("");
-                  setConfirmarSenha("");
-                }}
-                className="w-full text-sm text-primary underline"
-              >
-                Voltar para entrar
-              </button>
-            </div>
-          ) : mode === "signup" && !cadastrosAbertos ? (
+          {mode === "signup" && !cadastrosAbertos ? (
             waitlistSent ? (
               <div className="text-center space-y-3 py-6">
                 <div className="text-4xl">✅</div>
@@ -264,36 +245,53 @@ export default function LoginPage() {
               <form onSubmit={handle} className="space-y-4">
                 {mode === "signup" && (
                   <div>
-                    <Label htmlFor="nome" className="text-xs uppercase tracking-wider text-muted-foreground">Nome</Label>
-                    <Input id="nome" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={100} className="h-12 rounded-2xl mt-1" />
+                    <Label htmlFor="nome" className="text-xs uppercase tracking-wider text-muted-foreground">Nome de usuário</Label>
+                    <Input id="nome" value={nome} onChange={(e) => setNome(e.target.value)} minLength={2} maxLength={100} required autoComplete="username" className="h-12 rounded-2xl mt-1" />
                   </div>
                 )}
                 <div>
-                  <Label htmlFor="email" className="text-xs uppercase tracking-wider text-muted-foreground">Email</Label>
-                  <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={255} required className="h-12 rounded-2xl mt-1" />
+                  <Label htmlFor="email" className="text-xs uppercase tracking-wider text-muted-foreground">E-mail</Label>
+                  <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={255} required autoComplete="email" className="h-12 rounded-2xl mt-1" />
                 </div>
                 <div>
                   <Label htmlFor="senha" className="text-xs uppercase tracking-wider text-muted-foreground">Senha</Label>
-                  <Input id="senha" type="password" value={senha} onChange={(e) => setSenha(e.target.value)} minLength={6} maxLength={100} required className="h-12 rounded-2xl mt-1" />
+                  <Input id="senha" type="password" value={senha} onChange={(e) => setSenha(e.target.value)} minLength={6} maxLength={100} required autoComplete={mode === "signup" ? "new-password" : "current-password"} className="h-12 rounded-2xl mt-1" />
                 </div>
                 {mode === "signup" && (
-                  <div>
-                    <Label htmlFor="confirmar-senha" className="text-xs uppercase tracking-wider text-muted-foreground">Confirmar senha</Label>
-                    <Input
-                      id="confirmar-senha"
-                      type="password"
-                      value={confirmarSenha}
-                      onChange={(e) => setConfirmarSenha(e.target.value)}
-                      minLength={6}
-                      maxLength={100}
-                      required
-                      aria-invalid={confirmarSenha.length > 0 && senha !== confirmarSenha}
-                      className="h-12 rounded-2xl mt-1"
-                    />
-                    {confirmarSenha.length > 0 && senha !== confirmarSenha && (
-                      <p className="mt-1 text-xs text-destructive">As senhas não coincidem.</p>
-                    )}
-                  </div>
+                  <>
+                    <div>
+                      <Label htmlFor="confirmar-senha" className="text-xs uppercase tracking-wider text-muted-foreground">Confirmação de senha</Label>
+                      <Input
+                        id="confirmar-senha"
+                        type="password"
+                        value={confirmarSenha}
+                        onChange={(e) => setConfirmarSenha(e.target.value)}
+                        minLength={6}
+                        maxLength={100}
+                        required
+                        autoComplete="new-password"
+                        aria-invalid={confirmarSenha.length > 0 && senha !== confirmarSenha}
+                        className="h-12 rounded-2xl mt-1"
+                      />
+                      {confirmarSenha.length > 0 && senha !== confirmarSenha && (
+                        <p className="mt-1 text-xs text-destructive">As senhas não coincidem.</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="telefone" className="text-xs uppercase tracking-wider text-muted-foreground">Número do celular</Label>
+                      <Input
+                        id="telefone"
+                        type="tel"
+                        inputMode="numeric"
+                        value={telefone}
+                        onChange={(e) => setTelefone(formatCellphone(e.target.value))}
+                        maxLength={14}
+                        placeholder="(DDD) 999999999"
+                        autoComplete="tel"
+                        className="h-12 rounded-2xl mt-1"
+                      />
+                    </div>
+                  </>
                 )}
                 <TactileButton type="submit" disabled={loading} variant="primary" size="lg" className="w-full">
                   {loading ? "..." : mode === "login" ? "Entrar" : "Criar conta"}
@@ -313,6 +311,7 @@ export default function LoginPage() {
                   setMode(mode === "login" ? "signup" : "login");
                   setSenha("");
                   setConfirmarSenha("");
+                  setTelefone("");
                 }}
                 className="mt-5 w-full text-sm text-muted-foreground hover:text-foreground transition"
               >
