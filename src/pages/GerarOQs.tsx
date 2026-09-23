@@ -30,6 +30,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import AdminGerarSimulado from "@/components/simulados/AdminGerarSimulado";
+import CreateManuallyDialog from "@/components/oq/CreateManuallyDialog";
 
 
 interface TempOQ {
@@ -61,6 +62,7 @@ export default function GerarOQs() {
   const [tempOQs, setTempOQs] = useState<TempOQ[]>([]);
   const [editingOQ, setEditingOQ] = useState<TempOQ | null>(null);
   const [showSimuladoCreator, setShowSimuladoCreator] = useState(false);
+  const [showManualCreator, setShowManualCreator] = useState(false);
   const MAX_CHARS = 20000;
 
 
@@ -515,12 +517,22 @@ export default function GerarOQs() {
               A geração de OQs por IA e por planilha está disponível nos planos Aluno de Prata e Aluno de Ouro.
             </p>
           </div>
-          <Button asChild size="lg">
-            <Link to="/meu-plano">
-              <Crown className="h-4 w-4 mr-2" /> Ver planos e fazer upgrade
-            </Link>
-          </Button>
+          <div className="flex flex-col sm:flex-row justify-center gap-3">
+            <Button size="lg" onClick={() => setShowManualCreator(true)}>
+              <FileText className="h-4 w-4 mr-2" /> Criar OQ manualmente
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link to="/meu-plano">
+                <Crown className="h-4 w-4 mr-2" /> Ver planos e fazer upgrade
+              </Link>
+            </Button>
+          </div>
         </div>
+        <CreateManuallyDialog
+          open={showManualCreator}
+          onOpenChange={setShowManualCreator}
+          onCreated={loadTempOQs}
+        />
       </div>
     );
   }
@@ -534,7 +546,7 @@ export default function GerarOQs() {
             Gerar OQs
           </h1>
           <p className="text-muted-foreground mt-2">
-            Crie suas próprias questões através de IA ou importe dados via planilha.
+            Crie suas próprias questões através de IA, planilha ou manualmente.
           </p>
         </div>
 
@@ -648,7 +660,7 @@ export default function GerarOQs() {
               <div>
                 <h3 className="font-bold">Nenhum OQ pendente</h3>
                 <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                  Use a IA ou importe um arquivo para começar a gerar questões personalizadas.
+                  Use a IA, importe uma planilha ou crie uma questão manualmente para começar.
                 </p>
               </div>
             </Card>
@@ -657,9 +669,10 @@ export default function GerarOQs() {
 
         <aside className="space-y-6 sticky top-24">
           <Tabs defaultValue="ia" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 rounded-xl mb-4">
+            <TabsList className="grid w-full grid-cols-3 rounded-xl mb-4">
               <TabsTrigger value="ia" className="rounded-lg text-xs font-bold">Gerar por IA</TabsTrigger>
               <TabsTrigger value="excel" className="rounded-lg text-xs font-bold">Importar Excel</TabsTrigger>
+              <TabsTrigger value="manual" className="rounded-lg text-xs font-bold">Manual</TabsTrigger>
             </TabsList>
 
             <TabsContent value="ia" className="space-y-6 focus-visible:outline-none">
@@ -755,6 +768,25 @@ export default function GerarOQs() {
                     </button>
                   )}
                 </div>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="manual" className="space-y-6 focus-visible:outline-none">
+              <Card className="paper-card p-6 space-y-5">
+                <div className="space-y-2">
+                  <h3 className="font-bold flex items-center gap-2">
+                    <FileText className="h-4 w-4" /> Criar manualmente
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Monte uma questão e revise-a na fila antes de adicioná-la ao seu banco.
+                  </p>
+                </div>
+                <Button className="w-full rounded-xl" onClick={() => setShowManualCreator(true)}>
+                  <FileText className="h-4 w-4 mr-2" /> Criar OQ manualmente
+                </Button>
+                <p className="text-[10px] text-muted-foreground/70">
+                  Disponível para todos os usuários e não consome créditos de IA.
+                </p>
               </Card>
             </TabsContent>
 
@@ -978,6 +1010,11 @@ export default function GerarOQs() {
           </div>
         </aside>
       </div>
+      <CreateManuallyDialog
+        open={showManualCreator}
+        onOpenChange={setShowManualCreator}
+        onCreated={loadTempOQs}
+      />
       {/* Modal de Edição */}
       <Dialog open={!!editingOQ} onOpenChange={(open) => !open && setEditingOQ(null)}>
         <DialogContent className="sm:max-w-[600px] rounded-3xl paper-card border-none max-h-[90vh] overflow-y-auto">
