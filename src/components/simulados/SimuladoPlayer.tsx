@@ -52,6 +52,7 @@ export default function SimuladoPlayer({
   const [reportMode, setReportMode] = useState(initialReportMode);
   const [finished, setFinished] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [attemptId, setAttemptId] = useState<string | null>(null);
   const [result, setResult] = useState<{
     tentativaId?: string;
     acertos: number;
@@ -60,74 +61,112 @@ export default function SimuladoPlayer({
   } | null>(null);
 
   useEffect(() => {
-    fetchQuestions();
-    if (initialReportMode) {
-      fetchLatestAttempt();
-    }
-  }, [simuladoId, initialReportMode]);
-
-  const fetchQuestions = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("simulado_questoes")
-        .select("*")
-        .eq("simulado_id", simuladoId)
-        .order("ordem", { ascending: true });
-
-      if (error) throw error;
-      setQuestions(data || []);
-    } catch (err) {
-      console.error(err);
-      toast.error("Erro ao carregar questões do simulado.");
-    } finally {
-      if (!initialReportMode) setLoading(false);
-    }
-  };
-
-  const fetchLatestAttempt = async () => {
     if (!user) return;
-    try {
-      const { data: tentativa, error: tErr } = await supabase
-        .from("simulado_tentativas")
-        .select("*")
-        .eq("simulado_id", simuladoId)
-        .eq("usuario_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
 
-      if (tErr) throw tErr;
-      if (!tentativa) {
+    const initializeSimulado = async () => {
+      setLoading(true);
+      try {
+        const { data: questionData, error: questionError } = await supabase
+          .from("simulado_questoes")
+          .select("*")
+          .eq("simulado_id", simuladoId)
+          .order("ordem", { ascending: true });
+
+        if (questionError) throw questionError;
+        const loadedQuestions = questionData || [];
+        setQuestions(loadedQuestions);
+
+        if (initialReportMode) {
+          const { data: tentativa, error: attemptError } = await supabase
+            .from("simulado_tentativas")
+            .select("*")
+            .eq("simulado_id", simuladoId)
+            .eq("usuario_id", user.id)
+            .not("concluido_em", "is", null)
+            .order("concluido_em", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (attemptError) throw attemptError;
+          if (!tentativa) return;
+
+          const { data: savedAnswers, error: answersError } = await supabase
+            .from("simulado_respostas_aluno")
+            .select("*")
+            .eq("tentativa_id", tentativa.id);
+
+          if (answersError) throw answersError;
+          setResult({
+            tentativaId: tentativa.id,
+            acertos: tentativa.acertos,
+            total: tentativa.total_questoes,
+            respostas: (savedAnswers || []).map(response => ({
+              questao_id: response.questao_id,
+              resposta_marcada: response.resposta_marcada,
+              acertou: response.acertou,
+              respondida: true
+            }))
+          });
+          setFinished(true);
+          return;
+        }
+
+        let { data: tentativa, error: attemptError } = await supabase
+          .from("simulado_tentativas")
+          .select("*")
+          .eq("simulado_id", simuladoId)
+          .eq("usuario_id", user.id)
+          .is("concluido_em", null)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (attemptError) throw attemptError;
+        if (!tentativa) {
+          const { data: createdAttempt, error: createError } = await supabase
+            .from("simulado_tentativas")
+            .insert({
+              simulado_id: simuladoId,
+              usuario_id: user.id,
+              total_questoes: loadedQuestions.length,
+              concluido_em: null
+            })
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          tentativa = createdAttempt;
+        }
+
+        setAttemptId(tentativa.id);
+        const { data: savedAnswers, error: answersError } = await supabase
+          .from("simulado_respostas_aluno")
+          .select("questao_id, resposta_marcada")
+          .eq("tentativa_id", tentativa.id);
+
+        if (answersError) throw answersError;
+        const restoredAnswers = Object.fromEntries(
+          (savedAnswers || []).map(response => [response.questao_id, response.resposta_marcada])
+        );
+        setAnswers(restoredAnswers);
+
+        const lastAnsweredIndex = loadedQuestions.reduce(
+          (lastIndex, question, questionIndex) => restoredAnswers[question.id] ? questionIndex : lastIndex,
+          -1
+        );
+        if (lastAnsweredIndex >= 0) {
+          setIdx(Math.min(lastAnsweredIndex + 1, loadedQuestions.length - 1));
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("Erro ao sincronizar o simulado.");
+      } finally {
         setLoading(false);
-        return;
       }
+    };
 
-      const { data: resp, error: rErr } = await supabase
-        .from("simulado_respostas_aluno")
-        .select("*")
-        .eq("tentativa_id", tentativa.id);
-
-      if (rErr) throw rErr;
-
-      const formattedRespostas = resp?.map(r => ({
-        questao_id: r.questao_id,
-        resposta_marcada: r.resposta_marcada,
-        acertou: r.acertou,
-        respondida: true
-      })) || [];
-
-      setResult({
-        tentativaId: tentativa.id,
-        acertos: tentativa.acertos,
-        total: tentativa.total_questoes,
-        respostas: formattedRespostas
-      });
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    initializeSimulado();
+  }, [simuladoId, initialReportMode, user]);
 
   // Build report data progressively
   const currentReportData = useMemo(() => {
@@ -151,46 +190,53 @@ export default function SimuladoPlayer({
     };
   }, [questions, answers]);
 
+  const handleSelectAnswer = async (question: Question, answer: string) => {
+    if (!attemptId) return;
+
+    const previousAnswer = answers[question.id];
+    setAnswers(current => ({ ...current, [question.id]: answer }));
+
+    const { error } = await supabase
+      .from("simulado_respostas_aluno")
+      .upsert({
+        tentativa_id: attemptId,
+        questao_id: question.id,
+        resposta_marcada: answer,
+        acertou: answer === question.gabarito
+      }, { onConflict: "tentativa_id,questao_id" });
+
+    if (error) {
+      setAnswers(current => {
+        const restored = { ...current };
+        if (previousAnswer) restored[question.id] = previousAnswer;
+        else delete restored[question.id];
+        return restored;
+      });
+      toast.error("Não foi possível salvar esta resposta. Tente novamente.");
+    }
+  };
+
   const handleFinish = async () => {
-    if (!user) return;
-    if (submitting) return;
+    if (!user || !attemptId || submitting) return;
     
     setSubmitting(true);
     try {
       const report = currentReportData;
-
-      // Save attempt
-      const { data: tentativa, error: tErr } = await supabase
+      const { error: attemptError } = await supabase
         .from("simulado_tentativas")
-        .insert({
-          simulado_id: simuladoId,
-          usuario_id: user.id,
+        .update({
           acertos: report.acertos,
           erros: report.total - report.acertos,
-          total_questoes: report.total
+          total_questoes: report.total,
+          concluido_em: new Date().toISOString()
         })
-        .select()
-        .single();
+        .eq("id", attemptId)
+        .eq("usuario_id", user.id);
 
-      if (tErr) throw tErr;
-
-      // Save individual answers
-      const answersToInsert = report.respostas
-        .filter(r => r.respondida)
-        .map(r => ({
-          tentativa_id: tentativa.id,
-          questao_id: r.questao_id,
-          resposta_marcada: r.resposta_marcada,
-          acertou: r.acertou
-        }));
-
-      if (answersToInsert.length > 0) {
-        const { error: rErr } = await supabase.from("simulado_respostas_aluno").insert(answersToInsert);
-        if (rErr) throw rErr;
-      }
+      if (attemptError) throw attemptError;
 
       setResult({
-        tentativaId: tentativa.id,
+        tentativaId: attemptId,
         ...report
       });
       setFinished(true);
@@ -224,7 +270,7 @@ export default function SimuladoPlayer({
   );
 
   if (reportMode) {
-    const data = finished && result ? result : currentReportData;
+    const data = result ?? currentReportData;
     const percent = data.total > 0 ? Math.round((data.acertos / data.total) * 100) : 0;
     
     return (
@@ -496,11 +542,11 @@ export default function SimuladoPlayer({
                 return (
                   <button
                     key={l}
-                    onClick={() => setAnswers(prev => ({ ...prev, [currentQ.id]: letter }))}
+                    onClick={() => handleSelectAnswer(currentQ, letter)}
                     className={cn(
                       "w-full p-6 md:p-7 rounded-[1.75rem] text-left transition-all duration-300 flex items-start gap-5 border-2 group relative overflow-hidden",
-                      isSelected 
-                        ? "bg-accent text-accent-foreground border-accent shadow-[0_10px_30px_rgba(var(--accent-rgb),0.3)] scale-[1.01]" 
+                      isSelected
+                        ? "bg-accent text-accent-foreground border-accent shadow-[0_10px_30px_rgba(var(--accent-rgb),0.3)] scale-[1.01]"
                         : "bg-white border-slate-100 hover:border-accent/30 hover:bg-accent/[0.02]"
                     )}
                   >

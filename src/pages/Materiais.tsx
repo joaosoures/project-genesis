@@ -93,29 +93,37 @@ const SimuladoCard = memo(({
   setSimuladoInReportMode: (v: boolean) => void; 
   setActiveSimulado: (v: string) => void; 
 }) => {
-  const lastAttempt = simuladoResultados
+  const attempts = simuladoResultados
     .filter(r => r.simulado_id === sim.id)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const inProgressAttempt = attempts.find(attempt => !attempt.concluido_em);
+  const lastAttempt = attempts.find(attempt => !!attempt.concluido_em);
   const isDone = !!lastAttempt;
-  const score = isDone ? Math.round((lastAttempt.acertos / lastAttempt.total_questoes) * 100) : 0;
+  const isInProgress = !!inProgressAttempt;
+  const score = isDone && lastAttempt.total_questoes > 0
+    ? Math.round((lastAttempt.acertos / lastAttempt.total_questoes) * 100)
+    : 0;
   
   return (
-    <div 
+    <div
       onClick={() => {
-        setSimuladoInReportMode(isDone);
+        setSimuladoInReportMode(isDone && !isInProgress);
         setActiveSimulado(sim.id);
       }}
       className="paper-card p-6 cursor-pointer hover:bg-slate-900/5 transition-all duration-300 flex flex-col gap-4 border-l-4 border-l-accent"
     >
       <div className="flex justify-between items-start">
-        <Badge className={cn("text-[10px] font-black uppercase tracking-widest px-2", isDone ? "bg-emerald-500/10 text-emerald-600" : "bg-accent/10 text-accent")}>
-          {isDone ? `Realizado (${score}%)` : "Não realizado"}
+        <Badge className={cn(
+          "text-[10px] font-black uppercase tracking-widest px-2",
+          isInProgress ? "bg-amber-500/10 text-amber-600" : isDone ? "bg-emerald-500/10 text-emerald-600" : "bg-accent/10 text-accent"
+        )}>
+          {isInProgress ? "Em andamento — continuar" : isDone ? `Realizado (${score}%)` : "Não realizado"}
         </Badge>
         <FileText className="h-4 w-4 text-muted-foreground" />
       </div>
       <h3 className="font-bold leading-tight">{sim.nome}</h3>
       
-      {isDone && (
+      {isDone && !isInProgress && (
         <div className="mt-auto flex gap-2">
           <Button 
             variant="ghost" 
@@ -525,14 +533,13 @@ export default function Materiais() {
       const matchesSearch = sim.nome.toLowerCase().includes(searchStr);
       const matchesSpecialty = selectedSpecialty === "all" || sim.especialidade === selectedSpecialty;
       
-      const lastAttempt = simuladoResultados
-        .filter(r => r.simulado_id === sim.id)
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
-      const isDone = !!lastAttempt;
+      const attempts = simuladoResultados.filter(r => r.simulado_id === sim.id);
+      const isDone = attempts.some(attempt => !!attempt.concluido_em);
+      const isInProgress = attempts.some(attempt => !attempt.concluido_em);
       
-      const matchesStatus = selectedStatus === "all" || 
-        (selectedStatus === "completed" && isDone) || 
-        (selectedStatus === "pending" && !isDone);
+      const matchesStatus = selectedStatus === "all" ||
+        (selectedStatus === "completed" && isDone && !isInProgress) ||
+        (selectedStatus === "pending" && (!isDone || isInProgress));
 
       return matchesSearch && matchesSpecialty && matchesStatus;
     });
