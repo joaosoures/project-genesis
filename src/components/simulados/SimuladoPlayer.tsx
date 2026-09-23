@@ -91,6 +91,7 @@ export default function SimuladoPlayer({
     total: number;
     respostas: any[];
   } | null>(null);
+  const [openReportQuestion, setOpenReportQuestion] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -385,7 +386,13 @@ export default function SimuladoPlayer({
               Revisão das Questões
             </h3>
             
-            <Accordion type="single" collapsible className="space-y-4">
+            <Accordion
+              type="single"
+              collapsible
+              value={openReportQuestion}
+              onValueChange={setOpenReportQuestion}
+              className="space-y-4"
+            >
               {questions.map((q, i) => {
                 const res = data.respostas.find(r => r.questao_id === q.id);
                 const respondida = res?.respondida;
