@@ -33,11 +33,43 @@ interface Question {
   image_url?: string;
 }
 
-export default function SimuladoPlayer({ 
-  simuladoId, 
+const COMMAND_VERBS = /^(assinale|marque|indique|selecione|escolha|identifique|aponte|determine|considere)$/i;
+const STATEMENT_HIGHLIGHTS = /(\b(?:assinale|marque|indique|selecione|escolha|identifique|aponte|determine|considere)\b|"[^"]*"|“[^”]*”|\([^)]*\))/gi;
+
+function QuestionStatement({ text }: { text: string }) {
+  const paragraphs = text.split(/\n+/).map(paragraph => paragraph.trim()).filter(Boolean);
+
+  return (
+    <div className="space-y-4 text-xl md:text-2xl font-normal leading-[1.7] tracking-[-0.01em] text-slate-800">
+      {paragraphs.map((paragraph, paragraphIndex) => (
+        <p key={`${paragraphIndex}-${paragraph.slice(0, 20)}`}>
+          {paragraph.split(STATEMENT_HIGHLIGHTS).filter(Boolean).map((part, partIndex) => {
+            if (COMMAND_VERBS.test(part)) {
+              return <strong key={partIndex} className="font-extrabold text-accent">{part}</strong>;
+            }
+
+            const isQuotedOrParenthetical =
+              (part.startsWith('"') && part.endsWith('"')) ||
+              (part.startsWith('“') && part.endsWith('”')) ||
+              (part.startsWith('(') && part.endsWith(')'));
+
+            return isQuotedOrParenthetical ? (
+              <span key={partIndex} className="font-medium text-slate-600 bg-slate-100/80 rounded-md px-1.5 py-0.5">
+                {part}
+              </span>
+            ) : part;
+          })}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+export default function SimuladoPlayer({
+  simuladoId,
   onClose,
   initialReportMode = false
-}: { 
+}: {
   simuladoId: string; 
   onClose: () => void;
   initialReportMode?: boolean;
@@ -521,9 +553,7 @@ export default function SimuladoPlayer({
         <Card className="flex-1 paper-card flex flex-col overflow-hidden border-none shadow-[0_20px_60px_rgba(0,0,0,0.15)] rounded-[2.5rem] relative">
           <div className="flex-1 overflow-y-auto px-6 py-8 md:px-12 md:py-14 space-y-10 minimal-scroll overscroll-contain touch-pan-y">
             <div className="space-y-6">
-              <h2 className="text-2xl md:text-3xl font-black leading-[1.15] tracking-tight text-slate-900">
-                {currentQ?.comando}
-              </h2>
+              {currentQ?.comando && <QuestionStatement text={currentQ.comando} />}
               {currentQ?.image_url && (
                 <div className="w-full rounded-2xl overflow-hidden shadow-lg border-4 border-white ring-1 ring-slate-100 animate-in fade-in zoom-in-95 duration-500">
                   <img src={currentQ.image_url} alt="Referência da questão" className="w-full h-auto object-contain bg-slate-50" />
