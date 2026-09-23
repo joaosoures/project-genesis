@@ -133,9 +133,29 @@ export default function BancoCards() {
   async function loadData() {
     if (!user) return;
     
-    // Carregar cards
-    const { data: cardsData } = await supabase.from("cards").select("*").order("criado_em", { ascending: false }).limit(500);
-    setCards(cardsData || []);
+    // Carregar os 500 cards mais recentes e todos os cards não verificados visíveis.
+    // A política do Supabase limita os cards não verificados aos próprios do usuário (ou ao admin).
+    const recentCardsQuery = supabase
+      .from("cards")
+      .select("*")
+      .order("criado_em", { ascending: false })
+      .limit(500);
+    const unverifiedCards: any[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase
+        .from("cards")
+        .select("*")
+        .eq("verificado", false)
+        .order("criado_em", { ascending: false })
+        .range(from, from + 999);
+      if (error || !data) break;
+      unverifiedCards.push(...data);
+      if (data.length < 1000) break;
+    }
+    const { data: recentCards } = await recentCardsQuery;
+    const cardsById = new Map<string, any>();
+    [...(recentCards || []), ...unverifiedCards].forEach(card => cardsById.set(card.id, card));
+    setCards(Array.from(cardsById.values()));
 
     // Carregar exclusões do usuário
     const { data: exclData } = await supabase.from("user_excluded_cards").select("card_id").eq("user_id", user.id);
