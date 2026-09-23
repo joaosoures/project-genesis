@@ -81,7 +81,7 @@ export default function Configuracoes() {
     }
   }
 
-  useEffect(() => { 
+  useEffect(() => {
     document.title = "Configurações — OQ MED";
     const checkPWA = () => {
       const standalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone === true;
@@ -109,7 +109,7 @@ export default function Configuracoes() {
       {/* === Banner de Instalação (PWA) === */}
       {!isInstalled && (
         <section className="mb-10">
-          <div 
+          <div
             className="relative overflow-hidden rounded-3xl p-6 md:p-8 border border-[hsl(var(--accent)/0.2)]"
             style={{
               background: "linear-gradient(135deg, hsl(var(--accent)/0.05) 0%, hsl(var(--background)) 100%)",
@@ -117,7 +117,7 @@ export default function Configuracoes() {
             }}
           >
             <div className="relative z-10 flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
-              <div 
+              <div
                 className="shrink-0 grid place-items-center rounded-2xl w-16 h-16 bg-white shadow-[0_0_20px_rgba(0,0,0,0.1)] overflow-hidden"
               >
                 <img src="/icons/icon-192.png" alt="OQ MED Logo" className="w-12 h-12 rounded-xl" />
@@ -142,7 +142,7 @@ export default function Configuracoes() {
                 Instalar agora
               </button>
             </div>
-            
+
             {/* Elementos decorativos de fundo */}
             <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 rounded-full bg-[hsl(var(--accent)/0.03)] blur-3xl" />
             <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-32 h-32 rounded-full bg-[hsl(var(--accent)/0.03)] blur-2xl" />
@@ -188,7 +188,7 @@ export default function Configuracoes() {
             </div>
           </Row>
 
-          <Row icon={Sparkles} title="Reduzir animações" desc="OQ pode ser feito para melhorar a velocidade do app em  PC/Preview sem alterar a boa funcionalidade ja presente nos mobile e tablet\né possivel ter uma etapa de reconhecimento em qual plataforma / dispositivo está sendo rodado o app e então atribuir automaticamente o desligamento de alguns recursos n">
+          <Row icon={Sparkles} title="Reduzir animações" desc="Desativa efeitos de movimento para melhorar desempenho e tornar o app mais leve, especialmente em dispositivos menos potentes.">
             <BigSwitch checked={s.reduceMotion} onCheckedChange={(v) => s.set("reduceMotion", v)} label="Reduzir animações" />
           </Row>
         </div>
@@ -243,9 +243,9 @@ export default function Configuracoes() {
                           : "var(--shadow-neu-out-sm)",
                       }}
                     >
-                      <div 
+                      <div
                         className="w-1.5 rounded-full transition-all"
-                        style={{ 
+                        style={{
                           height: `${(i + 1) * 20}%`,
                           background: s.soundVolume === v ? "hsl(var(--accent))" : "hsl(var(--muted-foreground)/0.3)"
                         }}
@@ -321,9 +321,9 @@ export default function Configuracoes() {
       <section className="mb-8">
         <h2 className="text-[11px] uppercase tracking-[0.25em] font-black text-muted-foreground mb-3 px-1">Painel de comando</h2>
         <div className="space-y-3">
-          <Row 
-            icon={Settings2} 
-            title="Customizar Console" 
+          <Row
+            icon={Settings2}
+            title="Customizar Console"
             desc="Altere a ordem dos botões (destro/canhoto) e mude o estilo visual dos componentes."
           >
             <button
@@ -334,15 +334,15 @@ export default function Configuracoes() {
             </button>
           </Row>
 
-          <Row 
-            icon={Fingerprint} 
-            title="Usar touch para scroll" 
+          <Row
+            icon={Fingerprint}
+            title="Usar touch para scroll"
             desc="Oculta o disco lateral e permite rolar o conteúdo diretamente com o dedo na tela."
           >
-            <BigSwitch 
-              checked={s.useNativeScroll} 
-              onCheckedChange={(v) => s.set("useNativeScroll", v)} 
-              label="Native scroll" 
+            <BigSwitch
+              checked={s.useNativeScroll}
+              onCheckedChange={(v) => s.set("useNativeScroll", v)}
+              label="Native scroll"
             />
           </Row>
         </div>
@@ -384,7 +384,7 @@ export default function Configuracoes() {
           </button>
         </div>
 
-        <div 
+        <div
           onClick={() => { feedback("tap"); setFaqOpen(true); }}
           className="p-5 md:p-6 rounded-3xl bg-orange-500/5 border border-orange-500/20 flex items-center gap-4 cursor-pointer hover:bg-orange-500/10 transition-all active:scale-[0.99] group shadow-neu-out-sm"
         >
@@ -448,8 +448,6 @@ export default function Configuracoes() {
               ATENÇÃO: NÃO SERÁ POSSÍVEL RESTAURAR ESTES DADOS APÓS A EXCLUSÃO. ESTA AÇÃO É DEFINITIVA E IRREVERSÍVEL.
             </p>
           </div>
-
-
 
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
