@@ -356,7 +356,7 @@ export default function Estudo() {
                 exit={{ opacity: 0, y: -24, scale: 0.98 }}
                 transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
                 className={cn(
-                  "paper-card shadow-[0_18px_40px_hsl(var(--neu-dark)/0.75),0_-18px_40px_hsl(var(--neu-light)/0.9)] flex-1 min-h-0 flex flex-col overflow-hidden",
+                  "paper-card flex-1 min-h-0 flex flex-col overflow-hidden shadow-[0_12px_24px_-12px_hsl(var(--neu-dark)/0.75)]",
                   card.modo === "abcde" ? "min-h-[440px]" : "min-h-[340px]",
                   "mb-4"
                 )}
