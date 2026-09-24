@@ -8,7 +8,7 @@ import {
   Sparkles,
   Trophy,
   Crown,
-  GhostIcon,
+  History,
   ChevronDown,
   Plus,
   Search,
@@ -1068,7 +1068,7 @@ export default function TrilhaEstrategica() {
         {podeDirecionamento && perdidosAulas.length > 0 && (
           <section className="rounded-3xl bg-white/60 backdrop-blur-md border border-border p-5">
             <div className="flex items-center gap-2 mb-3">
-              <GhostIcon className="h-4 w-4 text-muted-foreground" />
+              <History className="h-4 w-4 text-muted-foreground" />
               <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">
                 Estudos que você perdeu
               </h3>
@@ -1293,38 +1293,48 @@ export default function TrilhaEstrategica() {
       />
 
       <Dialog open={!!preAulaDecision} onOpenChange={(open) => !open && setPreAulaDecision(null)}>
-        <DialogContent className="max-w-md rounded-3xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <GhostIcon className="h-5 w-5 text-violet-600" />
-              Deseja fazer as questões pré-aula?
-            </DialogTitle>
-            <DialogDescription>
-              Encontramos {preAulaDecision?.count} questão(ões) para <strong>{preAulaDecision?.nome}</strong>. A sessão é temporária e não altera seu desempenho ou metas.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:justify-between">
-            <Button
-              variant="outline"
-              onClick={() => {
-                const decision = preAulaDecision;
-                setPreAulaDecision(null);
-                if (decision) navigate(`/materiais?id=${decision.id}`);
-              }}
-            >
-              Não, ir para o resumo
-            </Button>
-            <Button
-              className="bg-violet-600 hover:bg-violet-700"
-              onClick={() => {
-                const decision = preAulaDecision;
-                setPreAulaDecision(null);
-                if (decision) navigate(`/pre-aula/${decision.id}`);
-              }}
-            >
-              Sim, fazer agora
-            </Button>
-          </DialogFooter>
+        <DialogContent className="paper-card max-w-md rounded-[2rem] border-border/60 p-0 shadow-2xl overflow-hidden">
+          <div className="bg-[hsl(var(--accent)/0.08)] px-6 pt-7 pb-5 border-b border-border/50">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[hsl(var(--accent)/0.14)] text-[hsl(var(--accent))]">
+              <FileText className="h-6 w-6" />
+            </div>
+            <DialogHeader className="space-y-2 text-left">
+              <DialogTitle className="text-xl font-black tracking-tight">
+                Questões pré-aula
+              </DialogTitle>
+              <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
+                Encontramos <strong className="text-foreground">{preAulaDecision?.count} questão(ões)</strong> para <strong className="text-foreground">{preAulaDecision?.nome}</strong>.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="px-6 py-5">
+            <div className="rounded-2xl border border-border/60 bg-background/60 p-4 text-sm leading-relaxed text-muted-foreground">
+              Faça uma preparação rápida antes de abrir o resumo. Esta sessão é temporária e não altera seu desempenho ou suas metas.
+            </div>
+            <DialogFooter className="mt-5 gap-2 sm:justify-end">
+              <Button
+                variant="outline"
+                className="rounded-xl font-bold"
+                onClick={() => {
+                  const decision = preAulaDecision;
+                  setPreAulaDecision(null);
+                  if (decision) navigate(`/materiais?id=${decision.id}`);
+                }}
+              >
+                Ir para o resumo
+              </Button>
+              <Button
+                className="rounded-xl bg-[hsl(var(--accent))] font-black text-[hsl(var(--accent-foreground))] shadow-lg shadow-[hsl(var(--accent)/0.2)] hover:bg-[hsl(var(--accent))]/90"
+                onClick={() => {
+                  const decision = preAulaDecision;
+                  setPreAulaDecision(null);
+                  if (decision) navigate(`/pre-aula/${decision.id}`);
+                }}
+              >
+                Começar questões
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 

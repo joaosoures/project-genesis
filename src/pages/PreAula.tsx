@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Ghost, LightbulbOff, Loader2 } from "lucide-react";
+import { ArrowLeft, BookOpenCheck, LightbulbOff, Loader2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import ModoABCDE, { type ModoHandle } from "@/components/oq/ModoABCDE";
@@ -105,7 +105,7 @@ export default function PreAula() {
           Sair
         </Button>
         <Badge variant="outline" className="gap-1.5 rounded-full border-violet-400/40 bg-violet-500/5 text-violet-600 px-3 py-1">
-          <Ghost className="h-3.5 w-3.5" /> Pré-Aula · Ghost Mode
+          <BookOpenCheck className="h-3.5 w-3.5" /> Pré-Aula
         </Badge>
       </div>
 
@@ -138,7 +138,7 @@ export default function PreAula() {
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <LightbulbOff className="h-4 w-4" />
-          Dicas indisponíveis no Ghost Mode
+          Dicas indisponíveis nesta sessão
         </div>
         <Button
           size="lg"
