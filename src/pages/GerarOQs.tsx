@@ -31,6 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import AdminGerarSimulado from "@/components/simulados/AdminGerarSimulado";
 import CreateManuallyDialog from "@/components/oq/CreateManuallyDialog";
+import AdminPreAulaImportDialog from "@/components/oq/AdminPreAulaImportDialog";
 
 
 interface TempOQ {
@@ -63,6 +64,7 @@ export default function GerarOQs() {
   const [editingOQ, setEditingOQ] = useState<TempOQ | null>(null);
   const [showSimuladoCreator, setShowSimuladoCreator] = useState(false);
   const [showManualCreator, setShowManualCreator] = useState(false);
+  const [showPreAulaImporter, setShowPreAulaImporter] = useState(false);
   const MAX_CHARS = 20000;
 
 
@@ -1160,12 +1162,21 @@ export default function GerarOQs() {
             </button>
           </Link>
 
-          <button 
+          <button
             onClick={() => setShowSimuladoCreator(true)}
             className="w-full py-6 px-8 rounded-3xl bg-gradient-to-br from-slate-800 to-slate-900 text-white font-black text-lg uppercase tracking-widest shadow-2xl hover:brightness-110 active:scale-[0.99] transition-all flex items-center justify-center gap-3 border border-white/10"
           >
             <FileText className="h-6 w-6 text-accent" />
             Gerar Simulados
+            <span className="text-[10px] font-bold opacity-70 ml-2 normal-case tracking-normal">(admin)</span>
+          </button>
+
+          <button
+            onClick={() => setShowPreAulaImporter(true)}
+            className="w-full py-6 px-8 rounded-3xl bg-gradient-to-br from-violet-600 to-indigo-800 text-white font-black text-lg uppercase tracking-widest shadow-2xl hover:brightness-110 active:scale-[0.99] transition-all flex items-center justify-center gap-3 border border-white/10"
+          >
+            <FileSpreadsheet className="h-6 w-6" />
+            Gerar Questões Pré-Aula
             <span className="text-[10px] font-bold opacity-70 ml-2 normal-case tracking-normal">(admin)</span>
           </button>
         </div>
@@ -1178,6 +1189,8 @@ export default function GerarOQs() {
           </div>
         </div>
       )}
+
+      <AdminPreAulaImportDialog open={showPreAulaImporter} onOpenChange={setShowPreAulaImporter} />
 
       
       {/* Aviso de Retenção */}

@@ -22,6 +22,7 @@ const Materiais = lazy(() => import("@/pages/Materiais"));
 const Admin = lazy(() => import("@/pages/Admin"));
 const AdminGerarAulas = lazy(() => import("@/pages/AdminGerarAulas"));
 const TrilhaEstrategica = lazy(() => import("@/pages/TrilhaEstrategica"));
+const PreAula = lazy(() => import("@/pages/PreAula"));
 const MeuPlano = lazy(() => import("@/pages/MeuPlano"));
 const Status = lazy(() => import("@/pages/Status"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -49,6 +50,7 @@ const App = () => (
                 <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                   <Route path="/estudo" element={<Estudo />} />
                   <Route path="/trilha" element={<TrilhaEstrategica />} />
+                  <Route path="/pre-aula/:materialId" element={<PreAula />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/favoritos" element={<Navigate to="/estudo?tipo=favoritos" replace />} />
                   <Route path="/banco-cards" element={<BancoCards />} />

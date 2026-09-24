@@ -16,9 +16,17 @@ export interface ModoProps {
   card: CardRow;
   onFinalizar: (r: { acertou: boolean; nivelPista: number; tentativas: number }) => void;
   onState?: (s: { hintsUsed: number; canConfirm: boolean; finalized: boolean; canSkip?: boolean; showDontKnow?: boolean }) => void;
+  hintsDisabled?: boolean;
+  providedExplanation?: string | null;
 }
 
-const ModoABCDE = forwardRef<ModoHandle, ModoProps>(function ModoABCDE({ card, onFinalizar, onState }, ref) {
+const ModoABCDE = forwardRef<ModoHandle, ModoProps>(function ModoABCDE({
+  card,
+  onFinalizar,
+  onState,
+  hintsDisabled = false,
+  providedExplanation,
+}, ref) {
   const [selecionada, setSelecionada] = useState<string | null>(null);
   const [eliminadas, setEliminadas] = useState<string[]>([]);
   const [finalized, setFinalized] = useState(false);
@@ -38,7 +46,7 @@ const ModoABCDE = forwardRef<ModoHandle, ModoProps>(function ModoABCDE({ card, o
   }, [card.id]);
 
   function hint() {
-    if (finalized) return;
+    if (finalized || hintsDisabled) return;
     if (eliminadas.length >= 3) {
       // No modo ABCDE, o aluno deve chutar entre as restantes após as 3 dicas
       feedback("error");
@@ -51,16 +59,23 @@ const ModoABCDE = forwardRef<ModoHandle, ModoProps>(function ModoABCDE({ card, o
     if (selecionada === sorteada.letra) setSelecionada(null);
   }
 
+  async function loadExplanation() {
+    if (providedExplanation !== undefined) {
+      setExplicacao(providedExplanation);
+      return;
+    }
+    setLoadingExpl(true);
+    const text = await fetchExplicacao(card.id);
+    setExplicacao(text);
+    setLoadingExpl(false);
+  }
+
   async function skip() {
     if (finalized) return;
     setFinalized(true);
     feedback("error");
     onFinalizar({ acertou: false, nivelPista: eliminadas.length + 1, tentativas: 1 });
-
-    setLoadingExpl(true);
-    const text = await fetchExplicacao(card.id);
-    setExplicacao(text);
-    setLoadingExpl(false);
+    await loadExplanation();
   }
 
   async function confirm() {
@@ -69,31 +84,27 @@ const ModoABCDE = forwardRef<ModoHandle, ModoProps>(function ModoABCDE({ card, o
     setAcertou(ok); setFinalized(true);
     feedback(ok ? "success" : "error");
     onFinalizar({ acertou: ok, nivelPista: eliminadas.length, tentativas: 1 });
-
-    // Lazy load explanation
-    setLoadingExpl(true);
-    const text = await fetchExplicacao(card.id);
-    setExplicacao(text);
-    setLoadingExpl(false);
+    await loadExplanation();
   }
 
 
   useImperativeHandle(ref, () => ({
     confirm, hint, skip,
     hintsUsed: eliminadas.length,
-    hintsMax: 3,
+    hintsMax: hintsDisabled ? 0 : 3,
     canConfirm: !!selecionada && !finalized,
     finalized,
-  }), [selecionada, eliminadas.length, finalized]);
+  }), [selecionada, eliminadas.length, finalized, hintsDisabled]);
 
-  useEffect(() => { 
-    onState?.({ 
-      hintsUsed: eliminadas.length, 
-      canConfirm: !!selecionada && !finalized, 
+  useEffect(() => {
+    onState?.({
+      hintsUsed: eliminadas.length,
+      canConfirm: !!selecionada && !finalized,
       finalized,
+      canSkip: !hintsDisabled,
       showDontKnow: false
-    }); 
-  }, [selecionada, eliminadas.length, finalized, onState]);
+    });
+  }, [selecionada, eliminadas.length, finalized, hintsDisabled, onState]);
 
   return (
     <div className="space-y-5">

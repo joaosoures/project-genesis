@@ -588,6 +588,74 @@ export type Database = {
         }
         Relationships: []
       }
+      pre_aula_questoes: {
+        Row: {
+          alternativa_a: string
+          alternativa_b: string
+          alternativa_c: string
+          alternativa_d: string
+          alternativa_e: string | null
+          ativo: boolean
+          created_at: string
+          criado_por: string | null
+          especialidade: Database["public"]["Enums"]["especialidade"]
+          fingerprint: string
+          gabarito: string
+          id: string
+          justificativa: string
+          material_id: string
+          ordem: number
+          questao: string
+          updated_at: string
+        }
+        Insert: {
+          alternativa_a: string
+          alternativa_b: string
+          alternativa_c: string
+          alternativa_d: string
+          alternativa_e?: string | null
+          ativo?: boolean
+          created_at?: string
+          criado_por?: string | null
+          especialidade: Database["public"]["Enums"]["especialidade"]
+          fingerprint: string
+          gabarito: string
+          id?: string
+          justificativa: string
+          material_id: string
+          ordem: number
+          questao: string
+          updated_at?: string
+        }
+        Update: {
+          alternativa_a?: string
+          alternativa_b?: string
+          alternativa_c?: string
+          alternativa_d?: string
+          alternativa_e?: string | null
+          ativo?: boolean
+          created_at?: string
+          criado_por?: string | null
+          especialidade?: Database["public"]["Enums"]["especialidade"]
+          fingerprint?: string
+          gabarito?: string
+          id?: string
+          justificativa?: string
+          material_id?: string
+          ordem?: number
+          questao?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pre_aula_questoes_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materiais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       materiais: {
         Row: {
           created_at: string
@@ -1274,6 +1342,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_import_pre_aula_questoes: {
+        Args: { payload: Json }
+        Returns: Json
+      }
       admin_set_role: {
         Args: {
           new_role: Database["public"]["Enums"]["app_role"]

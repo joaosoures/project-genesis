@@ -59,6 +59,7 @@
 | `/login` | Público | `Login`, sem `AppLayout` |
 | `/estudo` | Autenticado | `Estudo` dentro de `ProtectedRoute` + `AppLayout` |
 | `/trilha` | Autenticado | `TrilhaEstrategica` + shell |
+| `/pre-aula/:materialId` | Autenticado | `PreAula` Ghost Mode + shell; estado temporário, sem métricas |
 | `/dashboard` | Autenticado | `Dashboard` + shell |
 | `/favoritos` | Autenticado | Alias para `/estudo?tipo=favoritos` |
 | `/banco-cards` | Autenticado | `BancoCards` + shell |
@@ -98,6 +99,7 @@ O contrato canônico é [`src/integrations/supabase/types.ts`](src/integrations/
 
 - **Identidade/acesso:** `profiles`, `user_roles`, `assinaturas`; relação com `auth.users` por usuário. RLS deve limitar dados do usuário por `auth.uid()`; administração usa `has_role`/`is_admin`.
 - **Cards/OQs/IA:** `cards`, `cards_pendentes_revisao`, registros de geração/importação e pool interno de chaves (`api_keys_pool`). Cards podem relacionar-se a `materiais` por `aula_id`; cards gerados pelo usuário guardam `criado_por_usuario_id`.
+- **Pré-aula/Ghost Mode:** `pre_aula_questoes` pertence a `materiais`, é deduplicada por `(material_id, fingerprint)` e nunca alimenta `cards` ou filas. A escrita ocorre apenas via `admin_import_pre_aula_questoes(jsonb)`, que revalida admin, especialidade, material e conteúdo.
 - **Desempenho/estudo:** `desempenho_cards`, `favoritos`, `user_excluded_cards` e tabelas auxiliares de progresso. O usuário só acessa seus próprios registros; RPCs de progresso devem preservar esse limite.
 - **Materiais:** `materiais`, highlights/notas e relações com aulas/cards. Recursos de materiais são condicionados por plano e RLS.
 - **Simulados:** tabelas de simulados, questões, tentativas/respostas e resultados; consultar tipos e migrations antes de alterar relações ou métricas.
@@ -169,8 +171,10 @@ Todas as funções ficam em [`supabase/functions/`](supabase/functions/) e devem
 5. Trial, congelamento, inadimplência e exclusão devem manter a janela de preservação comunicada ao usuário.
 6. IA e billing usam funções server-side; segredos nunca chegam ao browser.
 7. A interface deve permanecer acessível, responsiva, tátil e respeitar reduced motion.
+8. Questões pré-aula permanecem fora de `cards`; o player Ghost Mode não registra desempenho, histórico, pendências, metas ou eventos de revisão.
 
 ## Changelog
 
+- **2026-09-24 · pré-aula/Ghost Mode** — adicionados `pre_aula_questoes`, RPC administrativa idempotente, importador XLSX/CSV, rota `/pre-aula/:materialId` e interceptação exclusiva dos botões Resumo da Trilha.
 - **2026-09-24 · baseline `59c5314c`** — criado o índice arquitetural mestre com protocolo de leitura econômica, matriz tarefa→arquivos, rotas atuais, fluxo OQ, planos/acesso, mapa Supabase, Edge Functions, design system, invariantes e regras de manutenção.
 - Futuras mudanças estruturais devem registrar aqui data, commit/referência, seções afetadas e impacto na matriz. Atualizar especialmente quando houver mudança de rota, schema/RLS/RPC, regra de plano, Edge Function ou tokens visuais.

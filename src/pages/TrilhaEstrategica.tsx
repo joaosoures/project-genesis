@@ -18,6 +18,7 @@ import {
   Lock,
   FileText,
   AlertTriangle,
+  Loader2,
   X,
 } from "lucide-react";
 import {
@@ -45,6 +46,7 @@ import { AnimatePresence, motion, LayoutGroup } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useUserPlan } from "@/hooks/useUserPlan";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 // Componentes memorizados para evitar re-renderizações duplicadas
@@ -196,6 +198,8 @@ export default function TrilhaEstrategica() {
 
   const [searchQ, setSearchQ] = useState("");
   const [confirmAula, setConfirmAula] = useState<null | { id: string; nome: string }>(null);
+  const [preAulaDecision, setPreAulaDecision] = useState<null | { id: string; nome: string; count: number }>(null);
+  const [checkingSummaryId, setCheckingSummaryId] = useState<string | null>(null);
   const semanaAtualRef = useRef<HTMLDivElement | null>(null);
   const [fabVisible, setFabVisible] = useState(false);
 
@@ -236,6 +240,29 @@ export default function TrilhaEstrategica() {
   const { canUse } = useUserPlan();
   const { isAdmin } = useAuth();
   const podeDirecionamento = canUse("trilha") || isAdmin;
+
+  const abrirResumo = useCallback(async (aula: { id: string; nome: string }) => {
+    if (checkingSummaryId) return;
+    setCheckingSummaryId(aula.id);
+    try {
+      const { count, error } = await supabase
+        .from("pre_aula_questoes")
+        .select("id", { count: "exact", head: true })
+        .eq("material_id", aula.id)
+        .eq("ativo", true);
+      if (error) throw error;
+      if (!count) {
+        navigate(`/materiais?id=${aula.id}`);
+        return;
+      }
+      setPreAulaDecision({ id: aula.id, nome: aula.nome, count });
+    } catch {
+      toast.error("Não foi possível verificar as questões pré-aula. Abrindo o resumo.");
+      navigate(`/materiais?id=${aula.id}`);
+    } finally {
+      setCheckingSummaryId(null);
+    }
+  }, [checkingSummaryId, navigate]);
 
   useEffect(() => {
     document.title = "Trilha Estratégica — OQ MED";
@@ -665,9 +692,10 @@ export default function TrilhaEstrategica() {
                             size="sm"
                             variant="ghost"
                             className="tactile-btn rounded-xl bg-accent/5 text-[9px] font-black uppercase tracking-widest h-9 gap-1.5 border border-accent/10"
-                            onClick={() => navigate(`/materiais?id=${a.id}`)}
+                            onClick={() => abrirResumo(a)}
+                            disabled={checkingSummaryId === a.id}
                           >
-                            <FileText className="h-3.5 w-3.5 text-accent" />
+                            {checkingSummaryId === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" /> : <FileText className="h-3.5 w-3.5 text-accent" />}
                             Resumo
                           </Button>
                           <Button
@@ -756,9 +784,10 @@ export default function TrilhaEstrategica() {
                             size="sm"
                             variant="ghost"
                             className="tactile-btn rounded-xl bg-indigo-50 text-[9px] font-black uppercase tracking-widest h-9 gap-1.5 border border-indigo-100"
-                            onClick={() => navigate(`/materiais?id=${a.id}`)}
+                            onClick={() => abrirResumo(a)}
+                            disabled={checkingSummaryId === a.id}
                           >
-                            <FileText className="h-3.5 w-3.5 text-indigo-500" />
+                            {checkingSummaryId === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-500" /> : <FileText className="h-3.5 w-3.5 text-indigo-500" />}
                             Resumo
                           </Button>
                           <Button
@@ -876,9 +905,10 @@ export default function TrilhaEstrategica() {
                                     size="sm"
                                     variant="ghost"
                                     className="tactile-btn rounded-xl bg-muted/30 text-[9px] font-black uppercase tracking-widest h-9 gap-1.5 border border-border/40"
-                                    onClick={() => navigate(`/materiais?id=${a.id}`)}
+                                    onClick={() => abrirResumo(a)}
+                                    disabled={checkingSummaryId === a.id}
                                   >
-                                    <FileText className="h-3.5 w-3.5 text-primary" />
+                                    {checkingSummaryId === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : <FileText className="h-3.5 w-3.5 text-primary" />}
                                     Resumo
                                   </Button>
                                   <Button
@@ -1261,6 +1291,42 @@ export default function TrilhaEstrategica() {
         currentWeekIndex={currentWeekIndex}
         onConfirm={aplicarRedistribuicao}
       />
+
+      <Dialog open={!!preAulaDecision} onOpenChange={(open) => !open && setPreAulaDecision(null)}>
+        <DialogContent className="max-w-md rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <GhostIcon className="h-5 w-5 text-violet-600" />
+              Deseja fazer as questões pré-aula?
+            </DialogTitle>
+            <DialogDescription>
+              Encontramos {preAulaDecision?.count} questão(ões) para <strong>{preAulaDecision?.nome}</strong>. A sessão é temporária e não altera seu desempenho ou metas.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button
+              variant="outline"
+              onClick={() => {
+                const decision = preAulaDecision;
+                setPreAulaDecision(null);
+                if (decision) navigate(`/materiais?id=${decision.id}`);
+              }}
+            >
+              Não, ir para o resumo
+            </Button>
+            <Button
+              className="bg-violet-600 hover:bg-violet-700"
+              onClick={() => {
+                const decision = preAulaDecision;
+                setPreAulaDecision(null);
+                if (decision) navigate(`/pre-aula/${decision.id}`);
+              }}
+            >
+              Sim, fazer agora
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!confirmAula} onOpenChange={(o) => !o && setConfirmAula(null)}>
         <DialogContent className="max-w-md">
