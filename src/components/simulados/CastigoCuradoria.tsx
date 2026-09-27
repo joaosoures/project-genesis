@@ -66,6 +66,15 @@ export default function CastigoCuradoria({ originalId }: { originalId: string })
     setBusy(false);
   };
 
+  const restore = async (filha: Filha) => {
+    if (!window.confirm(`Restaurar a versão ${filha.versao} como titular da filha ${filha.posicao}? A titular atual, se existir, será arquivada.`)) return;
+    setBusy(true);
+    const { error } = await supabase.rpc("castigo_restaurar", { p_filha: filha.id });
+    if (error) toast.error(error.message);
+    else { toast.success("Questão restaurada como titular."); await reload(); }
+    setBusy(false);
+  };
+
   if (loading) return <div className="flex items-center gap-2 text-sm p-4"><Loader2 className="h-4 w-4 animate-spin" /> Carregando castigo...</div>;
   const active = filhas.filter(f => f.ativo);
   return (
@@ -95,7 +104,7 @@ export default function CastigoCuradoria({ originalId }: { originalId: string })
               <p className="text-sm font-semibold">Gabarito: {current.gabarito}</p>
               <p className="text-sm whitespace-pre-wrap">{current.justificativa}</p>
             </>}
-            {history.length > 0 && <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">{history.length} versão(ões) arquivada(s)</summary>{history.map(f => <p key={f.id} className="py-2">Versão {f.versao}: {f.questao}</p>)}</details>}
+            {history.length > 0 && <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">{history.length} versão(ões) arquivada(s)</summary>{history.map(f => <div key={f.id} className="flex flex-wrap items-center justify-between gap-2 py-2"><p>Versão {f.versao}: {f.questao}</p><Button size="sm" variant="outline" disabled={busy} onClick={() => restore(f)}>Restaurar como titular</Button></div>)}</details>}
           </Card>
         );
       })}
