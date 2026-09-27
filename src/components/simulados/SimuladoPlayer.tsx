@@ -306,7 +306,7 @@ export default function SimuladoPlayer({
 
   if (reportMode) {
     const data = result ?? currentReportData;
-    const reportAttemptId = result?.tentativaId;
+    const reportAttemptId = result?.tentativaId ?? attemptId;
     const percent = data.total > 0 ? Math.round((data.acertos / data.total) * 100) : 0;
     
     return (
@@ -461,7 +461,7 @@ export default function SimuladoPlayer({
                         })}
                       </div>
 
-                      {(finished || initialReportMode) && reportAttemptId && (
+                      {reportAttemptId && (
                         <Button variant="outline" onClick={() => setCastigoPedido(q.id)}>Resolver questões semelhantes</Button>
                       )}
                       <div className="grid gap-4 pt-4">
@@ -492,11 +492,11 @@ export default function SimuladoPlayer({
             </Accordion>
           </div>
 
-          {(finished || initialReportMode) && reportAttemptId && (
+          {reportAttemptId && (
             <CastigoEstudo tentativaId={reportAttemptId} originais={questions.map(q => ({
               id: q.id,
               comando: q.comando,
-              errou: !data.respostas.find(r => r.questao_id === q.id)?.acertou
+              errou: data.respostas.find(r => r.questao_id === q.id)?.respondida === true && !data.respostas.find(r => r.questao_id === q.id)?.acertou
             }))} pedido={castigoPedido} onPedidoHandled={() => setCastigoPedido(null)} />
           )}
 
