@@ -93,6 +93,29 @@ export default function CastigoEstudo({ tentativaId, originais, pedido, onPedido
     setBusy(false);
   };
 
+  const restart = async () => {
+    if (!scope || busy) return;
+    const all = filhas.filter(f => scope.includes(f.questao_original_id));
+    setBusy(true);
+    const { error } = await supabase.rpc("castigo_reiniciar", {
+      p_tentativa: tentativaId,
+      p_filhas: all.map(f => f.id)
+    });
+    if (error) {
+      toast.error(error.message);
+    } else {
+      setRespostas(prev => prev.filter(r => !all.some(f => f.id === r.filha_id)));
+      setDrafts(prev => {
+        const next = { ...prev };
+        all.forEach(f => delete next[f.id]);
+        return next;
+      });
+      setIndex(0);
+      toast.success("Você pode responder novamente às questões semelhantes.");
+    }
+    setBusy(false);
+  };
+
   if (loading) return <p className="text-sm flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Carregando castigo...</p>;
   return <section className="space-y-4" id="castigo-do-simulado">
     <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-xl font-black">Castigo do Simulado</h3><p className="text-sm text-muted-foreground">Pratique as questões semelhantes com feedback imediato após cada resposta.</p></div>
@@ -110,7 +133,7 @@ export default function CastigoEstudo({ tentativaId, originais, pedido, onPedido
       <div className="max-w-2xl mx-auto space-y-6 pb-20">
         <Button variant="ghost" onClick={() => setScope(null)}><ArrowLeft className="h-4 w-4 mr-2" /> Voltar ao relatório</Button>
         <h2 className="text-2xl font-black">Castigo do Simulado</h2>
-        {selected.length === 0 ? <Card className="p-6 space-y-3"><p>As filhas selecionadas já foram concluídas.</p><Button onClick={() => setScope(null)}>Voltar</Button></Card> : <>
+        {selected.length === 0 ? <Card className="p-6 space-y-3"><p>As questões semelhantes dessa questão já foram respondidas.</p><div className="flex flex-wrap gap-2"><Button onClick={restart} disabled={busy}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Fazer novamente"}</Button><Button variant="outline" onClick={() => setScope(null)}>Voltar</Button></div></Card> : <>
           <div className="space-y-2"><p className="text-sm text-muted-foreground">Filha {index + 1} de {selected.length} · Questão original {originais.findIndex(o => o.id === current.questao_original_id) + 1} · versão {current.versao}</p><NeonProgressBar value={index + 1} total={selected.length} className="h-2" /></div>
           <Card className="paper-card rounded-[2rem] p-6 md:p-10 space-y-6"><p className="text-xl md:text-2xl leading-relaxed font-medium whitespace-pre-wrap text-slate-800">{current.questao}</p>
             <div className="space-y-3">{(["a", "b", "c", "d", "e"] as const).map(letter => {

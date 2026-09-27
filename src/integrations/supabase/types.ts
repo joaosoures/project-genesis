@@ -1443,6 +1443,7 @@ export type Database = {
       castigo_restaurar: { Args: { p_filha: string }; Returns: undefined }
       castigo_responder: { Args: { p_tentativa: string; p_filha: string; p_resposta: string }; Returns: undefined }
       castigo_finalizar: { Args: { p_tentativa: string; p_filhas: string[] }; Returns: undefined }
+      castigo_reiniciar: { Args: { p_tentativa: string; p_filhas: string[] }; Returns: undefined }
 
       admin_import_pre_aula_questoes: {
         Args: { payload: Json }
