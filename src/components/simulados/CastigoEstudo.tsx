@@ -43,13 +43,13 @@ export default function CastigoEstudo({ tentativaId, originais, pedido, onPedido
   const activeFor = (id: string) => filhas.filter(f => f.questao_original_id === id);
   const responseFor = (id: string) => respostas.find(r => r.filha_id === id);
   const pending = (id: string) => activeFor(id).filter(f => !responseFor(f.id)?.finalizada_em);
-  const fullIds = originais.filter(o => o.errou && activeFor(o.id).length === 3 && pending(o.id).length > 0).map(o => o.id);
+  const fullIds = originais.filter(o => o.errou && activeFor(o.id).length > 0 && pending(o.id).length > 0).map(o => o.id);
   const selected = scope ? filhas.filter(f => scope.includes(f.questao_original_id) && !responseFor(f.id)?.finalizada_em) : [];
   const current = selected[Math.min(index, selected.length - 1)];
 
   useEffect(() => {
     if (!pedido || loading) return;
-    if (activeFor(pedido).length === 3) { setScope([pedido]); setIndex(0); }
+    if (activeFor(pedido).length > 0) { setScope([pedido]); setIndex(0); }
     else toast.info("Não há questões semelhantes disponíveis no momento");
     onPedidoHandled();
   }, [pedido, loading, filhas, onPedidoHandled]);
@@ -84,7 +84,7 @@ export default function CastigoEstudo({ tentativaId, originais, pedido, onPedido
       const done = active.filter(f => !!responseFor(f.id)?.finalizada_em).length;
       return <Card key={o.id} className="p-4 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 flex-1"><p className="text-sm font-bold">Questão {i + 1} {o.errou ? "· errada" : "· acertada"}</p><p className="text-xs text-muted-foreground line-clamp-1">{o.comando}</p></div>
-        {active.length === 3 ? <><Badge variant="outline">{done}/3 concluídas</Badge><Button size="sm" variant="outline" onClick={() => { setScope([o.id]); setIndex(0); }}>{done === 3 ? "Revisar" : "Resolver filhas"}</Button></> : <p className="text-sm text-muted-foreground">Não há questões semelhantes disponíveis no momento</p>}
+        {active.length > 0 ? <><Badge variant="outline">{done}/{active.length} concluídas</Badge><Button size="sm" variant="outline" onClick={() => { setScope([o.id]); setIndex(0); }}>{done === active.length ? "Revisar" : "Resolver filhas"}</Button></> : <p className="text-sm text-muted-foreground">Não há questões semelhantes disponíveis no momento</p>}
       </Card>;
     })}
     {scope && <div className="fixed inset-0 z-[70] bg-background overflow-y-auto p-4 md:p-10">
