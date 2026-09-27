@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Loader2, Save, X, Upload, Trash2, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
+import CastigoCuradoria from "./CastigoCuradoria";
 
 interface Question {
   id: string;
@@ -238,12 +239,17 @@ export default function EditQuestionDialog({
             {[1, 2, 3].map((num) => (
               <div key={num} className="space-y-2">
                 <Label>Explicação {num}</Label>
-                <Textarea 
+                <Textarea
                   value={(formData as any)[`explicacao_${num}`] || ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, [`explicacao_${num}`]: e.target.value }))}
                 />
               </div>
             ))}
+          </div>
+          <div className="pt-4 border-t space-y-3">
+            <h4 className="font-bold">Castigo do Simulado</h4>
+            <p className="text-xs text-muted-foreground">Salve alterações nesta questão antes de gerar filhas para usar o conteúdo atualizado.</p>
+            <CastigoCuradoria originalId={question.id} />
           </div>
         </div>
 

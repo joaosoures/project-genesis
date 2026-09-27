@@ -945,6 +945,102 @@ export type Database = {
           },
         ]
       }
+      castigo_filhas: {
+        Row: {
+          id: string
+          questao_original_id: string
+          posicao: number
+          versao: number
+          questao: string
+          alt_a: string
+          alt_b: string
+          alt_c: string
+          alt_d: string
+          alt_e: string
+          gabarito: string
+          justificativa: string
+          ativo: boolean
+          created_at: string
+          archived_at: string | null
+        }
+        Insert: {
+          id?: string
+          questao_original_id: string
+          posicao: number
+          versao: number
+          questao: string
+          alt_a: string
+          alt_b: string
+          alt_c: string
+          alt_d: string
+          alt_e: string
+          gabarito: string
+          justificativa: string
+          ativo?: boolean
+          created_at?: string
+          archived_at?: string | null
+        }
+        Update: {
+          id?: string
+          questao_original_id?: string
+          posicao?: number
+          versao?: number
+          questao?: string
+          alt_a?: string
+          alt_b?: string
+          alt_c?: string
+          alt_d?: string
+          alt_e?: string
+          gabarito?: string
+          justificativa?: string
+          ativo?: boolean
+          created_at?: string
+          archived_at?: string | null
+        }
+        Relationships: []
+      }
+      castigo_observacoes: {
+        Row: {
+          questao_original_id: string
+          observacao: string
+          updated_at: string
+        }
+        Insert: {
+          questao_original_id: string
+          observacao?: string
+          updated_at?: string
+        }
+        Update: {
+          questao_original_id?: string
+          observacao?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      castigo_respostas: {
+        Row: {
+          tentativa_id: string
+          filha_id: string
+          resposta: string
+          finalizada_em: string | null
+          updated_at: string
+        }
+        Insert: {
+          tentativa_id: string
+          filha_id: string
+          resposta: string
+          finalizada_em?: string | null
+          updated_at?: string
+        }
+        Update: {
+          tentativa_id?: string
+          filha_id?: string
+          resposta?: string
+          finalizada_em?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       simulado_questoes: {
         Row: {
           comando: string
@@ -1342,6 +1438,11 @@ export type Database = {
       }
     }
     Functions: {
+      castigo_publicar: { Args: { p_original: string; p_posicao: number | null; p_lote: Json }; Returns: undefined }
+      castigo_arquivar: { Args: { p_filha: string }; Returns: undefined }
+      castigo_responder: { Args: { p_tentativa: string; p_filha: string; p_resposta: string }; Returns: undefined }
+      castigo_finalizar: { Args: { p_tentativa: string; p_filhas: string[] }; Returns: undefined }
+
       admin_import_pre_aula_questoes: {
         Args: { payload: Json }
         Returns: Json

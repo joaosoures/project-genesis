@@ -17,6 +17,7 @@ import NeonProgressBar from "@/components/console/NeonProgressBar";
 import TactileButton from "@/components/console/TactileButton";
 import NeonHintLamp from "@/components/console/NeonHintLamp";
 import EditQuestionDialog from "./EditQuestionDialog";
+import CastigoEstudo from "./CastigoEstudo";
 
 interface Question {
   id: string;
@@ -92,6 +93,7 @@ export default function SimuladoPlayer({
     respostas: any[];
   } | null>(null);
   const [openReportQuestion, setOpenReportQuestion] = useState("");
+  const [castigoPedido, setCastigoPedido] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -304,6 +306,7 @@ export default function SimuladoPlayer({
 
   if (reportMode) {
     const data = result ?? currentReportData;
+    const reportAttemptId = result?.tentativaId;
     const percent = data.total > 0 ? Math.round((data.acertos / data.total) * 100) : 0;
     
     return (
@@ -458,6 +461,9 @@ export default function SimuladoPlayer({
                         })}
                       </div>
 
+                      {(finished || initialReportMode) && reportAttemptId && (
+                        <Button variant="outline" onClick={() => setCastigoPedido(q.id)}>Resolver questões semelhantes</Button>
+                      )}
                       <div className="grid gap-4 pt-4">
                         <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground px-1">Gabarito Comentado</h4>
                         {q.explicacao_1 && (
@@ -485,6 +491,14 @@ export default function SimuladoPlayer({
               })}
             </Accordion>
           </div>
+
+          {(finished || initialReportMode) && reportAttemptId && (
+            <CastigoEstudo tentativaId={reportAttemptId} originais={questions.map(q => ({
+              id: q.id,
+              comando: q.comando,
+              errou: !data.respostas.find(r => r.questao_id === q.id)?.acertou
+            }))} pedido={castigoPedido} onPedidoHandled={() => setCastigoPedido(null)} />
+          )}
 
           {/* Centered Sair Button at bottom */}
           <div className="flex flex-col items-center gap-4 pt-12">

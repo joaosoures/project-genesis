@@ -44,6 +44,7 @@ import ReportsDialog from "@/components/admin/ReportsDialog";
 import PlanosDialog from "@/components/admin/PlanosDialog";
 import WaitlistDialog from "@/components/admin/WaitlistDialog";
 import ApiKeysPool from "@/components/admin/ApiKeysPool";
+import AdminCastigo from "@/components/simulados/AdminCastigo";
 
 
 type Report = {
@@ -392,6 +393,7 @@ export default function Admin() {
             <TabsTrigger value="reports" className="gap-2 data-[state=active]:bg-primary/20 whitespace-nowrap">
               <AlertCircle size={16} /> Reports {stats.reports > 0 && <Badge variant="destructive" className="ml-1 h-5 min-w-5 p-0 flex items-center justify-center text-[10px]">{stats.reports}</Badge>}
             </TabsTrigger>
+            <TabsTrigger value="castigo" className="gap-2 data-[state=active]:bg-primary/20 whitespace-nowrap">Castigo do Simulado</TabsTrigger>
             <TabsTrigger value="permissions" className="gap-2 data-[state=active]:bg-primary/20 whitespace-nowrap">
               <ShieldCheck size={16} /> Permissões
             </TabsTrigger>
@@ -401,6 +403,8 @@ export default function Admin() {
           </TabsList>
         </ScrollArea>
 
+
+        <TabsContent value="castigo"><AdminCastigo /></TabsContent>
 
         <TabsContent value="users" className="space-y-6">
           <div className="flex items-center gap-4 mb-4">
