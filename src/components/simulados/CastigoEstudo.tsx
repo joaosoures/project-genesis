@@ -118,7 +118,7 @@ export default function CastigoEstudo({ tentativaId, originais, pedido, onPedido
 
   if (loading) return <p className="text-sm flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Carregando castigo...</p>;
   return <section className="space-y-4" id="castigo-do-simulado">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-xl font-black">Castigo do Simulado</h3><p className="text-sm text-muted-foreground">Pratique as questões semelhantes com feedback imediato após cada resposta.</p></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-3"><div className="h-6 w-1 bg-accent rounded-full" />Castigo do Simulado</h3><p className="text-sm text-muted-foreground">Pratique as questões semelhantes com feedback imediato após cada resposta.</p></div>
       {fullIds.length > 0 && <Button onClick={() => { setScope(fullIds); setIndex(0); }}>Realizar castigo completo</Button>}
     </div>
     {originais.map((o, i) => {
