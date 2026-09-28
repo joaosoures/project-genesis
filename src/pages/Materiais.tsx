@@ -15,6 +15,16 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Drawer,
   DrawerContent,
   DrawerHeader,
@@ -82,16 +92,18 @@ interface Material {
   key_words: string | null;
 }
 
-const SimuladoCard = memo(({ 
-  sim, 
-  simuladoResultados, 
-  setSimuladoInReportMode, 
-  setActiveSimulado 
-}: { 
-  sim: any; 
-  simuladoResultados: any[]; 
-  setSimuladoInReportMode: (v: boolean) => void; 
-  setActiveSimulado: (v: string) => void; 
+const SimuladoCard = memo(({
+  sim,
+  simuladoResultados,
+  setSimuladoInReportMode,
+  setActiveSimulado,
+  onRequestRestart
+}: {
+  sim: any;
+  simuladoResultados: any[];
+  setSimuladoInReportMode: (v: boolean) => void;
+  setActiveSimulado: (v: string) => void;
+  onRequestRestart: (simuladoId: string) => void;
 }) => {
   const attempts = simuladoResultados
     .filter(r => r.simulado_id === sim.id)
@@ -106,11 +118,14 @@ const SimuladoCard = memo(({
   
   return (
     <div
-      onClick={() => {
-        setSimuladoInReportMode(isDone && !isInProgress);
+      onClick={isDone && !isInProgress ? undefined : () => {
+        setSimuladoInReportMode(false);
         setActiveSimulado(sim.id);
       }}
-      className="paper-card p-6 cursor-pointer hover:bg-slate-900/5 transition-all duration-300 flex flex-col gap-4 border-l-4 border-l-accent"
+      className={cn(
+        "paper-card p-6 transition-all duration-300 flex flex-col gap-4 border-l-4 border-l-accent",
+        isDone && !isInProgress ? "cursor-default" : "cursor-pointer hover:bg-slate-900/5"
+      )}
     >
       <div className="flex justify-between items-start">
         <Badge className={cn(
@@ -125,9 +140,9 @@ const SimuladoCard = memo(({
       
       {isDone && !isInProgress && (
         <div className="mt-auto flex gap-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             className="flex-1 rounded-xl font-bold text-[10px] uppercase tracking-wider bg-slate-100 hover:bg-slate-200 h-9"
             onClick={(e) => {
               e.stopPropagation();
@@ -137,16 +152,13 @@ const SimuladoCard = memo(({
           >
             Relatório
           </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             className="flex-1 rounded-xl font-bold text-[10px] uppercase tracking-wider bg-accent/10 text-accent hover:bg-accent/20 h-9"
             onClick={(e) => {
               e.stopPropagation();
-              if (window.confirm("Ao refazer o simulado, os dados da última tentativa serão todos reiniciados para uma nova tentativa. Deseja continuar?")) {
-                setSimuladoInReportMode(false);
-                setActiveSimulado(sim.id);
-              }
+              onRequestRestart(sim.id);
             }}
           >
             Refazer
@@ -275,6 +287,28 @@ export default function Materiais() {
   const [loadingSimulados, setLoadingSimulados] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<"all" | "materiais" | "simulados">("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [restartSimuladoId, setRestartSimuladoId] = useState<string | null>(null);
+  const [isRestartingSimulado, setIsRestartingSimulado] = useState(false);
+
+  const handleRestartSimulado = async () => {
+    if (!restartSimuladoId || isRestartingSimulado) return;
+
+    setIsRestartingSimulado(true);
+    const { error } = await supabase.rpc("simulado_refazer", {
+      p_simulado: restartSimuladoId,
+    });
+
+    if (error) {
+      toast.error("Não foi possível reiniciar o simulado.");
+    } else {
+      toast.success("Simulado reiniciado. Boa prova!");
+      setRestartSimuladoId(null);
+      setSimuladoInReportMode(false);
+      setActiveSimulado(restartSimuladoId);
+      await fetchSimulados();
+    }
+    setIsRestartingSimulado(false);
+  };
 
 
   const fetchNote = useCallback(async (materialId: string) => {
@@ -906,6 +940,7 @@ export default function Materiais() {
                     simuladoResultados={simuladoResultados}
                     setSimuladoInReportMode={setSimuladoInReportMode}
                     setActiveSimulado={setActiveSimulado}
+                    onRequestRestart={setRestartSimuladoId}
                   />
                 ))}
               </div>
@@ -1308,6 +1343,29 @@ export default function Materiais() {
           </div>
         </DialogContent>
       </Dialog>
+      <AlertDialog open={!!restartSimuladoId} onOpenChange={(open) => !open && !isRestartingSimulado && setRestartSimuladoId(null)}>
+        <AlertDialogContent className="max-w-md rounded-3xl border-none shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-black">Refazer simulado?</AlertDialogTitle>
+            <AlertDialogDescription className="leading-relaxed">
+              Ao prosseguir, os dados da última tentativa serão excluídos, assim como a realização do Castigo e os insights de desempenho acerca deste simulado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-2">
+            <AlertDialogCancel disabled={isRestartingSimulado} className="rounded-xl font-bold">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void handleRestartSimulado();
+              }}
+              disabled={isRestartingSimulado}
+              className="rounded-xl bg-accent text-accent-foreground font-bold hover:bg-accent/90"
+            >
+              {isRestartingSimulado ? "Reiniciando..." : "Prosseguir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {activeSimulado && (
         <div className="fixed inset-0 z-[200] bg-[hsl(var(--background))] p-4 md:p-8 overflow-y-auto overscroll-none touch-none">
           <Suspense fallback={<div className="flex flex-col items-center justify-center h-full"><Loader2 className="h-12 w-12 animate-spin text-accent" /><p className="text-lg font-bold text-muted-foreground mt-4">Iniciando Simulado...</p></div>}>
