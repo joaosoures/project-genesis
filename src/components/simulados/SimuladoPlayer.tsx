@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -94,6 +94,9 @@ export default function SimuladoPlayer({
   } | null>(null);
   const [openReportQuestion, setOpenReportQuestion] = useState("");
   const [castigoPedido, setCastigoPedido] = useState<string | null>(null);
+  const reviewSectionRef = useRef<HTMLDivElement>(null);
+  const castigoSectionRef = useRef<HTMLDivElement>(null);
+  const [showCastigoShortcut, setShowCastigoShortcut] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -297,6 +300,25 @@ export default function SimuladoPlayer({
     }
   };
 
+  useEffect(() => {
+    if (!reportMode) return;
+
+    const updateCastigoShortcut = () => {
+      const review = reviewSectionRef.current?.getBoundingClientRect();
+      const castigo = castigoSectionRef.current?.getBoundingClientRect();
+      setShowCastigoShortcut(Boolean(review && castigo && review.bottom > 0 && castigo.top > 0));
+    };
+
+    updateCastigoShortcut();
+    window.addEventListener("scroll", updateCastigoShortcut, { passive: true });
+    window.addEventListener("resize", updateCastigoShortcut);
+
+    return () => {
+      window.removeEventListener("scroll", updateCastigoShortcut);
+      window.removeEventListener("resize", updateCastigoShortcut);
+    };
+  }, [reportMode]);
+
   if (loading) return (
     <div className="flex flex-col items-center justify-center p-12 space-y-4">
       <Loader2 className="h-8 w-8 animate-spin text-accent" />
@@ -308,6 +330,10 @@ export default function SimuladoPlayer({
     const data = result ?? currentReportData;
     const reportAttemptId = result?.tentativaId ?? attemptId;
     const percent = data.total > 0 ? Math.round((data.acertos / data.total) * 100) : 0;
+
+    const scrollToCastigo = () => {
+      castigoSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
     
     return (
       <div className="fixed inset-0 z-50 bg-background overflow-y-auto minimal-scroll animate-in fade-in duration-300">
@@ -383,7 +409,7 @@ export default function SimuladoPlayer({
             </div>
           </Card>
 
-          <div className="space-y-6">
+          <div ref={reviewSectionRef} className="space-y-6">
             <h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-3">
               <div className="h-6 w-1 bg-accent rounded-full" />
               Revisão das Questões
@@ -496,17 +522,38 @@ export default function SimuladoPlayer({
           </div>
 
           {reportAttemptId && (
-            <CastigoEstudo tentativaId={reportAttemptId} originais={questions.map(q => {
-              const resposta = data.respostas.find(r => r.questao_id === q.id);
-              return {
-                id: q.id,
-                comando: q.comando,
-                respondida: resposta?.respondida === true,
-                acertou: resposta?.acertou === true,
-                errou: resposta?.respondida === true && resposta.acertou === false
-              };
-            })} pedido={castigoPedido} onPedidoHandled={() => setCastigoPedido(null)} />
+            <div ref={castigoSectionRef}>
+              <CastigoEstudo tentativaId={reportAttemptId} originais={questions.map(q => {
+                const resposta = data.respostas.find(r => r.questao_id === q.id);
+                return {
+                  id: q.id,
+                  comando: q.comando,
+                  respondida: resposta?.respondida === true,
+                  acertou: resposta?.acertou === true,
+                  errou: resposta?.respondida === true && resposta.acertou === false
+                };
+              })} pedido={castigoPedido} onPedidoHandled={() => setCastigoPedido(null)} />
+            </div>
           )}
+
+          <AnimatePresence>
+            {showCastigoShortcut && reportAttemptId && (
+              <motion.div
+                initial={{ opacity: 0, y: 24, scale: 0.92 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 24, scale: 0.92 }}
+                className="fixed bottom-6 right-6 z-[60]"
+              >
+                <Button
+                  onClick={scrollToCastigo}
+                  className="rounded-full bg-rose-600 px-6 py-6 font-black text-white shadow-2xl shadow-rose-600/30 transition-transform hover:scale-105 hover:bg-rose-700"
+                >
+                  Castigo
+                  <ChevronDown className="ml-2 h-5 w-5" />
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Centered Sair Button at bottom */}
           <div className="flex flex-col items-center gap-4 pt-12">
