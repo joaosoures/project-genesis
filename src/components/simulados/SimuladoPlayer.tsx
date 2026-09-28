@@ -423,7 +423,10 @@ export default function SimuladoPlayer({
                         </div>
                         <div className="min-w-0">
                           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-1">Questão {i + 1}</p>
-                          <p className="font-bold line-clamp-1 text-sm md:text-base leading-tight">
+                          <p className={cn(
+                            "font-bold text-sm md:text-base leading-tight",
+                            openReportQuestion === q.id ? "whitespace-normal" : "line-clamp-1"
+                          )}>
                             {q.comando}
                           </p>
                         </div>
