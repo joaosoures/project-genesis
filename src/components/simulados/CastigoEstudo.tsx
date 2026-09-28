@@ -8,7 +8,7 @@ import { CheckCircle2, XCircle, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import NeonProgressBar from "@/components/console/NeonProgressBar";
 
-type Filha = Database["public"]["Tables"]["castigo_filhas"]["Row"];
+type Semelhante = Database["public"]["Tables"]["castigo_filhas"]["Row"];
 type Resposta = Database["public"]["Tables"]["castigo_respostas"]["Row"];
 type Original = { id: string; comando: string; respondida: boolean; acertou: boolean; errou: boolean };
 
@@ -19,7 +19,7 @@ export default function CastigoEstudo({ tentativaId, originais, pedido, onPedido
   onPedidoHandled: () => void;
   onPendingCountChange: (count: number) => void;
 }) {
-  const [filhas, setFilhas] = useState<Filha[]>([]);
+  const [semelhantes, setSemelhantes] = useState<Semelhante[]>([]);
   const [respostas, setRespostas] = useState<Resposta[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -42,12 +42,12 @@ export default function CastigoEstudo({ tentativaId, originais, pedido, onPedido
 
   useEffect(() => { void reload(); }, [reload]);
 
-  const activeFor = (id: string) => filhas.filter(f => f.questao_original_id === id);
+  const activeFor = (id: string) => semelhantes.filter(f => f.questao_original_id === id);
   const responseFor = (id: string) => respostas.find(r => r.filha_id === id);
   const pending = (id: string) => activeFor(id).filter(f => !responseFor(f.id)?.finalizada_em);
   const fullIds = originais.filter(o => o.errou && activeFor(o.id).length > 0 && pending(o.id).length > 0).map(o => o.id);
   const pendingCount = fullIds.length;
-  const selected = scope ? filhas.filter(f => scope.includes(f.questao_original_id) && !responseFor(f.id)?.finalizada_em) : [];
+  const selected = scope ? semelhantes.filter(f => scope.includes(f.questao_original_id) && !responseFor(f.id)?.finalizada_em) : [];
 
   useEffect(() => {
     onPendingCountChange(pendingCount);
@@ -57,8 +57,8 @@ export default function CastigoEstudo({ tentativaId, originais, pedido, onPedido
   const currentAnswer = current ? drafts[current.id] ?? currentResponse?.resposta ?? "" : "";
   const currentConfirmed = !!currentResponse?.resposta;
   const currentCorrect = currentConfirmed && currentResponse?.resposta === current?.gabarito;
-  const scopedFilhas = scope ? filhas.filter(f => scope.includes(f.questao_original_id)) : [];
-  const reviewCorrect = scopedFilhas.filter(f => responseFor(f.id)?.resposta === f.gabarito).length;
+  const scopedSemelhantes = scope ? semelhantes.filter(f => scope.includes(f.questao_original_id)) : [];
+  const reviewCorrect = scopedSemelhantes.filter(f => responseFor(f.id)?.resposta === f.gabarito).length;
   const reviewAnswered = scopedFilhas.filter(f => !!responseFor(f.id)?.resposta).length;
 
   useEffect(() => {
@@ -144,7 +144,7 @@ export default function CastigoEstudo({ tentativaId, originais, pedido, onPedido
         <Button variant="ghost" onClick={() => setScope(null)}><ArrowLeft className="h-4 w-4 mr-2" /> Voltar ao relatório</Button>
         <h2 className="text-2xl font-black">Castigo do Simulado</h2>
         {selected.length === 0 ? <Card className="p-6 space-y-4"><div><p className="font-bold">As questões semelhantes dessa questão já foram respondidas.</p><p className="text-sm text-muted-foreground mt-1">Confira seu desempenho antes de decidir se deseja refazer.</p></div><div className="grid grid-cols-3 gap-2"><div className="rounded-xl bg-muted/50 p-3 text-center"><p className="text-2xl font-black">{reviewAnswered}</p><p className="text-xs text-muted-foreground">Respondidas</p></div><div className="rounded-xl bg-emerald-50 p-3 text-center"><p className="text-2xl font-black text-emerald-700">{reviewCorrect}</p><p className="text-xs text-emerald-700">Acertos</p></div><div className="rounded-xl bg-rose-50 p-3 text-center"><p className="text-2xl font-black text-rose-700">{reviewAnswered - reviewCorrect}</p><p className="text-xs text-rose-700">Erros</p></div></div><div className="space-y-2"><p className="text-sm font-bold">Questões filhas</p>{scopedFilhas.map((filha, i) => { const resposta = responseFor(filha.id)?.resposta; const acertou = resposta === filha.gabarito; return <div key={filha.id} className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm"><span className="truncate">Questão {i + 1}</span><span className={acertou ? "font-bold text-emerald-700" : "font-bold text-rose-700"}>{acertou ? "Acertou" : "Errou"}</span></div>; })}</div><div className="flex flex-wrap gap-2"><Button onClick={restart} disabled={busy}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Fazer novamente"}</Button><Button variant="outline" onClick={() => setScope(null)}>Voltar</Button></div></Card> : <>
-          <div className="space-y-2"><p className="text-sm text-muted-foreground">Filha {index + 1} de {selected.length} · Questão original {originais.findIndex(o => o.id === current.questao_original_id) + 1} · versão {current.versao}</p><NeonProgressBar value={index + 1} total={selected.length} className="h-2" /></div>
+          <div className="space-y-2"><p className="text-sm text-muted-foreground">Semelhante {index + 1} de {selected.length} · Questão original {originais.findIndex(o => o.id === current.questao_original_id) + 1}</p><NeonProgressBar value={index + 1} total={selected.length} className="h-2" /></div>
           <Card className="paper-card rounded-[2rem] p-6 md:p-10 space-y-6"><p className="text-xl md:text-2xl leading-relaxed font-medium whitespace-pre-wrap text-slate-800">{current.questao}</p>
             <div className="space-y-3">{(["a", "b", "c", "d", "e"] as const).map(letter => {
               const answer = letter.toUpperCase();
