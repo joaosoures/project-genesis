@@ -10,7 +10,7 @@ import NeonProgressBar from "@/components/console/NeonProgressBar";
 
 type Filha = Database["public"]["Tables"]["castigo_filhas"]["Row"];
 type Resposta = Database["public"]["Tables"]["castigo_respostas"]["Row"];
-type Original = { id: string; comando: string; errou: boolean };
+type Original = { id: string; comando: string; respondida: boolean; acertou: boolean; errou: boolean };
 
 export default function CastigoEstudo({ tentativaId, originais, pedido, onPedidoHandled }: {
   tentativaId: string;
@@ -127,8 +127,9 @@ export default function CastigoEstudo({ tentativaId, originais, pedido, onPedido
     {originais.map((o, i) => {
       const active = activeFor(o.id);
       const done = active.filter(f => !!responseFor(f.id)?.finalizada_em).length;
+      const status = !o.respondida ? "não realizada" : o.errou ? "errada" : "acertada";
       return <Card key={o.id} className="p-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0 flex-1"><p className="text-sm font-bold">Questão {i + 1} {o.errou ? "· errada" : "· acertada"}</p><p className="text-xs text-muted-foreground line-clamp-1">{o.comando}</p></div>
+        <div className="min-w-0 flex-1"><p className="text-sm font-bold">Questão {i + 1} · {status}</p><p className="text-xs text-muted-foreground line-clamp-1">{o.comando}</p></div>
         {active.length > 0 ? <><Badge variant="outline">{done}/{active.length} concluídas</Badge><Button size="sm" variant="outline" onClick={() => { setScope([o.id]); setIndex(0); }}>{done === active.length ? "Revisar" : "Resolver filhas"}</Button></> : <p className="text-sm text-muted-foreground">Não há questões semelhantes disponíveis no momento</p>}
       </Card>;
     })}

@@ -493,11 +493,16 @@ export default function SimuladoPlayer({
           </div>
 
           {reportAttemptId && (
-            <CastigoEstudo tentativaId={reportAttemptId} originais={questions.map(q => ({
-              id: q.id,
-              comando: q.comando,
-              errou: data.respostas.find(r => r.questao_id === q.id)?.respondida === true && !data.respostas.find(r => r.questao_id === q.id)?.acertou
-            }))} pedido={castigoPedido} onPedidoHandled={() => setCastigoPedido(null)} />
+            <CastigoEstudo tentativaId={reportAttemptId} originais={questions.map(q => {
+              const resposta = data.respostas.find(r => r.questao_id === q.id);
+              return {
+                id: q.id,
+                comando: q.comando,
+                respondida: resposta?.respondida === true,
+                acertou: resposta?.acertou === true,
+                errou: resposta?.respondida === true && resposta.acertou === false
+              };
+            })} pedido={castigoPedido} onPedidoHandled={() => setCastigoPedido(null)} />
           )}
 
           {/* Centered Sair Button at bottom */}
