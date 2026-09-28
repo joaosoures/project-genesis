@@ -12,11 +12,12 @@ type Filha = Database["public"]["Tables"]["castigo_filhas"]["Row"];
 type Resposta = Database["public"]["Tables"]["castigo_respostas"]["Row"];
 type Original = { id: string; comando: string; respondida: boolean; acertou: boolean; errou: boolean };
 
-export default function CastigoEstudo({ tentativaId, originais, pedido, onPedidoHandled }: {
+export default function CastigoEstudo({ tentativaId, originais, pedido, onPedidoHandled, onPendingCountChange }: {
   tentativaId: string;
   originais: Original[];
   pedido: string | null;
   onPedidoHandled: () => void;
+  onPendingCountChange: (count: number) => void;
 }) {
   const [filhas, setFilhas] = useState<Filha[]>([]);
   const [respostas, setRespostas] = useState<Resposta[]>([]);
@@ -45,7 +46,12 @@ export default function CastigoEstudo({ tentativaId, originais, pedido, onPedido
   const responseFor = (id: string) => respostas.find(r => r.filha_id === id);
   const pending = (id: string) => activeFor(id).filter(f => !responseFor(f.id)?.finalizada_em);
   const fullIds = originais.filter(o => o.errou && activeFor(o.id).length > 0 && pending(o.id).length > 0).map(o => o.id);
+  const pendingCount = fullIds.length;
   const selected = scope ? filhas.filter(f => scope.includes(f.questao_original_id) && !responseFor(f.id)?.finalizada_em) : [];
+
+  useEffect(() => {
+    onPendingCountChange(pendingCount);
+  }, [onPendingCountChange, pendingCount]);
   const current = selected[Math.min(index, selected.length - 1)];
   const currentResponse = current ? responseFor(current.id) : undefined;
   const currentAnswer = current ? drafts[current.id] ?? currentResponse?.resposta ?? "" : "";

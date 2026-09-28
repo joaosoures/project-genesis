@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
   Loader2, ChevronLeft, ChevronRight, CheckCircle2, 
-  XCircle, BarChart3, ChevronDown, ChevronUp, Info, Eye, LogOut, ArrowLeft, Settings
+  XCircle, BarChart3, ChevronUp, Info, Eye, LogOut, ArrowLeft, Settings
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -97,6 +97,7 @@ export default function SimuladoPlayer({
   const reviewSectionRef = useRef<HTMLDivElement>(null);
   const castigoSectionRef = useRef<HTMLDivElement>(null);
   const [showCastigoShortcut, setShowCastigoShortcut] = useState(false);
+  const [pendingCastigoCount, setPendingCastigoCount] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -532,7 +533,7 @@ export default function SimuladoPlayer({
                   acertou: resposta?.acertou === true,
                   errou: resposta?.respondida === true && resposta.acertou === false
                 };
-              })} pedido={castigoPedido} onPedidoHandled={() => setCastigoPedido(null)} />
+              })} pedido={castigoPedido} onPedidoHandled={() => setCastigoPedido(null)} onPendingCountChange={setPendingCastigoCount} />
             </div>
           )}
 
@@ -549,7 +550,9 @@ export default function SimuladoPlayer({
                   className="rounded-full bg-rose-600 px-6 py-6 font-black text-white shadow-2xl shadow-rose-600/30 transition-transform hover:scale-105 hover:bg-rose-700"
                 >
                   Castigo
-                  <ChevronDown className="ml-2 h-5 w-5" />
+                  <span className="ml-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-white/20 px-1.5 text-sm font-black">
+                    {pendingCastigoCount}
+                  </span>
                 </Button>
               </motion.div>
             )}
