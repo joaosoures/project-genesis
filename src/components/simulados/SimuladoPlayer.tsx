@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Loader2, ChevronLeft, ChevronRight, CheckCircle2,
   XCircle, ChevronDown, ChevronUp, Info, Eye, LogOut, ArrowLeft, Settings,
-  Target, Sparkles, TrendingUp, AlertTriangle, Layers, ShieldCheck
+  Target, TrendingUp, AlertTriangle, Layers, ShieldCheck
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -454,9 +454,6 @@ export default function SimuladoPlayer({
             <div className="relative z-10 space-y-8">
               <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
                 <div className="max-w-xl">
-                  <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">
-                    <Sparkles className="h-3.5 w-3.5" /> 
-                  </div>
                   <h3 className="text-2xl font-black tracking-tight md:text-3xl">Seu mapa da prova.</h3>
                   <p className="mt-2 text-sm leading-relaxed text-slate-300">Você respondeu {answeredCount} de {data.total} questões. Veja onde sua preparação já é consistente e qual especialidade merece o próximo bloco de estudo.</p>
                 </div>
