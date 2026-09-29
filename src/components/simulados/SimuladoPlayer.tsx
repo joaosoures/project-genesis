@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
   Loader2, ChevronLeft, ChevronRight, CheckCircle2, 
-  XCircle, BarChart3, ChevronUp, Info, Eye, LogOut, ArrowLeft, Settings
+  XCircle, BarChart3, ChevronDown, ChevronUp, Info, Eye, LogOut, ArrowLeft, Settings
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -415,18 +415,8 @@ export default function SimuladoPlayer({
             <h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-3">
               <div className="h-6 w-1 bg-accent rounded-full" />
               Revisão das Questões
-              {questions.length > 5 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="ml-auto rounded-full normal-case tracking-normal"
-                  onClick={() => setShowAllReviewQuestions(current => !current)}
-                >
-                  {showAllReviewQuestions ? "Mostrar menos" : `Mostrar todas (${questions.length})`}
-                </Button>
-              )}
             </h3>
-            
+
             <Accordion
               type="single"
               collapsible
@@ -531,6 +521,19 @@ export default function SimuladoPlayer({
                 );
               })}
             </Accordion>
+
+            {questions.length > 5 && (
+              <div className="flex justify-center pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAllReviewQuestions(current => !current)}
+                  className="rounded-full border-2 border-accent/30 bg-accent/5 px-6 py-5 font-bold text-accent shadow-sm transition-all hover:bg-accent/10 hover:shadow-md"
+                >
+                  {showAllReviewQuestions ? <ChevronUp className="mr-2 h-5 w-5" /> : <ChevronDown className="mr-2 h-5 w-5" />}
+                  {showAllReviewQuestions ? "Mostrar menos" : `Mostrar todas (${questions.length})`}
+                </Button>
+              </div>
+            )}
           </div>
 
           {reportAttemptId && (

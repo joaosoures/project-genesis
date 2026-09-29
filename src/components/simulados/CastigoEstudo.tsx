@@ -4,7 +4,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle, Loader2, ArrowLeft } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, ArrowLeft, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import NeonProgressBar from "@/components/console/NeonProgressBar";
 
@@ -130,10 +130,7 @@ export default function CastigoEstudo({ tentativaId, originais, pedido, onPedido
   const visibleOriginais = originais.slice(0, showAllOriginals ? originais.length : 5);
   return <section className="space-y-4" id="castigo-do-simulado">
     <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-3"><div className="h-6 w-1 bg-accent rounded-full" />Castigo do Simulado</h3><p className="text-sm text-muted-foreground">Pratique as questões semelhantes com feedback imediato após cada resposta.</p></div>
-      <div className="flex flex-wrap gap-2">
-        {originais.length > 5 && <Button variant="outline" onClick={() => setShowAllOriginals(current => !current)}>{showAllOriginals ? "Mostrar menos" : `Mostrar todas (${originais.length})`}</Button>}
-        {fullIds.length > 0 && <Button onClick={() => { setScope(fullIds); setIndex(0); }}>Realizar castigo completo</Button>}
-      </div>
+      {fullIds.length > 0 && <Button onClick={() => { setScope(fullIds); setIndex(0); }}>Realizar castigo completo</Button>}
     </div>
     {visibleOriginais.map((o, i) => {
       const active = activeFor(o.id);
@@ -144,6 +141,16 @@ export default function CastigoEstudo({ tentativaId, originais, pedido, onPedido
         {active.length > 0 ? <><Badge variant="outline">{done}/{active.length} concluídas</Badge><Button size="sm" variant="outline" onClick={() => { setScope([o.id]); setIndex(0); }}>{done === active.length ? "Revisar" : "Resolver filhas"}</Button></> : <p className="text-sm text-muted-foreground">Não há questões semelhantes disponíveis no momento</p>}
       </Card>;
     })}
+    {originais.length > 5 && <div className="flex justify-center pt-2">
+      <Button
+        variant="outline"
+        onClick={() => setShowAllOriginals(current => !current)}
+        className="rounded-full border-2 border-accent/30 bg-accent/5 px-6 py-5 font-bold text-accent shadow-sm transition-all hover:bg-accent/10 hover:shadow-md"
+      >
+        {showAllOriginals ? <ChevronUp className="mr-2 h-5 w-5" /> : <ChevronDown className="mr-2 h-5 w-5" />}
+        {showAllOriginals ? "Mostrar menos" : `Mostrar todas (${originais.length})`}
+      </Button>
+    </div>}
     {scope && <div className="fixed inset-0 z-[70] bg-background overflow-y-auto p-4 md:p-10">
       <div className="max-w-2xl mx-auto space-y-6 pb-20">
         <Button variant="ghost" onClick={() => setScope(null)}><ArrowLeft className="h-4 w-4 mr-2" /> Voltar ao relatório</Button>
