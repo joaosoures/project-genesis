@@ -28,8 +28,8 @@ export interface AssinaturaInfo {
   excluir_dados_em: string | null;
   data_inicio_plano: string | null;
   dias_inadimplente: number;
-  stripe_subscription_id: string | null;
-  stripe_customer_id: string | null;
+  cakto_subscription_id: string | null;
+  cakto_customer_id: string | null;
   cancel_at_period_end: boolean;
 }
 

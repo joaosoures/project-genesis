@@ -9,8 +9,6 @@ import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { Gift, Link2, UserPlus, Copy, Share2, Trophy, Sparkles, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "sonner";
-import { getStripeEnvironment } from "@/lib/stripe";
-
 interface HistItem {
   id: string;
   status: string;
@@ -57,7 +55,7 @@ export default function IndiqueGanhe() {
     if (!user) return;
     setLoading(true);
     supabase.functions
-      .invoke("get-referral-balance", { body: { environment: getStripeEnvironment() } })
+      .invoke("get-referral-balance")
       .then(({ data: d, error }) => {
         if (!error && d) setData(d as BalanceData);
       })
@@ -254,7 +252,7 @@ export default function IndiqueGanhe() {
             </li>
           </ol>
           <p className="text-[11px] text-muted-foreground mt-4 text-center">
-            Sem limite de indicações. Créditos acumulam e são aplicados automaticamente pelo Stripe.
+            Sem limite de indicações. Créditos acumulam e são aplicados conforme as regras da Cakto.
           </p>
         </CardContent>
       </Card>

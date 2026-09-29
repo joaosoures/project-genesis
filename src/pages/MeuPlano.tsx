@@ -24,8 +24,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useStripeCheckout } from "@/hooks/useStripeCheckout";
-import { getStripeEnvironment } from "@/lib/stripe";
+import { useCaktoCheckout } from "@/hooks/useCaktoCheckout";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 import { Settings } from "lucide-react";
@@ -117,8 +116,7 @@ export default function MeuPlano() {
   const { plano, assinatura, loading, refresh } = useUserPlan();
   const [pagamentos, setPagamentos] = useState<any[]>([]);
   const [perfil, setPerfil] = useState<{ nome?: string; foto_url?: string | null } | null>(null);
-  const { openCheckout, checkoutDialog } = useStripeCheckout();
-  const [portalLoading, setPortalLoading] = useState(false);
+  const { openCheckout, checkoutDialog } = useCaktoCheckout();
   const [searchParams, setSearchParams] = useSearchParams();
   const [confirmPlan, setConfirmPlan] = useState<PlanKey | null>(null);
 
@@ -128,31 +126,16 @@ export default function MeuPlano() {
 
   const executePlanChange = (key: PlanKey) => {
     if (!user) return;
-    const priceId = key === "ouro" ? "ouro_mensal" : "prata_mensal";
+    const productId = key === "ouro"
+      ? "106162cc-1620-402b-a9e6-8efa3cde5e58"
+      : "3d7c3f69-120e-4f24-b191-54241cb0660f";
     openCheckout({
-      priceId,
+      productId,
       userId: user.id,
       customerEmail: user.email ?? undefined,
       returnUrl: `${window.location.origin}/meu-plano?checkout=success`,
     });
     setConfirmPlan(null);
-  };
-
-  const openPortal = async () => {
-    setPortalLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("create-portal-session", {
-        body: { environment: getStripeEnvironment(), returnUrl: `${window.location.origin}/meu-plano` },
-      });
-      if (error || !data?.url) throw new Error(data?.error || error?.message || "Falha ao abrir portal");
-      window.open(data.url, "_blank", "noopener,noreferrer");
-    } catch (e) {
-      toast.error("Não foi possível abrir o portal", {
-        description: e instanceof Error ? e.message : "Tente novamente.",
-      });
-    } finally {
-      setPortalLoading(false);
-    }
   };
 
   useEffect(() => {
@@ -310,15 +293,8 @@ export default function MeuPlano() {
                 Status: <span className="font-medium text-foreground capitalize">{assinatura?.status ?? "—"}</span>
               </p>
               
-              {assinatura?.stripe_customer_id && (
-                <button
-                  onClick={openPortal}
-                  disabled={portalLoading}
-                  className="text-xs text-primary hover:underline w-fit mt-1 flex items-center gap-1"
-                >
-                  <Settings className="h-3 w-3" />
-                  {portalLoading ? "Carregando..." : "Mudar de plano ou cancelar"}
-                </button>
+              {assinatura?.cakto_customer_id && (
+                <p className="text-xs text-muted-foreground mt-1">Gestão da assinatura processada pela Cakto.</p>
               )}
             </div>
           </CardContent>
@@ -459,9 +435,7 @@ export default function MeuPlano() {
             <div>
               <p className="text-muted-foreground text-xs uppercase tracking-wide">Método atual</p>
               <p className="font-medium">
-                {assinatura?.metodo_pagamento === "paddle" || assinatura?.metodo_pagamento === "stripe" 
-                  ? "Cartão de Crédito" 
-                  : (assinatura?.metodo_pagamento ?? "Nenhum método cadastrado")}
+                {assinatura?.metodo_pagamento ?? "Nenhum método cadastrado"}
               </p>
             </div>
             <Separator />
@@ -479,21 +453,11 @@ export default function MeuPlano() {
                 </div>
               ))}
             </div>
-            {(plano !== "trial" || (assinatura as any)?.stripe_customer_id) && (
+            {plano !== "trial" && (
               <>
                 <Separator />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full border-primary/20 hover:bg-primary/5 text-primary"
-                  onClick={openPortal}
-                  disabled={portalLoading}
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  {portalLoading ? "Abrindo Gerenciador…" : "Mudar de Plano ou Cancelar Assinatura"}
-                </Button>
                 <p className="text-[11px] text-muted-foreground text-center">
-                  Cancelar, trocar cartão, mudar de plano ou ver faturas.
+                  Alterações e cancelamentos serão refletidos após confirmação da Cakto.
                 </p>
                 <div className="pt-2 text-[10px] text-muted-foreground leading-relaxed italic border-t border-border/50 mt-2">
                   Pagamentos processados com segurança. Cancele quando quiser. Após 45 dias de congelamento (inadimplência ou trial expirado),
