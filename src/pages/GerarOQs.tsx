@@ -516,7 +516,7 @@ export default function GerarOQs() {
           <div className="space-y-2">
             <h1 className="text-2xl font-bold">Recurso bloqueado</h1>
             <p className="text-muted-foreground">
-              A geração de OQs por IA e por planilha está disponível nos planos Aluno de Prata e Aluno de Ouro.
+              A geração de OQs por planilha está disponível nos planos Aluno de Prata e Aluno de Ouro. A geração por IA é exclusiva do Aluno de Ouro.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row justify-center gap-3">
@@ -1006,7 +1006,7 @@ export default function GerarOQs() {
             <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 flex gap-3">
               <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
               <p className="text-[10px] text-amber-700 leading-relaxed font-medium">
-                <strong>Atenção:</strong> Em caso de congelamento da conta, as questões geradas e materiais salvos serão excluídos definitivamente após 30 dias.
+                <strong>Atenção:</strong> Em caso de congelamento da conta, ela e os dados de desempenho serão excluídos definitivamente após 45 dias.
               </p>
             </div>
           </div>
@@ -1199,7 +1199,7 @@ export default function GerarOQs() {
         <div className="space-y-1">
           <p className="text-xs font-bold text-blue-800 uppercase tracking-wider">Políticas de Retenção de Dados e Materiais</p>
           <p className="text-[10px] text-blue-700 leading-relaxed font-medium">
-            Os materiais e OQs gerados por IA ou importados dependem da manutenção da sua conta ativa. A inadimplência por mais de 60 dias acarreta a exclusão definitiva de todo o conteúdo personalizado e estatísticas de desempenho para otimização de custos. Avisos de pré-exclusão são enviados aos 45 dias.
+            Os materiais e OQs gerados por IA ou importados dependem da manutenção da sua conta ativa. Após 45 dias com a conta congelada, a conta e os dados de desempenho são excluídos definitivamente. Um aviso de pré-exclusão é enviado antes do prazo.
           </p>
         </div>
       </div>

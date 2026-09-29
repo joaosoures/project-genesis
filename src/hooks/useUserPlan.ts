@@ -56,7 +56,7 @@ const FEATURE_MAP: Record<Feature, PlanoEfetivo[]> = {
   gerar_oq_planilha: ["trial", "ouro", "prata"],
   gerar_oq_ia: ["trial", "ouro"],
   materiais: ["trial", "ouro"],
-  trilha: ["trial", "ouro"],
+  trilha: ["trial", "ouro", "prata"],
 };
 
 export function useUserPlan(): UserPlanState {

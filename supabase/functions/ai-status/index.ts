@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const PLAN_LIMITS: Record<string, number> = {
   ouro: 30,
-  trial: 10,
+  trial: 30,
   prata: 0,
   gratis: 0,
   congelado: 0,
@@ -58,7 +58,7 @@ serve(async (req) => {
       }
     }
   } catch (e) {
-    console.error("ai-status user lookup failed:", e);
+    console.error("[ai-status] user lookup failed:", e);
   }
 
   // Verifica chaves reservas
@@ -126,7 +126,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("ai-status ping failed:", err);
+    console.error("[ai-status] ping failed:", err);
     return new Response(
       JSON.stringify({
         ok: hasBackup,

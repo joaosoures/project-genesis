@@ -692,7 +692,7 @@ export default function Dashboard() {
         <div className="space-y-1">
           <p className="text-xs font-bold text-blue-800 uppercase tracking-wider">Políticas de Retenção de Dados e Desempenho</p>
           <p className="text-[10px] text-blue-700 leading-relaxed font-medium">
-            O seu algoritmo de repetição espaçada e a ordem personalizada das questões dependem exclusivamente dos seus dados históricos. A inadimplência por mais de 60 dias acarreta a exclusão definitiva dessas estatísticas, resultando na perda do seu comportamento individualizado de estudo e dos materiais gerados por IA. Avisos de pré-exclusão são enviados aos 45 dias.
+            O seu algoritmo de repetição espaçada e a ordem personalizada das questões dependem exclusivamente dos seus dados históricos. Após 45 dias com a conta congelada, esses dados de desempenho são excluídos definitivamente. Um aviso de pré-exclusão é enviado antes do prazo.
           </p>
         </div>
       </div>

@@ -1072,15 +1072,15 @@ export default function TrilhaEstrategica() {
             <div className="flex items-center gap-2 mb-3">
               <Lock className="h-4 w-4 text-amber-500" />
               <p className="text-[10px] uppercase tracking-widest font-black text-amber-600">
-                Direcionamento exclusivo Plano Ouro
+                Direcionamento automático da Trilha Estratégica
               </p>
             </div>
             <h3 className="font-black text-xl mb-2">
-              Desbloqueie o Foco Sincronizado e as Matérias Base
+              Acesse o direcionamento automático da Trilha Estratégica
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              A trilha direciona automaticamente suas aulas com base no rodízio
-              e nas matérias de maior incidência.
+              Organize seus estudos com direcionamento automático com base no rodízio
+              e nas matérias de maior incidência. Resumos e simulados são exclusivos do Ouro.
             </p>
             <Button
               asChild

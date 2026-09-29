@@ -133,6 +133,43 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Autenticação obrigatória.", code: "UNAUTHORIZED" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const authClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    );
+    const { data: authData, error: authError } = await authClient.auth.getUser(token);
+    if (authError || !authData.user) {
+      return new Response(JSON.stringify({ error: "Sessão inválida.", code: "UNAUTHORIZED" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    );
+    const [{ data: planData }, { data: roleData }] = await Promise.all([
+      supabase.rpc("get_user_plan", { _user_id: authData.user.id }),
+      supabase.from("user_roles").select("role").eq("user_id", authData.user.id).eq("role", "admin").maybeSingle(),
+    ]);
+    const userPlan = (planData as string) ?? "congelado";
+    if (!roleData && userPlan !== "ouro" && userPlan !== "trial") {
+      return new Response(JSON.stringify({ error: "A geração por IA está disponível apenas para Aluno de Ouro e Free Trial ativo.", code: "PLAN_NOT_ALLOWED" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { text, fileName, specialty } = await req.json();
 
     if (!text || typeof text !== "string" || text.length < 200) {
@@ -151,11 +188,6 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
 
     const keysToTry: ApiKey[] = [];
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");

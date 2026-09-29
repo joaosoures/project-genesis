@@ -55,12 +55,12 @@ const PLANOS: PlanDef[] = [
     icone: Crown,
     destaque: "Mais completo",
     features: [
-      { label: "Estudar OQs nativos (Gerais e Especialidades)", ok: true },
+      { label: "Estudar OQs nativos (Gerais e Especialidades) com MRE", ok: true },
       { label: "Acesso completo a métricas detalhadas", ok: true },
-      { label: "Módulos de Estudo Focado (Crítico, Novo, Difíceis, Esquecidos)", ok: true },
-      { label: "Gerar OQs por Importação de Planilha", ok: true },
-      { label: "30 gerações por Inteligência Artificial (IA) / mês", ok: true },
+      { label: "Módulos de Estudo Focado: Crítico, Novo, Difíceis e Esquecidos", ok: true },
+      { label: "Gerar OQs por importação de planilha e por Inteligência Artificial (IA)", ok: true },
       { label: "Direcionamento automático na Trilha Estratégica", ok: true },
+      { label: "Incorporar simulados à Trilha Estratégica", ok: true },
       { label: "Acesso total a materiais de apoio e áudio aulas", ok: true },
     ],
   },
@@ -72,13 +72,13 @@ const PLANOS: PlanDef[] = [
     cor: "from-slate-300 via-slate-400 to-slate-500",
     icone: Award,
     features: [
-      { label: "Estudar OQs nativos (Gerais e Especialidades)", ok: true },
+      { label: "Estudar OQs nativos (Gerais e Especialidades) com MRE", ok: true },
       { label: "Acesso completo a métricas detalhadas", ok: true },
-      { label: "Módulos de Estudo Focado (Crítico, Novo, Difíceis, Esquecidos)", ok: true },
-      { label: "Gerar OQs por Importação de Planilha", ok: true },
+      { label: "Módulos de Estudo Focado: Crítico, Novo, Difíceis e Esquecidos", ok: true },
+      { label: "Gerar OQs manualmente ou por importação de planilha", ok: true },
       { label: "Gerar OQs por Inteligência Artificial (IA)", ok: false },
-      { label: "Direcionamento automático na Trilha Estratégica", ok: false },
-      { label: "Acesso a materiais de apoio e áudio aulas", ok: false },
+      { label: "Direcionamento automático na Trilha Estratégica", ok: true },
+      { label: "Resumos, simulados e materiais de apoio", ok: false },
     ],
   },
   {
@@ -88,14 +88,11 @@ const PLANOS: PlanDef[] = [
     precoDia: 0,
     cor: "from-zinc-500 via-zinc-600 to-zinc-700",
     icone: Sparkles,
-    destaque: "7 dias de acesso Ouro",
+    destaque: "14 dias de acesso Ouro",
     features: [
-      { label: "Acesso total a todas as funcionalidades", ok: true },
-      { label: "Métricas e Desempenho detalhados", ok: true },
-      { label: "Gerar OQs por Planilha", ok: true },
-      { label: "10 gerações por Inteligência Artificial (IA)", ok: true },
-      { label: "Materiais de Apoio e Áudio Aulas", ok: true },
-      { label: "Após 7 dias: conta congelada", ok: true },
+      { label: "Todos os recursos do Aluno de Ouro durante 14 dias", ok: true },
+      { label: "Após 14 dias: conta congelada", ok: true },
+      { label: "Após 45 dias congelada: exclusão da conta e dos dados de desempenho", ok: true },
     ],
   },
 ];
@@ -110,9 +107,9 @@ const diasAte = (iso?: string | null) => {
 };
 
 function planoToKey(p: PlanoEfetivo): PlanKey {
-  if (p === "ouro") return "ouro";
-  if (p === "prata") return "prata";
-  return "gratis"; // trial e gratis_expirado caem aqui visualmente
+if (p === "ouro") return "ouro";
+if (p === "prata") return "prata";
+return "gratis"; // estados sem plano comercial caem aqui visualmente
 }
 
 export default function MeuPlano() {
@@ -238,7 +235,7 @@ export default function MeuPlano() {
   }, [plano, diasTrialRestantes, diasAteExclusao]);
 
   const planoLabel: Record<PlanoEfetivo, string> = {
-    trial: "Trial (7 dias de Ouro)",
+    trial: "Trial (14 dias de Ouro)",
     ouro: "Aluno de Ouro",
     prata: "Aluno de Prata",
     gratis: "Free Trial",
@@ -499,8 +496,8 @@ export default function MeuPlano() {
                   Cancelar, trocar cartão, mudar de plano ou ver faturas.
                 </p>
                 <div className="pt-2 text-[10px] text-muted-foreground leading-relaxed italic border-t border-border/50 mt-2">
-                  Pagamentos processados com segurança. Cancele quando quiser. Após 60 dias de congelamento (inadimplência ou trial expirado), 
-                  o sistema executa a exclusão irreversível dos dados de progresso e materiais gerados para otimização de custos.
+                  Pagamentos processados com segurança. Cancele quando quiser. Após 45 dias de congelamento (inadimplência ou trial expirado),
+                  o sistema executa a exclusão irreversível da conta e dos dados de desempenho.
                 </div>
               </>
             )}

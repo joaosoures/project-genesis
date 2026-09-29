@@ -140,7 +140,7 @@ export default function Landing() {
               <LiquidCTAButton className="w-full sm:w-auto px-8 py-3.5 md:py-4">
                 <div className="flex flex-col items-center leading-tight">
                   <span className="text-base md:text-lg">Faz um OQ!</span>
-                  <span className="text-[10px] md:text-xs opacity-80 font-medium">7 dias grátis · sem cartão</span>
+                  <span className="text-[10px] md:text-xs opacity-80 font-medium">14 dias grátis · sem cartão</span>
                 </div>
               </LiquidCTAButton>
             </Link>
@@ -341,7 +341,7 @@ export default function Landing() {
               style={{ background: "hsl(var(--accent))" }}
             />
             <div className="text-[11px] uppercase tracking-[0.3em] text-[hsl(var(--accent))] mb-3">
-              7 dias grátis · Sem cartão
+              14 dias grátis · Sem cartão
             </div>
             <h2 className="text-3xl md:text-5xl font-semibold tracking-tight leading-[1.05]">
               Faz um OQ.<br />
@@ -357,7 +357,7 @@ export default function Landing() {
                 <LiquidCTAButton className="w-full sm:w-auto px-10 py-4 md:py-5">
                   <div className="flex flex-col items-center leading-tight">
                     <span className="text-lg md:text-xl">Faz um OQ!</span>
-                    <span className="text-xs md:text-sm opacity-90 font-medium">Começar meus 7 dias grátis</span>
+                    <span className="text-xs md:text-sm opacity-90 font-medium">Começar meus 14 dias grátis</span>
                   </div>
                 </LiquidCTAButton>
               </Link>
