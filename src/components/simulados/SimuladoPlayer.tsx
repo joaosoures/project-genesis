@@ -98,6 +98,7 @@ export default function SimuladoPlayer({
   const castigoSectionRef = useRef<HTMLDivElement>(null);
   const [showCastigoShortcut, setShowCastigoShortcut] = useState(false);
   const [pendingCastigoCount, setPendingCastigoCount] = useState(0);
+  const [showAllReviewQuestions, setShowAllReviewQuestions] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -414,6 +415,16 @@ export default function SimuladoPlayer({
             <h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-3">
               <div className="h-6 w-1 bg-accent rounded-full" />
               Revisão das Questões
+              {questions.length > 5 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-auto rounded-full normal-case tracking-normal"
+                  onClick={() => setShowAllReviewQuestions(current => !current)}
+                >
+                  {showAllReviewQuestions ? "Mostrar menos" : `Mostrar todas (${questions.length})`}
+                </Button>
+              )}
             </h3>
             
             <Accordion
@@ -423,7 +434,7 @@ export default function SimuladoPlayer({
               onValueChange={setOpenReportQuestion}
               className="space-y-4"
             >
-              {questions.map((q, i) => {
+              {questions.slice(0, showAllReviewQuestions ? questions.length : 5).map((q, i) => {
                 const res = data.respostas.find(r => r.questao_id === q.id);
                 const respondida = res?.respondida;
                 const acertou = res?.acertou;

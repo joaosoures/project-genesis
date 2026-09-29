@@ -26,6 +26,7 @@ export default function CastigoEstudo({ tentativaId, originais, pedido, onPedido
   const [busy, setBusy] = useState(false);
   const [scope, setScope] = useState<string[] | null>(null);
   const [index, setIndex] = useState(0);
+  const [showAllOriginals, setShowAllOriginals] = useState(false);
   const idsKey = originais.map(o => o.id).join(",");
   const ids = useMemo(() => idsKey.split(",").filter(Boolean), [idsKey]);
 
@@ -126,11 +127,15 @@ export default function CastigoEstudo({ tentativaId, originais, pedido, onPedido
   };
 
   if (loading) return <p className="text-sm flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Carregando castigo...</p>;
+  const visibleOriginais = originais.slice(0, showAllOriginals ? originais.length : 5);
   return <section className="space-y-4" id="castigo-do-simulado">
     <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-3"><div className="h-6 w-1 bg-accent rounded-full" />Castigo do Simulado</h3><p className="text-sm text-muted-foreground">Pratique as questões semelhantes com feedback imediato após cada resposta.</p></div>
-      {fullIds.length > 0 && <Button onClick={() => { setScope(fullIds); setIndex(0); }}>Realizar castigo completo</Button>}
+      <div className="flex flex-wrap gap-2">
+        {originais.length > 5 && <Button variant="outline" onClick={() => setShowAllOriginals(current => !current)}>{showAllOriginals ? "Mostrar menos" : `Mostrar todas (${originais.length})`}</Button>}
+        {fullIds.length > 0 && <Button onClick={() => { setScope(fullIds); setIndex(0); }}>Realizar castigo completo</Button>}
+      </div>
     </div>
-    {originais.map((o, i) => {
+    {visibleOriginais.map((o, i) => {
       const active = activeFor(o.id);
       const done = active.filter(f => !!responseFor(f.id)?.finalizada_em).length;
       const status = !o.respondida ? "não realizada" : o.errou ? "errada" : "acertada";
