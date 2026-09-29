@@ -7,18 +7,20 @@ type AuthCtx = {
   user: User | null;
   loading: boolean;
   isAdmin: boolean;
+  isEditor: boolean;
   isBanned: boolean;
   signOut: () => Promise<void>;
 };
 
 const Ctx = createContext<AuthCtx>({
-  session: null, user: null, loading: true, isAdmin: false, isBanned: false, signOut: async () => {},
+  session: null, user: null, loading: true, isAdmin: false, isEditor: false, isBanned: false, signOut: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isEditor, setIsEditor] = useState(false);
   const [isBanned, setIsBanned] = useState(false);
 
   useEffect(() => {
@@ -35,9 +37,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .from("user_roles")
             .select("role")
             .eq("user_id", s.user.id)
-            .eq("role", "admin")
+            .in("role", ["admin", "editor"])
             .maybeSingle();
-          setIsAdmin(!!roleData);
+          setIsAdmin(roleData?.role === "admin");
+          setIsEditor(roleData?.role === "editor");
 
 
           const { data: profileData } = await supabase
@@ -55,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }, 0);
       } else {
         setIsAdmin(false);
+        setIsEditor(false);
         setIsBanned(false);
       }
     });
@@ -62,6 +66,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
       if (s?.user) {
+        supabase.from("user_roles")
+          .select("role")
+          .eq("user_id", s.user.id)
+          .in("role", ["admin", "editor"])
+          .maybeSingle()
+          .then(({ data }) => {
+            setIsAdmin(data?.role === "admin");
+            setIsEditor(data?.role === "editor");
+          });
         supabase.from("profiles")
           .select("is_banned")
           .eq("id", s.user.id)
@@ -72,6 +85,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               supabase.auth.signOut();
             }
           });
+      } else {
+        setIsAdmin(false);
+        setIsEditor(false);
       }
       setLoading(false);
     });
@@ -113,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: session?.user ?? null,
         loading,
         isAdmin,
+        isEditor,
         isBanned,
         signOut: async () => { await supabase.auth.signOut(); },
       }}

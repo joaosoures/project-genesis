@@ -1511,7 +1511,7 @@ export type Database = {
       toggle_user_ban: { Args: { target_user_id: string }; Returns: undefined }
     }
     Enums: {
-      app_role: "admin" | "usuario"
+      app_role: "admin" | "editor" | "usuario"
       especialidade:
         | "clinica_medica"
         | "cirurgia_geral"
@@ -1660,7 +1660,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "usuario"],
+      app_role: ["admin", "editor", "usuario"],
       especialidade: [
         "clinica_medica",
         "cirurgia_geral",

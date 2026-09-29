@@ -187,10 +187,10 @@ export default function Admin() {
     if (error) toast.error("Falha ao salvar flag");
   };
 
-  const handleUpdateRole = async (userId: string, newRole: string) => {
+  const handleUpdateRole = async (userId: string, newRole: "admin" | "editor" | "usuario") => {
     const { error } = await supabase.rpc('admin_set_role', {
       target_user_id: userId,
-      new_role: newRole as any,
+      new_role: newRole,
     });
     
     if (error) {
@@ -228,19 +228,28 @@ export default function Admin() {
     if (error) {
       toast.error("Erro ao atualizar assinatura: " + error.message);
     } else {
-      toast.success("Assinatura atualizada");
+      toast.success("Plano administrativo ativado por 1 mês");
       fetchData();
     }
   };
 
-
-  const handleToggleBan = async (userId: string, currentStatus: boolean) => {
-    const { error } = await supabase.rpc('toggle_user_ban', { target_user_id: userId });
-    
+  const handleCancelSubscription = async (userId: string) => {
+    const { error } = await (supabase as any).rpc('admin_cancel_subscription', { target_user_id: userId });
     if (error) {
-      toast.error("Erro ao atualizar status de banimento: " + error.message);
+      toast.error("Erro ao cancelar plano: " + error.message);
     } else {
-      toast.success(currentStatus ? "Usuário desbanido" : "Usuário banido com sucesso");
+      toast.success("Plano cancelado e vínculo de pagamento removido");
+      fetchData();
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm("TEM CERTEZA? Banir / excluir apagará a conta, o progresso e todos os vínculos de pagamento. Esta ação é irreversível.")) return;
+    const { error } = await (supabase as any).rpc('admin_delete_user', { target_user_id: userId });
+    if (error) {
+      toast.error("Erro ao excluir conta: " + error.message);
+    } else {
+      toast.success("Conta banida e excluída com sucesso");
       fetchData();
     }
   };
@@ -261,12 +270,12 @@ export default function Admin() {
   };
 
   const handleExtendTrial = async (userId: string) => {
-    const { error } = await supabase.rpc('extend_trial', { target_user_id: userId, days_to_add: 7 });
+    const { error } = await supabase.rpc('extend_trial', { target_user_id: userId, days_to_add: 14 });
     
     if (error) {
       toast.error("Erro ao estender trial: " + error.message);
     } else {
-      toast.success("Trial estendido em +7 dias!");
+      toast.success("Trial estendido em +14 dias!");
       fetchData();
     }
   };
@@ -464,24 +473,23 @@ export default function Admin() {
                                 <MoreVertical size={16} />
                               </Button>
                             </DropdownMenuTrigger>
-                             <DropdownMenuContent align="end" className="glass w-56">
+                             <DropdownMenuContent align="end" className="glass w-64">
                               <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ações Rápidas</div>
                               <DropdownMenuItem onClick={() => handleExtendTrial(u.id)} className="gap-2 text-green-400">
-                                <Clock size={14}/> Dar +7 Dias Trial
+                                <Clock size={14}/> Dar +14 Dias Trial
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleResetUserData(u.id)} className="gap-2 text-orange-400">
-                                <XCircle size={14}/> Limpar Cache (Reset)
+                                <XCircle size={14}/> Resetar o progresso da conta
                               </DropdownMenuItem>
                               
                               <div className="px-2 py-1.5 mt-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-t border-border/20">Permissões</div>
                               <DropdownMenuItem onClick={() => handleUpdateRole(u.id, 'admin')} className="gap-2"><ShieldAlert size={14}/> Tornar Admin</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleUpdateRole(u.id, 'editor')} className="gap-2">Tornar Editor</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleUpdateRole(u.id, 'estudante_bronze')} className="gap-2">Resetar p/ Bronze</DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleUpdateRole(u.id, 'editor')} className="gap-2">Tornar Editor</DropdownMenuItem>
                               
                               <div className="px-2 py-1.5 mt-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-t border-border/20">Plano & Status</div>
-                              <DropdownMenuItem onClick={() => handleUpdateSubscription(u.id, 'ativo', 'ouro')} className="gap-2 text-yellow-500"><Award size={14}/> Ativar Ouro (Ativo)</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleUpdateSubscription(u.id, 'ativo', 'prata')} className="gap-2 text-slate-300"><Star size={14}/> Ativar Prata (Ativo)</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleUpdateSubscription(u.id, 'cancelado', u.plano_tipo || 'bronze')} className="gap-2 text-red-400"><XCircle size={14}/> Cancelar Plano</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleUpdateSubscription(u.id, 'ativo', 'ouro')} className="gap-2 text-yellow-500"><Award size={14}/> Ativar Ouro por 1 mês</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleUpdateSubscription(u.id, 'ativo', 'prata')} className="gap-2 text-slate-300"><Star size={14}/> Ativar Prata por 1 mês</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleCancelSubscription(u.id)} className="gap-2 text-red-400"><XCircle size={14}/> Cancelar Plano</DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                           
@@ -607,9 +615,9 @@ export default function Admin() {
                                 size="sm" 
                                 variant={u.is_banned ? "outline" : "destructive"} 
                                 className={cn("text-[10px] h-7", !u.is_banned && "opacity-80 hover:opacity-100")}
-                                onClick={() => handleToggleBan(u.id, u.is_banned)}
+                                onClick={() => handleDeleteUser(u.id)}
                               >
-                                {u.is_banned ? "Desbanir" : "Banir / Excluir"}
+                                Banir / Excluir
                               </Button>
                             </div>
                           </div>

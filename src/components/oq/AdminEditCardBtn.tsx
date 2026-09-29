@@ -16,7 +16,7 @@ import { ESPECIALIDADE_LABEL } from "@/lib/oq";
 type CardRow = any;
 
 export function AdminEditCardBtn({ cardId, onSaved }: { cardId: string; onSaved?: (card: any) => void }) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isEditor } = useAuth();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -43,7 +43,7 @@ export function AdminEditCardBtn({ cardId, onSaved }: { cardId: string; onSaved?
     setCard((c: any) => (c ? { ...c, [key]: value } : c));
   }
 
-  if (!isAdmin) return null;
+  if (!isAdmin && !isEditor) return null;
 
 
   async function salvar() {
@@ -73,7 +73,7 @@ export function AdminEditCardBtn({ cardId, onSaved }: { cardId: string; onSaved?
           <DialogHeader className="px-5 py-4 border-b shrink-0">
             <DialogTitle>Editar OQ</DialogTitle>
             <DialogDescription className="text-xs">
-              Edição de administrador • ID: <span className="font-mono">{cardId.slice(0, 8)}</span>
+              Edição de {isAdmin ? "administrador" : "editor"} • ID: <span className="font-mono">{cardId.slice(0, 8)}</span>
             </DialogDescription>
           </DialogHeader>
 

@@ -20,8 +20,9 @@ type FilterType = "todos" | "verificados" | "aluno";
 const OQCardItem = memo(({ 
   c, 
   user, 
-  isAdmin, 
-  exculoes, 
+  isAdmin,
+  isEditor,
+  exculoes,
   toggleExclusion, 
   deleteCard, 
   setEditingCard, 
@@ -29,8 +30,9 @@ const OQCardItem = memo(({
 }: { 
   c: any; 
   user: any; 
-  isAdmin: boolean; 
-  exculoes: Set<string>; 
+  isAdmin: boolean;
+  isEditor: boolean;
+  exculoes: Set<string>;
   toggleExclusion: (id: string) => void; 
   deleteCard: (id: string) => void; 
   setEditingCard: (c: any) => void; 
@@ -72,9 +74,9 @@ const OQCardItem = memo(({
           )}
           <div className={cn(
             "flex items-center gap-1 transition-opacity",
-            isAdmin ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            isAdmin || isEditor ? "opacity-100" : "opacity-0 group-hover:opacity-100"
           )}>
-            {(isAdmin || (!c.verificado && isOwner)) && (
+            {(isAdmin || isEditor || (!c.verificado && isOwner)) && (
               <button
                 onClick={() => { setEditingCard({ ...c }); setIsEditDialogOpen(true); }}
                 className="p-1.5 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
@@ -123,7 +125,7 @@ export default function BancoCards() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [studiedIds, setStudiedIds] = useState<Set<string>>(new Set());
   const [expandedBaralhos, setExpandedBaralhos] = useState<Set<string>>(new Set());
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isEditor } = useAuth();
 
   useEffect(() => {
     document.title = "Banco de OQs — OQ Falta?";
@@ -370,8 +372,9 @@ export default function BancoCards() {
                 key={c.id}
                 c={c} 
                 user={user} 
-                isAdmin={isAdmin} 
-                exculoes={exclusoes} 
+                isAdmin={isAdmin}
+                isEditor={isEditor}
+                exculoes={exclusoes}
                 toggleExclusion={toggleExclusion} 
                 deleteCard={deleteCard} 
                 setEditingCard={setEditingCard} 
