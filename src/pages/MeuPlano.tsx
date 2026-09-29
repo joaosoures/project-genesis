@@ -129,12 +129,7 @@ export default function MeuPlano() {
     const productId = key === "ouro"
       ? "106162cc-1620-402b-a9e6-8efa3cde5e58"
       : "3d7c3f69-120e-4f24-b191-54241cb0660f";
-    openCheckout({
-      productId,
-      userId: user.id,
-      customerEmail: user.email ?? undefined,
-      returnUrl: `${window.location.origin}/meu-plano?checkout=success`,
-    });
+    openCheckout({ productId });
     setConfirmPlan(null);
   };
 

@@ -102,8 +102,8 @@ export type Database = {
           plano?: string
           proxima_renovacao?: string | null
           status?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
+          cakto_customer_id?: string | null
+          cakto_subscription_id?: string | null
           usuario_id: string
           valor_mensal?: number
         }
@@ -523,7 +523,7 @@ export type Database = {
           ip_signup: unknown
           recompensado_em: string | null
           status: string
-          stripe_credit_note_id: string | null
+          referral_credit_id: string | null
           valor_credito_brl: number
         }
         Insert: {
@@ -538,7 +538,7 @@ export type Database = {
           ip_signup?: unknown
           recompensado_em?: string | null
           status?: string
-          stripe_credit_note_id?: string | null
+          referral_credit_id?: string | null
           valor_credito_brl?: number
         }
         Update: {
@@ -553,7 +553,7 @@ export type Database = {
           ip_signup?: unknown
           recompensado_em?: string | null
           status?: string
-          stripe_credit_note_id?: string | null
+          referral_credit_id?: string | null
           valor_credito_brl?: number
         }
         Relationships: []
@@ -1418,7 +1418,7 @@ export type Database = {
           indicador_id?: string | null
           recompensado_em?: string | null
           status?: string | null
-          stripe_credit_note_id?: string | null
+          referral_credit_id?: string | null
           valor_credito_brl?: number | null
         }
         Update: {
@@ -1431,7 +1431,7 @@ export type Database = {
           indicador_id?: string | null
           recompensado_em?: string | null
           status?: string | null
-          stripe_credit_note_id?: string | null
+          referral_credit_id?: string | null
           valor_credito_brl?: number | null
         }
         Relationships: []
