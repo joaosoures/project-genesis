@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
@@ -86,8 +87,8 @@ export default function AdminGerarSimulado({ onFinished }: { onFinished: () => v
       if (simErr) throw simErr;
 
       // Process questions
-      const questions = rows.map((r, idx) => {
-        const especialidades: Record<string, string> = {
+      const questions: Database["public"]["Tables"]["simulado_questoes"]["Insert"][] = rows.map((r, idx) => {
+        const especialidades: Record<string, Database["public"]["Tables"]["simulado_questoes"]["Insert"]["especialidade"]> = {
           "clínica médica": "clinica_medica",
           "cirurgia geral": "cirurgia_geral",
           "obstetrícia e ginecologia": "ginecologia_obstetricia",
