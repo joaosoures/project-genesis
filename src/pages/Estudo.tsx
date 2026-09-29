@@ -121,9 +121,16 @@ export default function Estudo() {
   }, [user, params.toString()]);
 
   useEffect(() => {
-    carregar();
+    let active = true;
+    const iniciar = async () => {
+      await processSyncQueue();
+      if (active) await carregar();
+    };
+    iniciar();
     document.title = "Estudar — OQmed";
-    processSyncQueue();
+    return () => {
+      active = false;
+    };
   }, [carregar]);
 
   const card = pool[idx];

@@ -175,7 +175,8 @@ export function useTrilhaPlano() {
       })),
     );
 
-    // Histórico semana atual e anterior
+    // As estatísticas da trilha são derivadas do histórico persistido. Isso evita
+    // perder respostas quando a janela é atualizada antes de um cache local ser salvo.
     const now = new Date();
     const monday = new Date(now);
     monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
@@ -183,72 +184,62 @@ export function useTrilhaPlano() {
     const lastMonday = new Date(monday);
     lastMonday.setDate(monday.getDate() - 7);
 
-    // 1. A meta considera apenas respostas feitas nas filas gerais.
-    // Respostas abertas diretamente por uma matéria continuam valendo para concluí-la.
-    const { data: recentHist } = await supabase
+    const { data: history, error: historyError } = await supabase
       .from("historico_estudo")
-      .select("timestamp, conta_meta_diaria")
-      .eq("usuario_id", user.id)
-      .eq("conta_meta_diaria", true)
-      .gte("timestamp", lastMonday.toISOString());
+      .select("card_id, timestamp, acertou, conta_meta_diaria")
+      .eq("usuario_id", user.id);
+
+    if (historyError) {
+      console.error("Erro ao carregar histórico da trilha:", historyError);
+    }
+
+    const historyRows = history ?? [];
+    const cardIds = Array.from(new Set(historyRows.map((h) => h.card_id as string)));
+    const aulaByCard: Record<string, string> = {};
+    if (cardIds.length > 0) {
+      const { data: cardsWithAula } = await supabase
+        .from("cards")
+        .select("id, aula_id")
+        .in("id", cardIds);
+      (cardsWithAula ?? []).forEach((card: any) => {
+        if (card.aula_id) aulaByCard[card.id] = card.aula_id;
+      });
+    }
 
     let cw = 0;
     let lw = 0;
     const recentAulaStats: Record<string, { count: number; acertos: number }> = {};
+    const globalStats: Record<string, { count: number; acertos: number }> = {};
 
-    (recentHist ?? []).forEach((h) => {
-      const t = new Date(h.timestamp!);
-      if (t >= monday) cw++;
-      else lw++;
+    historyRows.forEach((h) => {
+      const timestamp = new Date(h.timestamp!);
+      if (h.conta_meta_diaria) {
+        if (timestamp >= monday) cw++;
+        else if (timestamp >= lastMonday) lw++;
+      }
+
+      const aulaId = aulaByCard[h.card_id as string];
+      if (!aulaId) return;
+      globalStats[aulaId] ??= { count: 0, acertos: 0 };
+      globalStats[aulaId].count++;
+      if (h.acertou) globalStats[aulaId].acertos++;
+
+      if (timestamp >= monday) {
+        recentAulaStats[aulaId] ??= { count: 0, acertos: 0 };
+        recentAulaStats[aulaId].count++;
+        if (h.acertou) recentAulaStats[aulaId].acertos++;
+      }
     });
+
     setStudiedThisWeek(cw);
     setStudiedLastWeek(lw);
-
-    // 2. Sincronização Incremental das Estatísticas Globais
-    const lastSync = currentSettings.last_sync_timestamp;
-    const globalStats = { ...(currentSettings.stats_cache || {}) };
-    
-    // Fetch apenas o que é novo desde a última sincronização
-    const { data: newHist, error: syncError } = await supabase
-      .from("historico_estudo")
-      .select("card_id, timestamp, acertou")
-      .eq("usuario_id", user.id)
-      .gte("timestamp", lastSync || inicioSemana.toISOString());
-
-    if (!syncError && newHist && newHist.length > 0) {
-      const newCardIds = Array.from(new Set(newHist.map(h => h.card_id as string)));
-      const { data: cs } = await supabase.from("cards").select("id, aula_id").in("id", newCardIds);
-      const aulaByCard: Record<string, string> = {};
-      (cs ?? []).forEach((c: any) => { if (c.aula_id) aulaByCard[c.id] = c.aula_id; });
-      
-      newHist.forEach((h) => {
-        const aid = aulaByCard[h.card_id as string];
-        if (!aid) return;
-        globalStats[aid] ??= { count: 0, acertos: 0 };
-        globalStats[aid].count++;
-        if (h.acertou) globalStats[aid].acertos++;
-        
-        // Se for da semana atual, atualizamos aulaStatsSemana também
-        const t = new Date(h.timestamp!);
-        if (t >= monday) {
-          recentAulaStats[aid] ??= { count: 0, acertos: 0 };
-          recentAulaStats[aid].count++;
-          if (h.acertou) recentAulaStats[aid].acertos++;
-        }
-      });
-      
-      const newSyncTimestamp = new Date().toISOString();
-      setSettings(prev => ({
-        ...prev,
-        stats_cache: globalStats,
-        last_sync_timestamp: newSyncTimestamp
-      }));
-    } else if (!lastSync) {
-        setSettings(prev => ({ ...prev, last_sync_timestamp: new Date().toISOString() }));
-    }
-
     setAulaStatsSemana(recentAulaStats);
     setAulaStatsGlobal(globalStats);
+    setSettings((prev) => ({
+      ...prev,
+      stats_cache: globalStats,
+      last_sync_timestamp: new Date().toISOString(),
+    }));
     setLoading(false);
   }, [user]);
 
