@@ -87,7 +87,16 @@ export default function AdminGerarSimulado({ onFinished }: { onFinished: () => v
 
       // Process questions
       const questions = rows.map((r, idx) => {
-        const esp = String(r[0] || "").trim();
+        const especialidades: Record<string, string> = {
+          "clínica médica": "clinica_medica",
+          "cirurgia geral": "cirurgia_geral",
+          "obstetrícia e ginecologia": "ginecologia_obstetricia",
+          "ginecologia e obstetrícia": "ginecologia_obstetricia",
+          "pediatria": "pediatria",
+          "medicina preventiva e social": "medicina_preventiva",
+          "medicina preventiva": "medicina_preventiva",
+        };
+        const esp = especialidades[String(r[0] || "").trim().toLowerCase()];
         const comando = String(r[1] || "").trim();
         const opA = String(r[2] || "").trim();
         const opB = String(r[3] || "").trim();
@@ -114,7 +123,7 @@ export default function AdminGerarSimulado({ onFinished }: { onFinished: () => v
           explicacao_3: exp3 || null,
           ordem: idx
         };
-      }).filter(q => q.comando && q.gabarito);
+      }).filter(q => q.comando && q.gabarito && q.especialidade);
 
       const { error: qErr } = await supabase.from("simulado_questoes").insert(questions);
       if (qErr) throw qErr;

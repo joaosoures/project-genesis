@@ -9,8 +9,8 @@ export const ESPECIALIDADE_LABEL: Record<Especialidade, string> = {
   clinica_medica: "Clínica Médica",
   cirurgia_geral: "Cirurgia Geral",
   pediatria: "Pediatria",
-  ginecologia_obstetricia: "Ginecologia e Obstetrícia",
-  medicina_preventiva: "Medicina Preventiva",
+  ginecologia_obstetricia: "Obstetrícia e Ginecologia",
+  medicina_preventiva: "Medicina Preventiva e Social",
   saude_mental: "Saúde Mental",
 };
 

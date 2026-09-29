@@ -63,7 +63,7 @@ export function addGuideSheet(wb: ExcelJS.Workbook) {
   const rows: [string, string][] = [
     ["COLUNAS OBRIGATÓRIAS", "Especialidade | Modo | comando | resposta 1..5 | variações 1..5 | gabarito | explicação (15 colunas)"],
     ["", ""],
-    ["Especialidade", "Use exatamente: Clínica Médica, Cirurgia Geral, Pediatria, Ginecologia e Obstetrícia ou Medicina Preventiva."],
+    ["Especialidade", "Use exatamente: Clínica Médica, Cirurgia Geral, Pediatria, Obstetrícia e Ginecologia ou Medicina Preventiva e Social."],
     ["Modo", "Use exatamente: ABCDE, Lacuna ou OQ Falta."],
     ["comando", "Enunciado da questão. Use ____ (4 underscores) para marcar a lacuna no modo Lacuna."],
     ["", ""],
@@ -114,7 +114,7 @@ Gere EXATAMENTE 1 tabela com 15 colunas e 25 linhas de dados, nesta ordem:
 Especialidade | Modo | comando | resposta 1 | variações 1 | resposta 2 | variações 2 | resposta 3 | variações 3 | resposta 4 | variações 4 | resposta 5 | variações 5 | gabarito | explicação
 
 VALORES PERMITIDOS:
-- Especialidade: Clínica Médica, Cirurgia Geral, Pediatria, Ginecologia e Obstetrícia ou Medicina Preventiva.
+- Especialidade: Clínica Médica, Cirurgia Geral, Pediatria, Obstetrícia e Ginecologia ou Medicina Preventiva e Social.
 - Modo: ABCDE, Lacuna ou OQ Falta.
 
 REGRAS POR MODO (NUNCA INVENTE OUTROS FORMATOS):

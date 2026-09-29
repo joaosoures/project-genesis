@@ -1045,7 +1045,7 @@ export type Database = {
         Row: {
           comando: string
           created_at: string | null
-          especialidade: string | null
+          especialidade: "clinica_medica" | "cirurgia_geral" | "ginecologia_obstetricia" | "pediatria" | "medicina_preventiva"
           explicacao_1: string | null
           explicacao_2: string | null
           explicacao_3: string | null
@@ -1062,7 +1062,7 @@ export type Database = {
         Insert: {
           comando: string
           created_at?: string | null
-          especialidade?: string | null
+          especialidade: "clinica_medica" | "cirurgia_geral" | "ginecologia_obstetricia" | "pediatria" | "medicina_preventiva"
           explicacao_1?: string | null
           explicacao_2?: string | null
           explicacao_3?: string | null
@@ -1079,7 +1079,7 @@ export type Database = {
         Update: {
           comando?: string
           created_at?: string | null
-          especialidade?: string | null
+          especialidade?: "clinica_medica" | "cirurgia_geral" | "ginecologia_obstetricia" | "pediatria" | "medicina_preventiva"
           explicacao_1?: string | null
           explicacao_2?: string | null
           explicacao_3?: string | null
