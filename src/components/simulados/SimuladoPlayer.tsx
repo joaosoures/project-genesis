@@ -419,21 +419,21 @@ export default function SimuladoPlayer({
     };
     
     return (
-      <div className="fixed inset-0 z-50 bg-background overflow-y-auto minimal-scroll animate-in fade-in duration-300">
-        <div className="max-w-4xl mx-auto px-4 pt-16 pb-32 space-y-8">
+      <div className="fixed inset-0 z-50 overflow-y-auto minimal-scroll animate-in fade-in duration-300" style={{ background: "var(--gradient-bg)" }}>
+        <div className="max-w-4xl mx-auto px-4 pt-8 md:pt-12 pb-32 space-y-8">
           {/* Top Navigation */}
           <div className="flex items-center justify-between mb-2">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={() => (finished || initialReportMode) ? onClose() : setReportMode(false)}
-              className="gap-2 font-bold text-muted-foreground hover:text-foreground rounded-xl"
+              className="gap-2 font-bold text-muted-foreground hover:text-foreground rounded-xl shadow-neu-out-sm bg-background/60"
             >
               <ArrowLeft className="h-4 w-4" />
               {(finished || initialReportMode) ? "Voltar aos Materiais" : "Voltar ao Simulado"}
             </Button>
             <Badge className={cn(
               "px-4 py-1.5 rounded-full font-black uppercase tracking-widest text-[10px]",
-              (finished || initialReportMode) ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+              (finished || initialReportMode) ? "bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] border-[hsl(var(--success)/0.2)]" : "bg-[hsl(var(--warning)/0.1)] text-[hsl(var(--warning))] border-[hsl(var(--warning)/0.2)]"
             )}>
               {(finished || initialReportMode) ? "Relatório Final" : "Relatório em Tempo Real"}
             </Badge>
@@ -448,49 +448,49 @@ export default function SimuladoPlayer({
             </p>
           </div>
 
-          <Card className="relative overflow-hidden rounded-[2.5rem] border-none bg-slate-950 p-6 text-white shadow-[0_24px_70px_rgba(15,23,42,0.35)] md:p-8">
-            <div className="absolute -right-20 -top-24 h-72 w-72 rounded-full bg-emerald-400/20 blur-3xl" />
-            <div className="absolute -bottom-32 -left-16 h-72 w-72 rounded-full bg-cyan-400/10 blur-3xl" />
+          <Card className="paper-card relative overflow-hidden rounded-[2.5rem] border-none p-6 md:p-8">
+            <div className="absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[hsl(var(--accent)/0.16)] blur-3xl" />
+            <div className="absolute -bottom-32 -left-16 h-72 w-72 rounded-full bg-[hsl(var(--primary-glow)/0.08)] blur-3xl" />
             <div className="relative z-10 space-y-8">
               <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
                 <div className="max-w-xl">
                   <h3 className="text-2xl font-black tracking-tight md:text-3xl">Seu mapa da prova.</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-300">Você respondeu {answeredCount} de {data.total} questões. Veja onde sua preparação já é consistente e qual especialidade merece o próximo bloco de estudo.</p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Você respondeu {answeredCount} de {data.total} questões. Veja onde sua preparação já é consistente e qual especialidade merece o próximo bloco de estudo.</p>
                 </div>
-                <div className="rounded-3xl border border-white/10 bg-white/[0.06] px-5 py-4 text-left md:min-w-[165px]">
-                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Aproveitamento</p>
-                  <p className="mt-1 text-4xl font-black text-emerald-300">{percent}%</p>
-                  <p className="text-xs font-semibold text-slate-400">{data.acertos} acertos em {answeredCount} respondidas</p>
+                <div className="rounded-3xl border border-[hsl(var(--accent)/0.2)] bg-[hsl(var(--accent)/0.06)] px-5 py-4 text-left md:min-w-[165px] shadow-neu-out-sm">
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-muted-foreground">Aproveitamento</p>
+                  <p className="mt-1 text-4xl font-black text-[hsl(var(--primary-glow))]">{percent}%</p>
+                  <p className="text-xs font-semibold text-muted-foreground">{data.acertos} acertos em {answeredCount} respondidas</p>
                 </div>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-[1.2fr_1.2fr_0.75fr]">
                 {[
-                  { label: "Acertos", value: data.acertos, detail: `${percent}% do simulado`, icon: CheckCircle2, color: "text-emerald-300", bg: "bg-emerald-400/10" },
-                  { label: "Erros", value: errorCount, detail: errorCount ? "pontos para revisar" : "nenhum erro registrado", icon: AlertTriangle, color: "text-rose-300", bg: "bg-rose-400/10" },
-                  { label: "Pendentes", value: pendingCount, detail: pendingCount ? "questões não respondidas" : "simulado completo", icon: Target, color: "text-amber-300", bg: "bg-amber-400/10" },
+                  { label: "Acertos", value: data.acertos, detail: `${percent}% do simulado`, icon: CheckCircle2, color: "text-[hsl(var(--success))]", bg: "bg-[hsl(var(--success)/0.1)]" },
+                  { label: "Erros", value: errorCount, detail: errorCount ? "pontos para revisar" : "nenhum erro registrado", icon: AlertTriangle, color: "text-[hsl(var(--destructive))]", bg: "bg-[hsl(var(--destructive)/0.1)]" },
+                  { label: "Pendentes", value: pendingCount, detail: pendingCount ? "questões não respondidas" : "simulado completo", icon: Target, color: "text-[hsl(var(--warning))]", bg: "bg-[hsl(var(--warning)/0.1)]" },
                 ].map((metric) => (
-                  <div key={metric.label} className="rounded-3xl border border-white/10 bg-white/[0.06] p-4 sm:p-5">
-                    <div className="flex items-center justify-between"><span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{metric.label}</span><metric.icon className={cn("h-4 w-4", metric.color)} /></div>
+                  <div key={metric.label} className={cn("rounded-3xl border border-border/60 p-4 sm:p-5 shadow-neu-out-sm", metric.bg)}>
+                    <div className="flex items-center justify-between"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{metric.label}</span><metric.icon className={cn("h-4 w-4", metric.color)} /></div>
                     <p className={cn("mt-2 text-3xl font-black", metric.color)}>{metric.value}</p>
-                    <p className="mt-1 text-xs font-medium text-slate-400">{metric.detail}</p>
+                    <p className="mt-1 text-xs font-medium text-muted-foreground">{metric.detail}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="grid gap-5 border-t border-white/10 pt-6 lg:grid-cols-[1fr_1.15fr]">
+              <div className="grid gap-5 border-t border-border/60 pt-6 lg:grid-cols-[1fr_1.15fr]">
                 <div className="flex items-center gap-5">
                   <div className="relative h-28 w-28 shrink-0">
-                    <svg className="h-full w-full -rotate-90"><circle cx="56" cy="56" r="47" fill="none" stroke="currentColor" strokeWidth="10" className="text-white/10" /><motion.circle initial={{ strokeDasharray: "0 295" }} animate={{ strokeDasharray: `${(percent / 100) * 295} 295` }} transition={{ duration: 1.5, ease: "easeOut" }} cx="56" cy="56" r="47" fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round" className="text-emerald-400" /></svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center"><span className="text-2xl font-black">{percent}%</span><span className="text-[8px] font-black uppercase tracking-widest text-slate-400">precisão</span></div>
+                    <svg className="h-full w-full -rotate-90"><circle cx="56" cy="56" r="47" fill="none" stroke="currentColor" strokeWidth="10" className="text-border" /><motion.circle initial={{ strokeDasharray: "0 295" }} animate={{ strokeDasharray: `${(percent / 100) * 295} 295` }} transition={{ duration: 1.5, ease: "easeOut" }} cx="56" cy="56" r="47" fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round" className="text-[hsl(var(--accent))]" /></svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center"><span className="text-2xl font-black">{percent}%</span><span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">precisão</span></div>
                   </div>
-                  <div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Diagnóstico rápido</p><p className="mt-2 text-lg font-black">{percent >= 80 ? "Excelente consistência" : percent >= 60 ? "Boa base, falta lapidar" : "Hora de consolidar a base"}</p><p className="mt-1 text-xs leading-relaxed text-slate-400">{pendingCount ? `Finalize as ${pendingCount} pendências para um retrato ainda mais fiel.` : "Seu resultado considera todas as questões deste simulado."}</p></div>
+                  <div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Diagnóstico rápido</p><p className="mt-2 text-lg font-black">{percent >= 80 ? "Excelente consistência" : percent >= 60 ? "Boa base, falta lapidar" : "Hora de consolidar a base"}</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{pendingCount ? `Finalize as ${pendingCount} pendências para um retrato ainda mais fiel.` : "Seu resultado considera todas as questões deste simulado."}</p></div>
                 </div>
-                <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
-                  <div className="mb-3 flex items-center gap-2"><Layers className="h-4 w-4 text-cyan-300" /><p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-300">Radar por especialidade</p></div>
+                <div className="rounded-3xl border border-border/60 bg-background/60 p-4 shadow-neu-out-sm">
+                  <div className="mb-3 flex items-center gap-2"><Layers className="h-4 w-4 text-[hsl(var(--accent))]" /><p className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Radar por especialidade</p></div>
                   <div className="space-y-3">
                     {specialtyInsights.map((specialty) => (
-                      <div key={specialty.key} className="space-y-1.5"><div className="flex justify-between gap-3 text-xs"><span className="truncate font-bold text-slate-200">{specialty.label}</span><span className={cn("font-black", specialty.accuracy >= 70 ? "text-emerald-300" : specialty.accuracy >= 50 ? "text-amber-300" : "text-blue-300")}>{specialty.answered ? `${specialty.accuracy}%` : "Pendente"}</span></div><div className="h-2 overflow-hidden rounded-full bg-white/10"><div className={cn("h-full rounded-full transition-all", specialty.accuracy >= 70 ? "bg-emerald-400" : specialty.accuracy >= 50 ? "bg-amber-400" : "bg-blue-400")} style={{ width: `${specialty.answered ? specialty.accuracy : 4}%` }} /></div></div>
+                      <div key={specialty.key} className="space-y-1.5"><div className="flex justify-between gap-3 text-xs"><span className="truncate font-bold text-foreground">{specialty.label}</span><span className={cn("font-black", specialty.accuracy >= 70 ? "text-[hsl(var(--success))]" : specialty.accuracy >= 50 ? "text-[hsl(var(--warning))]" : "text-[hsl(var(--accent))]")}>{specialty.answered ? `${specialty.accuracy}%` : "Pendente"}</span></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className={cn("h-full rounded-full transition-all", specialty.accuracy >= 70 ? "bg-[hsl(var(--success))]" : specialty.accuracy >= 50 ? "bg-[hsl(var(--warning))]" : "bg-[hsl(var(--accent))]")} style={{ width: `${specialty.answered ? specialty.accuracy : 4}%` }} /></div></div>
                     ))}
                     {specialtyInsights.length === 0 && <p className="text-xs text-slate-400">As especialidades aparecerão quando houver questões cadastradas.</p>}
                   </div>
@@ -500,28 +500,28 @@ export default function SimuladoPlayer({
           </Card>
 
 
-          <Card className="rounded-[2rem] border-cyan-500/15 bg-cyan-500/[0.04] p-5 shadow-sm">
+          <Card className="paper-card rounded-[2rem] border-[hsl(var(--accent)/0.25)] bg-[hsl(var(--accent)/0.04)] p-5 shadow-neu-out-sm">
             <div className="flex items-start gap-3">
-              <TrendingUp className="mt-0.5 h-5 w-5 shrink-0 text-cyan-600" />
+              <TrendingUp className="mt-0.5 h-5 w-5 shrink-0 text-[hsl(var(--accent))]" />
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-700">Comparação com outros alunos</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[hsl(var(--primary-glow))]">Comparação com outros alunos</p>
                 <p className="mt-1 text-lg font-black text-foreground">Você fez {percent}% · média da turma {peerComparison?.average_accuracy ?? 62}%</p>
                 <p className="mt-1 text-xs text-muted-foreground">Média de desempenho dos participantes deste simulado.</p>
                 <div className="mt-4 grid gap-2 sm:grid-cols-5">
-                  {specialtyInsights.map((specialty) => { const peer = peerComparison?.specialties?.[specialty.key] ?? ({ clinica_medica: 64, cirurgia_geral: 58, ginecologia_obstetricia: 67, medicina_preventiva: 61, pediatria: 55 }[specialty.key] ?? 62); return <div key={specialty.key} className="rounded-xl bg-background/70 p-2"><p className="truncate text-[9px] font-bold text-muted-foreground">{specialty.label}</p><p className="mt-1 text-sm font-black">{specialty.accuracy}% <span className="text-[10px] font-bold text-muted-foreground">/ {peer}%</span></p></div>; })}
+                  {specialtyInsights.map((specialty) => { const peer = peerComparison?.specialties?.[specialty.key] ?? ({ clinica_medica: 64, cirurgia_geral: 58, ginecologia_obstetricia: 67, medicina_preventiva: 61, pediatria: 55 }[specialty.key] ?? 62); return <div key={specialty.key} className="rounded-xl bg-background/70 p-2 shadow-neu-out-sm"><p className="truncate text-[9px] font-bold text-muted-foreground">{specialty.label}</p><p className="mt-1 text-sm font-black">{specialty.accuracy}% <span className="text-[10px] font-bold text-muted-foreground">/ {peer}%</span></p></div>; })}
                 </div>
               </div>
             </div>
           </Card>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Card className="rounded-[2rem] border-emerald-500/15 bg-emerald-500/[0.04] p-5 shadow-sm"><div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" /><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Seu ponto forte</p><p className="mt-1 font-black text-foreground">{bestSpecialty ? `${bestSpecialty.label} · ${bestSpecialty.accuracy}%` : "Responda questões para descobrir"}</p><p className="mt-1 text-xs text-muted-foreground">{bestSpecialty ? `${bestSpecialty.correct} acerto(s) em ${bestSpecialty.answered} respondida(s).` : "O relatório vai identificar sua especialidade de maior domínio."}</p></div></div></Card>
-            <Card className="rounded-[2rem] border-rose-500/15 bg-rose-500/[0.04] p-5 shadow-sm"><div className="flex items-start gap-3"><TrendingUp className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" /><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-rose-700">Próximo foco</p><p className="mt-1 font-black text-foreground">{focusSpecialty ? `${focusSpecialty.label} · ${focusSpecialty.accuracy}%` : "Complete o simulado"}</p><p className="mt-1 text-xs text-muted-foreground">{focusSpecialty ? `${focusSpecialty.pending} pendente(s) e ${focusSpecialty.total - focusSpecialty.correct - focusSpecialty.pending} erro(s) para revisar.` : "Com mais respostas, o direcionamento fica mais preciso."}</p></div></div></Card>
+            <Card className="paper-card rounded-[2rem] border-[hsl(var(--success)/0.2)] bg-[hsl(var(--success)/0.04)] p-5 shadow-neu-out-sm"><div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[hsl(var(--success))]" /><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-[hsl(var(--success))]">Seu ponto forte</p><p className="mt-1 font-black text-foreground">{bestSpecialty ? `${bestSpecialty.label} · ${bestSpecialty.accuracy}%` : "Responda questões para descobrir"}</p><p className="mt-1 text-xs text-muted-foreground">{bestSpecialty ? `${bestSpecialty.correct} acerto(s) em ${bestSpecialty.answered} respondida(s).` : "O relatório vai identificar sua especialidade de maior domínio."}</p></div></div></Card>
+            <Card className="paper-card rounded-[2rem] border-[hsl(var(--accent)/0.2)] bg-[hsl(var(--accent)/0.04)] p-5 shadow-neu-out-sm"><div className="flex items-start gap-3"><TrendingUp className="mt-0.5 h-5 w-5 shrink-0 text-[hsl(var(--accent))]" /><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-[hsl(var(--accent))]">Próximo foco</p><p className="mt-1 font-black text-foreground">{focusSpecialty ? `${focusSpecialty.label} · ${focusSpecialty.accuracy}%` : "Complete o simulado"}</p><p className="mt-1 text-xs text-muted-foreground">{focusSpecialty ? `${focusSpecialty.pending} pendente(s) e ${focusSpecialty.total - focusSpecialty.correct - focusSpecialty.pending} erro(s) para revisar.` : "Com mais respostas, o direcionamento fica mais preciso."}</p></div></div></Card>
           </div>
 
           <div ref={reviewSectionRef} className="space-y-6">
-            <h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-3">
-              <div className="h-6 w-1 bg-accent rounded-full" />
+            <h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-3 text-foreground">
+              <div className="h-6 w-1 rounded-full bg-[hsl(var(--accent))] shadow-[0_0_12px_hsl(var(--accent)/0.5)]" />
               Revisão das Questões
             </h3>
 
@@ -542,17 +542,17 @@ export default function SimuladoPlayer({
                     key={q.id} 
                     value={q.id} 
                     className={cn(
-                      "border-none rounded-[2rem] overflow-hidden transition-all duration-300 shadow-sm",
-                      !respondida ? "bg-slate-100/50 opacity-60" : 
-                      acertou ? "bg-emerald-500/5 border border-emerald-500/10" : "bg-rose-500/5 border border-rose-500/10"
+                      "border-none rounded-[2rem] overflow-hidden transition-all duration-300 shadow-neu-out-sm",
+                      !respondida ? "bg-muted/50 opacity-60" :
+                      acertou ? "bg-[hsl(var(--success)/0.05)] border border-[hsl(var(--success)/0.15)]" : "bg-[hsl(var(--destructive)/0.05)] border border-[hsl(var(--destructive)/0.15)]"
                     )}
                   >
                     <AccordionTrigger className="hover:no-underline py-5 px-6">
                       <div className="flex items-center gap-4 text-left">
                         <div className={cn(
                           "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition-colors",
-                          !respondida ? "bg-slate-200 text-slate-400" :
-                          acertou ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
+                          !respondida ? "bg-muted text-muted-foreground" :
+                          acertou ? "bg-[hsl(var(--success))] text-white" : "bg-[hsl(var(--destructive))] text-white"
                         )}>
                           {!respondida ? <Info className="h-5 w-5" /> : 
                            acertou ? <CheckCircle2 className="h-6 w-6" /> : <XCircle className="h-6 w-6" />}
@@ -583,14 +583,14 @@ export default function SimuladoPlayer({
                               key={l}
                               className={cn(
                                 "p-5 rounded-2xl border-2 text-sm font-semibold transition-all flex items-start gap-4",
-                                isCorrect ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-900" : 
-                                isSelected ? "bg-rose-500/10 border-rose-500/30 text-rose-900" : 
-                                "bg-white border-slate-100 text-slate-500"
+                                isCorrect ? "bg-[hsl(var(--success)/0.1)] border-[hsl(var(--success)/0.3)] text-foreground" :
+                                isSelected ? "bg-[hsl(var(--destructive)/0.1)] border-[hsl(var(--destructive)/0.3)] text-foreground" :
+                                "bg-background border-border text-muted-foreground"
                               )}
                             >
                               <span className={cn(
                                 "w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs shrink-0",
-                                isCorrect ? "bg-emerald-500 text-white" : isSelected ? "bg-rose-500 text-white" : "bg-slate-100"
+                                isCorrect ? "bg-[hsl(var(--success))] text-white" : isSelected ? "bg-[hsl(var(--destructive))] text-white" : "bg-muted"
                               )}>{letter}</span>
                               <span className="flex-1 mt-0.5">{text}</span>
                               {isCorrect && <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />}
