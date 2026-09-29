@@ -53,8 +53,8 @@ export interface TrilhaSettings {
   stats_cache?: Record<string, { count: number; acertos: number }>;
   /** Timestamp da última sincronização do histórico. */
   last_sync_timestamp?: string | null;
-  /** Agendamentos de simulados definidos pelo aluno. */
-  simulados?: { id: string; data: string; nome: string }[];
+  /** Agendamentos de simulados definidos pelo aluno, incluindo o reforço posterior. */
+  simulados?: { id: string; data: string; nome: string; data_castigo?: string }[];
   /** Cache do plano calculado para evitar recalculação pesada. */
   plano_cache?: {
     hash: string;
