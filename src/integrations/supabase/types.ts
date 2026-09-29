@@ -1445,6 +1445,7 @@ export type Database = {
       castigo_finalizar: { Args: { p_tentativa: string; p_filhas: string[] }; Returns: undefined }
       castigo_reiniciar: { Args: { p_tentativa: string; p_filhas: string[] }; Returns: undefined }
       simulado_refazer: { Args: { p_simulado: string }; Returns: undefined }
+      get_simulado_comparison: { Args: { p_simulado_id: string }; Returns: Json }
 
       admin_import_pre_aula_questoes: {
         Args: { payload: Json }

@@ -47,6 +47,17 @@ type SpecialtyInsight = {
   pending: number;
 };
 
+type PeerComparison = {
+  participant_count: number;
+  real_participant_count: number;
+  average_accuracy: number;
+  specialties: Record<string, number>;
+};
+
+const RADAR_SPECIALTIES = [
+  "clinica_medica", "cirurgia_geral", "ginecologia_obstetricia", "pediatria", "medicina_preventiva",
+] as const;
+
 const COMMAND_VERBS = /^(assinale|marque|indique|selecione|escolha|identifique|aponte|determine|considere)$/i;
 const STATEMENT_HIGHLIGHTS = /(\b(?:assinale|marque|indique|selecione|escolha|identifique|aponte|determine|considere)\b|"[^"]*"|“[^”]*”|\([^)]*\))/gi;
 
@@ -112,6 +123,7 @@ export default function SimuladoPlayer({
   const [showCastigoShortcut, setShowCastigoShortcut] = useState(false);
   const [pendingCastigoCount, setPendingCastigoCount] = useState(0);
   const [showAllReviewQuestions, setShowAllReviewQuestions] = useState(false);
+  const [peerComparison, setPeerComparison] = useState<PeerComparison | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -220,6 +232,24 @@ export default function SimuladoPlayer({
 
     initializeSimulado();
   }, [simuladoId, initialReportMode, user]);
+
+  useEffect(() => {
+    if (!reportMode || !user) return;
+
+    const loadPeerComparison = async () => {
+      const { data, error } = await supabase.rpc("get_simulado_comparison", { p_simulado_id: simuladoId });
+      if (!error && data) setPeerComparison(data as PeerComparison);
+    };
+
+    loadPeerComparison();
+  }, [reportMode, simuladoId, user]);
+
+  useEffect(() => {
+    if (!reportMode || !user) return;
+    supabase.rpc("get_simulado_comparison", { p_simulado_id: simuladoId }).then(({ data, error }) => {
+      if (!error && data) setPeerComparison(data as PeerComparison);
+    });
+  }, [reportMode, simuladoId, user]);
 
   // Build report data progressively
   const currentReportData = useMemo(() => {
@@ -348,7 +378,14 @@ export default function SimuladoPlayer({
     const answeredCount = data.respostas.filter((res) => res.respondida).length;
     const pendingCount = Math.max(0, data.total - answeredCount);
     const errorCount = Math.max(0, answeredCount - data.acertos);
-    const specialtyInsights = questions.reduce<SpecialtyInsight[]>((groups, question) => {
+    const specialtyInsights = RADAR_SPECIALTIES.map((key) => {
+      const group = questions.filter((question) => question.especialidade === key);
+      const total = group.length;
+      const answered = group.filter((question) => data.respostas.find((res) => res.questao_id === question.id)?.respondida).length;
+      const correct = group.filter((question) => data.respostas.find((res) => res.questao_id === question.id)?.acertou).length;
+      return { key, label: ESPECIALIDADE_LABEL[key], total, answered, correct, accuracy: answered ? Math.round((correct / answered) * 100) : 0, pending: total - answered };
+    });
+    const legacySpecialtyInsights = questions.reduce<SpecialtyInsight[]>((groups, question) => {
       const key = question.especialidade || "nao_informada";
       const existing = groups.find((group) => group.key === key);
       const response = data.respostas.find((res) => res.questao_id === question.id);
@@ -374,7 +411,7 @@ export default function SimuladoPlayer({
       ...group,
       accuracy: group.answered > 0 ? Math.round((group.correct / group.answered) * 100) : 0,
     })).sort((a, b) => b.accuracy - a.accuracy || b.total - a.total);
-    const bestSpecialty = specialtyInsights.find((group) => group.answered > 0);
+    const bestSpecialty = specialtyInsights.filter((group) => group.answered > 0).sort((a, b) => b.accuracy - a.accuracy)[0];
     const focusSpecialty = [...specialtyInsights].filter((group) => group.answered > 0).sort((a, b) => a.accuracy - b.accuracy || b.total - a.total)[0];
 
     const scrollToCastigo = () => {
@@ -418,9 +455,9 @@ export default function SimuladoPlayer({
               <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
                 <div className="max-w-xl">
                   <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">
-                    <Sparkles className="h-3.5 w-3.5" /> Leitura inteligente do seu resultado
+                    <Sparkles className="h-3.5 w-3.5" /> 
                   </div>
-                  <h3 className="text-2xl font-black tracking-tight md:text-3xl">Seu mapa de desempenho está pronto.</h3>
+                  <h3 className="text-2xl font-black tracking-tight md:text-3xl">Seu mapa da prova.</h3>
                   <p className="mt-2 text-sm leading-relaxed text-slate-300">Você respondeu {answeredCount} de {data.total} questões. Veja onde sua preparação já é consistente e qual especialidade merece o próximo bloco de estudo.</p>
                 </div>
                 <div className="rounded-3xl border border-white/10 bg-white/[0.06] px-5 py-4 text-left md:min-w-[165px]">
@@ -455,11 +492,26 @@ export default function SimuladoPlayer({
                 <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
                   <div className="mb-3 flex items-center gap-2"><Layers className="h-4 w-4 text-cyan-300" /><p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-300">Radar por especialidade</p></div>
                   <div className="space-y-3">
-                    {specialtyInsights.slice(0, 3).map((specialty) => (
+                    {specialtyInsights.map((specialty) => (
                       <div key={specialty.key} className="space-y-1.5"><div className="flex justify-between gap-3 text-xs"><span className="truncate font-bold text-slate-200">{specialty.label}</span><span className={cn("font-black", specialty.accuracy >= 70 ? "text-emerald-300" : specialty.accuracy >= 50 ? "text-amber-300" : "text-rose-300")}>{specialty.answered ? `${specialty.accuracy}%` : "Pendente"}</span></div><div className="h-2 overflow-hidden rounded-full bg-white/10"><div className={cn("h-full rounded-full transition-all", specialty.accuracy >= 70 ? "bg-emerald-400" : specialty.accuracy >= 50 ? "bg-amber-400" : "bg-rose-400")} style={{ width: `${specialty.answered ? specialty.accuracy : 4}%` }} /></div></div>
                     ))}
                     {specialtyInsights.length === 0 && <p className="text-xs text-slate-400">As especialidades aparecerão quando houver questões cadastradas.</p>}
                   </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+
+          <Card className="rounded-[2rem] border-cyan-500/15 bg-cyan-500/[0.04] p-5 shadow-sm">
+            <div className="flex items-start gap-3">
+              <TrendingUp className="mt-0.5 h-5 w-5 shrink-0 text-cyan-600" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-700">Comparação com outros alunos</p>
+                <p className="mt-1 text-lg font-black text-foreground">Você fez {percent}% · média da turma {peerComparison?.average_accuracy ?? 62}%</p>
+                <p className="mt-1 text-xs text-muted-foreground">Base de {peerComparison?.participant_count ?? 5} alunos{peerComparison?.real_participant_count && peerComparison.real_participant_count < 5 ? " · dados estimados enquanto a prova ganha histórico" : ""}.</p>
+                <div className="mt-4 grid gap-2 sm:grid-cols-5">
+                  {specialtyInsights.map((specialty) => { const peer = peerComparison?.specialties?.[specialty.key] ?? 62; return <div key={specialty.key} className="rounded-xl bg-background/70 p-2"><p className="truncate text-[9px] font-bold text-muted-foreground">{specialty.label}</p><p className="mt-1 text-sm font-black">{specialty.accuracy}% <span className="text-[10px] font-bold text-muted-foreground">/ {peer}%</span></p></div>; })}
                 </div>
               </div>
             </div>
