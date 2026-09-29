@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Loader2, ChevronLeft, ChevronRight, CheckCircle2, 
-  XCircle, BarChart3, ChevronDown, ChevronUp, Info, Eye, LogOut, ArrowLeft, Settings
+  Loader2, ChevronLeft, ChevronRight, CheckCircle2,
+  XCircle, ChevronDown, ChevronUp, Info, Eye, LogOut, ArrowLeft, Settings,
+  Target, Sparkles, TrendingUp, AlertTriangle, Layers, ShieldCheck
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ESPECIALIDADE_LABEL } from "@/lib/oq";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import NeonProgressBar from "@/components/console/NeonProgressBar";
 import TactileButton from "@/components/console/TactileButton";
@@ -32,7 +34,18 @@ interface Question {
   explicacao_2: string;
   explicacao_3: string;
   image_url?: string;
+  especialidade?: string | null;
 }
+
+type SpecialtyInsight = {
+  key: string;
+  label: string;
+  total: number;
+  answered: number;
+  correct: number;
+  accuracy: number;
+  pending: number;
+};
 
 const COMMAND_VERBS = /^(assinale|marque|indique|selecione|escolha|identifique|aponte|determine|considere)$/i;
 const STATEMENT_HIGHLIGHTS = /(\b(?:assinale|marque|indique|selecione|escolha|identifique|aponte|determine|considere)\b|"[^"]*"|“[^”]*”|\([^)]*\))/gi;
@@ -332,6 +345,37 @@ export default function SimuladoPlayer({
     const data = result ?? currentReportData;
     const reportAttemptId = result?.tentativaId ?? attemptId;
     const percent = data.total > 0 ? Math.round((data.acertos / data.total) * 100) : 0;
+    const answeredCount = data.respostas.filter((res) => res.respondida).length;
+    const pendingCount = Math.max(0, data.total - answeredCount);
+    const errorCount = Math.max(0, answeredCount - data.acertos);
+    const specialtyInsights = questions.reduce<SpecialtyInsight[]>((groups, question) => {
+      const key = question.especialidade || "nao_informada";
+      const existing = groups.find((group) => group.key === key);
+      const response = data.respostas.find((res) => res.questao_id === question.id);
+      const answered = Boolean(response?.respondida);
+      if (existing) {
+        existing.total += 1;
+        existing.answered += answered ? 1 : 0;
+        existing.correct += response?.acertou ? 1 : 0;
+        existing.pending += answered ? 0 : 1;
+      } else {
+        groups.push({
+          key,
+          label: ESPECIALIDADE_LABEL[key as keyof typeof ESPECIALIDADE_LABEL] || "Especialidade não informada",
+          total: 1,
+          answered: answered ? 1 : 0,
+          correct: response?.acertou ? 1 : 0,
+          accuracy: 0,
+          pending: answered ? 0 : 1,
+        });
+      }
+      return groups;
+    }, []).map((group) => ({
+      ...group,
+      accuracy: group.answered > 0 ? Math.round((group.correct / group.answered) * 100) : 0,
+    })).sort((a, b) => b.accuracy - a.accuracy || b.total - a.total);
+    const bestSpecialty = specialtyInsights.find((group) => group.answered > 0);
+    const focusSpecialty = [...specialtyInsights].filter((group) => group.answered > 0).sort((a, b) => a.accuracy - b.accuracy || b.total - a.total)[0];
 
     const scrollToCastigo = () => {
       castigoSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -367,49 +411,64 @@ export default function SimuladoPlayer({
             </p>
           </div>
 
-          <Card className="p-8 bg-gradient-to-br from-slate-950 to-slate-900 text-white border-none shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative overflow-hidden rounded-[2.5rem]">
-            <div className="relative z-10 flex flex-col md:flex-row items-center justify-around gap-8 text-center">
-              <div className="space-y-1">
-                <p className="text-[10px] uppercase tracking-widest font-black opacity-40">Acertos</p>
-                <p className="text-5xl font-black text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.3)]">{data.acertos}</p>
-              </div>
-              
-              <div className="relative w-36 h-36 flex items-center justify-center">
-                <svg className="absolute inset-0 w-full h-full -rotate-90 drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]">
-                  <circle
-                    cx="72" cy="72" r="64"
-                    fill="none" stroke="currentColor" strokeWidth="12"
-                    className="text-white/5"
-                  />
-                  <motion.circle
-                    initial={{ strokeDasharray: "0 402" }}
-                    animate={{ strokeDasharray: `${(percent / 100) * 402} 402` }}
-                    transition={{ duration: 1.5, ease: "easeOut" }}
-                    cx="72" cy="72" r="64"
-                    fill="none" stroke="currentColor" strokeWidth="12"
-                    strokeLinecap="round"
-                    className="text-emerald-500"
-                  />
-                </svg>
-                <div className="flex flex-col items-center justify-center">
-                  <span className="text-3xl font-black">{percent}%</span>
-                  <span className="text-[8px] font-black uppercase tracking-widest opacity-40">Taxa</span>
+          <Card className="relative overflow-hidden rounded-[2.5rem] border-none bg-slate-950 p-6 text-white shadow-[0_24px_70px_rgba(15,23,42,0.35)] md:p-8">
+            <div className="absolute -right-20 -top-24 h-72 w-72 rounded-full bg-emerald-400/20 blur-3xl" />
+            <div className="absolute -bottom-32 -left-16 h-72 w-72 rounded-full bg-cyan-400/10 blur-3xl" />
+            <div className="relative z-10 space-y-8">
+              <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+                <div className="max-w-xl">
+                  <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">
+                    <Sparkles className="h-3.5 w-3.5" /> Leitura inteligente do seu resultado
+                  </div>
+                  <h3 className="text-2xl font-black tracking-tight md:text-3xl">Seu mapa de desempenho está pronto.</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-300">Você respondeu {answeredCount} de {data.total} questões. Veja onde sua preparação já é consistente e qual especialidade merece o próximo bloco de estudo.</p>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-white/[0.06] px-5 py-4 text-left md:min-w-[165px]">
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Aproveitamento</p>
+                  <p className="mt-1 text-4xl font-black text-emerald-300">{percent}%</p>
+                  <p className="text-xs font-semibold text-slate-400">{data.acertos} acertos em {answeredCount} respondidas</p>
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <p className="text-[10px] uppercase tracking-widest font-black opacity-40">Pendentes/Erros</p>
-                <p className="text-5xl font-black text-rose-400 drop-shadow-[0_0_15px_rgba(251,113,133,0.3)]">
-                  {data.total - data.acertos}
-                </p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  { label: "Acertos", value: data.acertos, detail: `${percent}% do simulado`, icon: CheckCircle2, color: "text-emerald-300", bg: "bg-emerald-400/10" },
+                  { label: "Erros", value: errorCount, detail: errorCount ? "pontos para revisar" : "nenhum erro registrado", icon: AlertTriangle, color: "text-rose-300", bg: "bg-rose-400/10" },
+                  { label: "Pendentes", value: pendingCount, detail: pendingCount ? "questões não respondidas" : "simulado completo", icon: Target, color: "text-amber-300", bg: "bg-amber-400/10" },
+                ].map((metric) => (
+                  <div key={metric.label} className="rounded-3xl border border-white/10 bg-white/[0.06] p-4">
+                    <div className="flex items-center justify-between"><span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{metric.label}</span><metric.icon className={cn("h-4 w-4", metric.color)} /></div>
+                    <p className={cn("mt-2 text-3xl font-black", metric.color)}>{metric.value}</p>
+                    <p className="mt-1 text-xs font-medium text-slate-400">{metric.detail}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-5 border-t border-white/10 pt-6 lg:grid-cols-[1fr_1.15fr]">
+                <div className="flex items-center gap-5">
+                  <div className="relative h-28 w-28 shrink-0">
+                    <svg className="h-full w-full -rotate-90"><circle cx="56" cy="56" r="47" fill="none" stroke="currentColor" strokeWidth="10" className="text-white/10" /><motion.circle initial={{ strokeDasharray: "0 295" }} animate={{ strokeDasharray: `${(percent / 100) * 295} 295` }} transition={{ duration: 1.5, ease: "easeOut" }} cx="56" cy="56" r="47" fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round" className="text-emerald-400" /></svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center"><span className="text-2xl font-black">{percent}%</span><span className="text-[8px] font-black uppercase tracking-widest text-slate-400">precisão</span></div>
+                  </div>
+                  <div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Diagnóstico rápido</p><p className="mt-2 text-lg font-black">{percent >= 80 ? "Excelente consistência" : percent >= 60 ? "Boa base, falta lapidar" : "Hora de consolidar a base"}</p><p className="mt-1 text-xs leading-relaxed text-slate-400">{pendingCount ? `Finalize as ${pendingCount} pendências para um retrato ainda mais fiel.` : "Seu resultado considera todas as questões deste simulado."}</p></div>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
+                  <div className="mb-3 flex items-center gap-2"><Layers className="h-4 w-4 text-cyan-300" /><p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-300">Radar por especialidade</p></div>
+                  <div className="space-y-3">
+                    {specialtyInsights.slice(0, 3).map((specialty) => (
+                      <div key={specialty.key} className="space-y-1.5"><div className="flex justify-between gap-3 text-xs"><span className="truncate font-bold text-slate-200">{specialty.label}</span><span className={cn("font-black", specialty.accuracy >= 70 ? "text-emerald-300" : specialty.accuracy >= 50 ? "text-amber-300" : "text-rose-300")}>{specialty.answered ? `${specialty.accuracy}%` : "Pendente"}</span></div><div className="h-2 overflow-hidden rounded-full bg-white/10"><div className={cn("h-full rounded-full transition-all", specialty.accuracy >= 70 ? "bg-emerald-400" : specialty.accuracy >= 50 ? "bg-amber-400" : "bg-rose-400")} style={{ width: `${specialty.answered ? specialty.accuracy : 4}%` }} /></div></div>
+                    ))}
+                    {specialtyInsights.length === 0 && <p className="text-xs text-slate-400">As especialidades aparecerão quando houver questões cadastradas.</p>}
+                  </div>
+                </div>
               </div>
             </div>
-            
-            {/* Background elements */}
-            <div className="absolute top-0 right-0 p-8 opacity-10">
-              <BarChart3 className="w-48 h-48" />
-            </div>
           </Card>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card className="rounded-[2rem] border-emerald-500/15 bg-emerald-500/[0.04] p-5 shadow-sm"><div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" /><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Seu ponto forte</p><p className="mt-1 font-black text-foreground">{bestSpecialty ? `${bestSpecialty.label} · ${bestSpecialty.accuracy}%` : "Responda questões para descobrir"}</p><p className="mt-1 text-xs text-muted-foreground">{bestSpecialty ? `${bestSpecialty.correct} acerto(s) em ${bestSpecialty.answered} respondida(s).` : "O relatório vai identificar sua especialidade de maior domínio."}</p></div></div></Card>
+            <Card className="rounded-[2rem] border-rose-500/15 bg-rose-500/[0.04] p-5 shadow-sm"><div className="flex items-start gap-3"><TrendingUp className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" /><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-rose-700">Próximo foco</p><p className="mt-1 font-black text-foreground">{focusSpecialty ? `${focusSpecialty.label} · ${focusSpecialty.accuracy}%` : "Complete o simulado"}</p><p className="mt-1 text-xs text-muted-foreground">{focusSpecialty ? `${focusSpecialty.pending} pendente(s) e ${focusSpecialty.total - focusSpecialty.correct - focusSpecialty.pending} erro(s) para revisar.` : "Com mais respostas, o direcionamento fica mais preciso."}</p></div></div></Card>
+          </div>
 
           <div ref={reviewSectionRef} className="space-y-6">
             <h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-3">
