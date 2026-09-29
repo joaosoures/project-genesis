@@ -1382,8 +1382,12 @@ export default function Materiais() {
               initialReportMode={simuladoInReportMode}
               onClose={() => {
                 setActiveSimulado(null);
+                const newParams = new URLSearchParams(searchParams);
+                newParams.delete("simulado_id");
+                newParams.delete("relatorio");
+                navigate(newParams.toString() ? `/materiais?${newParams.toString()}` : "/materiais", { replace: true });
                 fetchSimulados();
-              }} 
+              }}
             />
           </Suspense>
         </div>

@@ -1376,23 +1376,25 @@ export default function TrilhaEstrategica() {
       </Dialog>
 
       <Dialog open={!!confirmAula} onOpenChange={(o) => !o && setConfirmAula(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-h-[calc(100vh-2rem)] max-w-lg overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Domínio do tema</DialogTitle>
             <DialogDescription asChild>
-              <div>
-                Você realmente considera que tem domínio sobre o tema{" "}
-                <strong>{confirmAula?.nome}</strong>?
-                <br />
-                <span className="text-xs text-muted-foreground">
+              <div className="space-y-2 leading-relaxed">
+                <p>
+                  Você realmente considera que tem domínio sobre o tema{" "}
+                  <strong>{confirmAula?.nome}</strong>?
+                </p>
+                <p className="text-sm text-muted-foreground">
                   Ao confirmar, registraremos suas OQs com nota de 70% para essa matéria.
-                </span>
+                </p>
               </div>
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2">
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
               variant="outline"
+              className="h-auto min-h-10 whitespace-normal text-center"
               onClick={() => {
                 const a = confirmAula;
                 setConfirmAula(null);
@@ -1402,6 +1404,7 @@ export default function TrilhaEstrategica() {
               Não, quero estudar mais
             </Button>
             <Button
+              className="h-auto min-h-10 whitespace-normal text-center"
               onClick={async () => {
                 const a = confirmAula;
                 setConfirmAula(null);
