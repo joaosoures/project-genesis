@@ -519,8 +519,39 @@ export function useTrilhaPlano() {
   }, [settings, currentWeekIndex, currentWeekIds, salvarSettings]);
 
 
+  // Quando a trilha foi iniciada antes da criação dos snapshots, as semanas
+  // anteriores não têm uma composição persistida. Distribuímos as matérias que
+  // ainda não possuem snapshot nessas semanas para que o histórico continue
+  // consultável, sem alterar a composição da semana atual.
+  const historicoInferido = useMemo(() => {
+    const snapshots = settings.planos_semanais ?? {};
+    const semanasSemSnapshot = Array.from({ length: currentWeekIndex }, (_, week) => week)
+      .filter((week) => !snapshots[String(week)]);
+    if (semanasSemSnapshot.length === 0) return {} as Record<string, number>;
+
+    const snapshotIds = new Set(Object.values(snapshots).flat());
+    const semHistorico = aulas
+      .filter((a) => a.total_oqs > 0 && !perdidosSet.has(a.id) && !snapshotIds.has(a.id))
+      .sort((a, b) => a.tier - b.tier || a.nome.localeCompare(b.nome));
+    const porSemana = Math.max(1, Math.ceil(semHistorico.length / semanasSemSnapshot.length));
+    const inferido: Record<string, number> = {};
+    semHistorico.forEach((a, index) => {
+      inferido[a.id] = semanasSemSnapshot[Math.min(
+        semanasSemSnapshot.length - 1,
+        Math.floor(index / porSemana),
+      )];
+    });
+    return inferido;
+  }, [aulas, settings.planos_semanais, currentWeekIndex, perdidosSet]);
+
   const aulasPorIndice = (wk: number) =>
-    aulas.filter((a) => a.total_oqs > 0 && planoSemanaPorAula[a.id] === wk && !perdidosSet.has(a.id));
+    aulas.filter((a) =>
+      a.total_oqs > 0 &&
+      !perdidosSet.has(a.id) &&
+      (wk < currentWeekIndex
+        ? planoSemanaPorAula[a.id] === wk || historicoInferido[a.id] === wk
+        : planoSemanaPorAula[a.id] === wk),
+    );
 
   const aulasSemanaAtual = aulasPorIndice(currentWeekIndex);
 
