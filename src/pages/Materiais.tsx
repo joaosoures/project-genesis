@@ -478,6 +478,14 @@ export default function Materiais() {
 
   // Auto-open material if ID is in URL
   useEffect(() => {
+    const simuladoId = searchParams.get("simulado_id");
+    if (simuladoId && simulados.length > 0 && !activeSimulado) {
+      setSimuladoInReportMode(searchParams.get("relatorio") === "1");
+      setActiveSimulado(simuladoId);
+    }
+  }, [searchParams, simulados, activeSimulado]);
+
+  useEffect(() => {
     const materialId = searchParams.get("id");
     if (materialId && mats.length > 0 && !previewMaterial) {
       const material = mats.find(m => m.id === materialId);

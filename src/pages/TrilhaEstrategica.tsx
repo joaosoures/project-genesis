@@ -38,6 +38,7 @@ import SetupDialog from "@/components/trilha/SetupDialog";
 import BlocoAula from "@/components/trilha/BlocoAula";
 import CalendarioEstudos from "@/components/trilha/CalendarioEstudos";
 import AgendamentoSimulados from "@/components/trilha/AgendamentoSimulados";
+import SimuladosDaTrilha from "@/components/trilha/SimuladosDaTrilha";
 import RedistribuirDialog from "@/components/trilha/RedistribuirDialog";
 import ExplicacaoTrilha from "@/components/trilha/ExplicacaoTrilha";
 import RodizioRapido from "@/components/trilha/RodizioRapido";
@@ -291,6 +292,12 @@ export default function TrilhaEstrategica() {
         ),
       )
     : null;
+  const inicioPlano = useMemo(() => {
+    const value = settings.data_inicio_plano ? new Date(`${settings.data_inicio_plano}T00:00:00`) : new Date();
+    value.setHours(0, 0, 0, 0);
+    value.setDate(value.getDate() - ((value.getDay() + 6) % 7));
+    return value;
+  }, [settings.data_inicio_plano]);
 
   const proximasSemanas = useMemo(() => {
     if (revealCount === 0) return [];
@@ -536,8 +543,17 @@ export default function TrilhaEstrategica() {
                   className="overflow-hidden border-t border-border/40"
                 >
                   <div className="p-4 md:p-6 space-y-8">
-                    {pendenciasAulas.length === 0 ? (
-                      <div className="text-center py-6 space-y-2">
+                  {Array.from({ length: currentWeekIndex }, (_, index) => index).map((week) => (
+                    <SimuladosDaTrilha
+                      key={`past-simulated-${week}`}
+                      settings={settings}
+                      semanaIndex={week}
+                      inicioPlano={inicioPlano}
+                      titulo={`Simulados e castigos · Semana ${week + 1}`}
+                    />
+                  ))}
+                  {pendenciasAulas.length === 0 ? (
+                    <div className="text-center py-6 space-y-2">
                         <Trophy className="h-8 w-8 text-amber-500 mx-auto opacity-50" />
                         <p className="text-xs text-muted-foreground">
                           Nenhuma pendência encontrada. Excelente ritmo!
@@ -806,6 +822,12 @@ export default function TrilhaEstrategica() {
                 </div>
               </div>
             )}
+
+            <SimuladosDaTrilha
+              settings={settings}
+              semanaIndex={currentWeekIndex}
+              inicioPlano={inicioPlano}
+            />
 
             {/* Matérias Base */}
             <div className="space-y-6">
@@ -1204,6 +1226,12 @@ export default function TrilhaEstrategica() {
                             </p>
                           </div>
                         </div>
+                        <SimuladosDaTrilha
+                          settings={settings}
+                          semanaIndex={wk}
+                          inicioPlano={inicioPlano}
+                          titulo={`Simulados e castigos · Semana ${wk + 1}`}
+                        />
                         {list.length === 0 ? (
                           <div className="p-8 rounded-3xl bg-muted/20 border border-dashed border-border/60 text-center">
                             <p className="text-xs text-muted-foreground italic">
