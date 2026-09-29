@@ -310,6 +310,13 @@ export default function TrilhaEstrategica() {
     return arr;
   }, [revealCount, currentWeekIndex, totalSemanas, aulasPorIndice]);
 
+  const semanasAnteriores = useMemo(() => {
+    const arr: { wk: number; aulas: typeof aulas }[] = [];
+    for (let wk = currentWeekIndex - 1; wk >= 0; wk--) {
+      arr.push({ wk, aulas: aulasPorIndice(wk) });
+    }
+    return arr;
+  }, [currentWeekIndex, aulasPorIndice]);
 
 
   // Sparkline mock — usa OQs do dia (poderia vir do hook futuramente)
@@ -488,129 +495,129 @@ export default function TrilhaEstrategica() {
           />
         )}
 
-        {/* ============ SEMANAS PASSADAS (sanfona com alerta) ============ */}
+        {/* ============ REVELAR PASSOS ANTERIORES ============ */}
         {podeDirecionamento && (
-          <motion.div
-            layout
-            className={cn(
-              "rounded-3xl bg-white border border-border/40 shadow-sm overflow-hidden relative z-10",
-              pendenciasAulas.length > 0 && "ring-1 ring-amber-400/30",
-            )}
-          >
-            <button
-              type="button"
-              onClick={() => setPastOpen((x) => !x)}
-              className="w-full flex items-center justify-between gap-3 p-4 md:p-5 text-left hover:bg-muted/10 transition-colors"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="relative shrink-0">
-                  <div className="h-10 w-10 rounded-2xl bg-muted/10 grid place-items-center">
-                    <Check className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  {pendenciasAulas.length > 0 && (
-                    <motion.span
-                      animate={{ scale: [1, 1.25, 1] }}
-                      transition={{ duration: 1.4, repeat: Infinity }}
-                      className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-amber-500 text-[9px] font-black text-white grid place-items-center shadow"
-                    >
-                      {pendenciasAulas.length}
-                    </motion.span>
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm md:text-base font-black tracking-tight truncate">
-                    Mostrar semanas passadas
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {pendenciasAulas.length > 0
-                      ? `${pendenciasAulas.length} conteúdos pendentes de semanas anteriores`
-                      : "Tudo em dia! Suas conquistas passadas estão salvas."}
-                  </p>
-                </div>
-              </div>
-              <motion.div animate={{ rotate: pastOpen ? 180 : 0 }}>
-                <ChevronDown className="h-5 w-5 text-muted-foreground" />
-              </motion.div>
-            </button>
+          <div className="relative">
+            <div className="flex justify-center gap-2 flex-wrap">
+              <Button
+                onClick={() => setPastOpen((x) => !x)}
+                variant="outline"
+                className="rounded-full h-12 px-6 gap-2 bg-white shadow-md font-black text-xs uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-transform"
+              >
+                <ArrowUp className="h-4 w-4" />
+                {pastOpen ? "Recolher passos anteriores" : "Revelar passos anteriores"}
+              </Button>
+            </div>
 
-            <AnimatePresence initial={false}>
+            <AnimatePresence>
               {pastOpen && (
                 <motion.div
-                  key="past-content"
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden border-t border-border/40"
+                  initial="hidden"
+                  animate="visible"
+                  exit="hidden"
+                  variants={{
+                    hidden: { opacity: 0 },
+                    visible: { opacity: 1, transition: { staggerChildren: 0.12 } },
+                  }}
+                  className="mt-6 space-y-4"
                 >
-                  <div className="p-4 md:p-6 space-y-8">
-                  {Array.from({ length: currentWeekIndex }, (_, index) => index).map((week) => (
-                    <SimuladosDaTrilha
-                      key={`past-simulated-${week}`}
-                      settings={settings}
-                      semanaIndex={week}
-                      inicioPlano={inicioPlano}
-                      titulo={`Simulados e castigos · Semana ${week + 1}`}
-                    />
-                  ))}
-                  {pendenciasAulas.length === 0 ? (
-                    <div className="text-center py-6 space-y-2">
-                        <Trophy className="h-8 w-8 text-amber-500 mx-auto opacity-50" />
-                        <p className="text-xs text-muted-foreground">
-                          Nenhuma pendência encontrada. Excelente ritmo!
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-6">
-                        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                          <AlertCircle className="h-4 w-4 text-amber-500" />
-                          Conteúdos Pendentes
-                        </h3>
-                        <div className="grid sm:grid-cols-2 gap-4">
-                          <div className="grid sm:grid-cols-2 gap-4">
-                            {pendenciasAulas.map((a) => (
-                              <div
-                                key={a.id}
-                                className="paper-card p-5 group relative transition-all border border-border/40"
-                              >
-                                <div className="space-y-3 mb-4">
-                                  <div className="flex flex-wrap items-center gap-1.5">
-                                    <Badge variant="secondary" className="rounded-md text-[8px] font-black uppercase tracking-widest bg-muted/60 px-1.5 py-0">
-                                      {ESPECIALIDADE_LABEL[a.especialidade as keyof typeof ESPECIALIDADE_LABEL] ?? a.especialidade}
-                                    </Badge>
-                                    <IncidenciaBadge tier={a.tier} compact />
-                                  </div>
-                                  <h4 className="font-bold text-base leading-tight tracking-tight text-foreground truncate">
-                                    {a.nome}
-                                  </h4>
-                                </div>
-                                <div className="flex gap-2">
-                                  <Button
-                                    size="sm"
-                                    onClick={() => fazerAgoraPendencia(a.id)}
-                                    className="flex-1 rounded-xl h-9 text-[9px] font-black uppercase tracking-wider bg-primary hover:bg-primary/90 text-white shadow-md"
-                                  >
-                                    Fazer hoje
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => setRedistOpen(true)}
-                                    className="rounded-xl h-9 px-3 text-[9px] font-black uppercase tracking-wider text-muted-foreground bg-muted/30 border border-border/40"
-                                  >
-                                    Mover
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
+                  {semanasAnteriores.length === 0 ? (
+                    <motion.p
+                      variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } }}
+                      className="text-center text-sm text-muted-foreground italic"
+                    >
+                      Ainda não há semanas anteriores nesta trilha.
+                    </motion.p>
+                  ) : (
+                    semanasAnteriores.map(({ wk, aulas: list }) => (
+                      <motion.div
+                        key={wk}
+                        variants={{
+                          hidden: { opacity: 0, y: -40 },
+                          visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
+                        }}
+                        className="relative z-10 bg-white rounded-3xl shadow-xl border border-border/40 p-6 md:p-8"
+                      >
+                        <div className="flex items-center justify-between mb-8">
+                          <div className="space-y-1">
+                            <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground font-black">
+                              Passo anterior
+                            </p>
+                            <h2 className="text-xl md:text-2xl font-black tracking-tight text-foreground">
+                              Semana {wk + 1}
+                            </h2>
+                          </div>
+                          <div className="px-4 py-2 rounded-2xl bg-muted/30 border border-border/40 text-right">
+                            <p className="text-[9px] uppercase tracking-widest font-black text-muted-foreground leading-none">
+                              Conteúdos
+                            </p>
+                            <p className="text-lg font-bold tabular-nums">{list.length}</p>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
+                        <SimuladosDaTrilha
+                          settings={settings}
+                          semanaIndex={wk}
+                          inicioPlano={inicioPlano}
+                          titulo={`Simulados e castigos · Semana ${wk + 1}`}
+                        />
+                        {list.length === 0 ? (
+                          <div className="p-8 rounded-3xl bg-muted/20 border border-dashed border-border/60 text-center">
+                            <p className="text-xs text-muted-foreground italic">Nenhuma matéria mapeada.</p>
+                          </div>
+                        ) : (
+                          <ul className="divide-y divide-border/40 rounded-2xl border border-border/40 overflow-hidden">
+                            {list.map((a) => {
+                              const done = isAulaDone(a.id);
+                              return (
+                                <li
+                                  key={a.id}
+                                  className={cn(
+                                    "flex items-center justify-between gap-3 px-3 py-2.5 bg-white transition-colors",
+                                    !done && "hover:bg-muted/30",
+                                    done && "bg-muted/20"
+                                  )}
+                                >
+                                  <div className="min-w-0 flex-1 flex items-center gap-2">
+                                    <div className={cn(
+                                      "h-6 w-6 rounded-lg border grid place-items-center shrink-0",
+                                      done ? "bg-emerald-500 border-emerald-500 text-white" : "border-border/60 text-transparent"
+                                    )}>
+                                      <Check className="h-3.5 w-3.5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className={cn("text-sm font-bold truncate leading-tight", done && "line-through text-muted-foreground")}>{a.nome}</p>
+                                      <p className="text-[9px] uppercase tracking-widest font-black text-muted-foreground mt-0.5">
+                                        {ESPECIALIDADE_LABEL[a.especialidade as keyof typeof ESPECIALIDADE_LABEL] ?? a.especialidade}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  {!done && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => {
+                                        fazerAgoraPendencia(a.id);
+                                        toast.success(`"${a.nome}" puxada para a semana atual!`);
+                                      }}
+                                      className="shrink-0 h-8 px-2.5 rounded-lg gap-1 text-[10px] font-black uppercase tracking-wider text-[hsl(var(--accent))] hover:bg-[hsl(var(--accent))]/10"
+                                      title="Puxar para a semana atual"
+                                    >
+                                      <ArrowUp className="h-3.5 w-3.5" />
+                                      Puxar
+                                    </Button>
+                                  )}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </motion.div>
+                    ))
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
-          </motion.div>
+          </div>
         )}
 
         {/* ============ SEMANA ATUAL (DESTAQUE CENTRAL) ============ */}
