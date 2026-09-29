@@ -37,6 +37,7 @@ import { ESPECIALIDADE_LABEL } from "@/lib/oq";
 import SetupDialog from "@/components/trilha/SetupDialog";
 import BlocoAula from "@/components/trilha/BlocoAula";
 import CalendarioEstudos from "@/components/trilha/CalendarioEstudos";
+import AgendamentoSimulados from "@/components/trilha/AgendamentoSimulados";
 import RedistribuirDialog from "@/components/trilha/RedistribuirDialog";
 import ExplicacaoTrilha from "@/components/trilha/ExplicacaoTrilha";
 import RodizioRapido from "@/components/trilha/RodizioRapido";
@@ -1268,8 +1269,9 @@ export default function TrilhaEstrategica() {
           </div>
         )}
 
-        {/* ============ CALENDÁRIO (final absoluto da página) ============ */}
+        {/* ============ CALENDÁRIO E AGENDAMENTO (final absoluto da página) ============ */}
         <CalendarioEstudos settings={settings as any} onSave={salvarSettings} />
+        <AgendamentoSimulados settings={settings} onSave={salvarSettings} />
       </div>
 
 
