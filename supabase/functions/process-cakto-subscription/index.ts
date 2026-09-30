@@ -34,6 +34,12 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const productId = required(body.productId, "productId");
     if (![OURO, PRATA].includes(productId)) return json({ error: "Plano inválido" }, 400);
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: adminRole } = await admin.from("user_roles").select("user_id").eq("user_id", userId).eq("role", "admin").maybeSingle();
+    if (adminRole) {
+      await admin.from("assinaturas").upsert({ usuario_id: userId, plano: "ouro", status: "ativo", valor_mensal: 0, data_inicio_plano: new Date().toISOString(), data_congelamento: null, excluir_dados_em: null, data_inadimplencia: null, dias_inadimplente: 0, cancel_at_period_end: false }, { onConflict: "usuario_id" });
+      return json({ ok: true, admin: true, plan: "ouro" });
+    }
     const card: Card = body.card;
     required(card?.holderName, "Nome do titular");
     const number = required(card?.number, "Número do cartão").replace(/\D/g, "");
@@ -41,7 +47,6 @@ Deno.serve(async (req) => {
     const month = required(card?.expirationMonth, "Mês de validade").replace(/\D/g, "");
     const year = required(card?.expirationYear, "Ano de validade").replace(/\D/g, "");
     if (number.length < 12 || cvv.length < 3) return json({ error: "Dados do cartão inválidos" }, 400);
-    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: current } = await admin.from("assinaturas").select("plano, cakto_subscription_id").eq("usuario_id", userId).maybeSingle();
     if (current?.plano === "ouro" && productId === PRATA && current.cakto_subscription_id) {
       await cakto(required(Deno.env.get("CAKTO_CANCEL_SUBSCRIPTION_URL"), "CAKTO_CANCEL_SUBSCRIPTION_URL"), { subscriptionId: current.cakto_subscription_id });

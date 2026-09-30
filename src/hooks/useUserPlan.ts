@@ -75,7 +75,8 @@ export function useUserPlan(): UserPlanState {
       supabase.rpc("get_user_plan", { _user_id: user.id }),
       supabase.from("assinaturas").select("*").eq("usuario_id", user.id).maybeSingle(),
     ]);
-    if (planData) setPlano(planData as PlanoEfetivo);
+    if (isAdmin) setPlano("ouro");
+    else if (planData) setPlano(planData as PlanoEfetivo);
     if (assData) setAssinatura(assData as unknown as AssinaturaInfo);
     setLoading(false);
   }, [user]);

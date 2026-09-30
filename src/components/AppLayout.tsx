@@ -177,12 +177,12 @@ function AppSidebar() {
 // DelinquencyBanner and TrialBanner were replaced by TrialUrgencyBanner
 // and are kept here only if needed for specific legacy overlays.
 function DelinquencyBanner() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [info, setInfo] = useState<{ excluirEm: string | null } | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || isAdmin) return;
     supabase.from("assinaturas").select("status, excluir_dados_em").eq("usuario_id", user.id).maybeSingle().then(({ data }) => {
       if (data?.status === "inadimplente") {
         setInfo({ excluirEm: data.excluir_dados_em });
@@ -190,11 +190,11 @@ function DelinquencyBanner() {
         setInfo(null);
       }
     });
-  }, [user]);
+  }, [user, isAdmin]);
 
-  if (!info) return null;
+  if (!info || isAdmin) return null;
 
-  const restantes = info.excluirEm 
+  const restantes = info.excluirEm
     ? Math.max(0, Math.ceil((new Date(info.excluirEm).getTime() - Date.now()) / 86400000))
     : 60;
 

@@ -22,6 +22,11 @@ Deno.serve(async (req) => {
     if (!email) return response({ ok: true, ignored: "missing_customer_email" });
     const { data: profile } = await admin.from("profiles").select("id").ilike("email", email).maybeSingle();
     if (!profile) return response({ ok: true, ignored: "user_not_found" });
+    const { data: adminRole } = await admin.from("user_roles").select("user_id").eq("user_id", profile.id).eq("role", "admin").maybeSingle();
+    if (adminRole) {
+      await admin.from("assinaturas").upsert({ usuario_id: profile.id, plano: "ouro", status: "ativo", valor_mensal: 0, data_congelamento: null, excluir_dados_em: null, data_inadimplencia: null, dias_inadimplente: 0, cancel_at_period_end: false }, { onConflict: "usuario_id" });
+      return response({ ok: true, ignored: "admin_lifetime_ouro" });
+    }
     const productId = String(data.product?.id ?? "");
     const plan = productId === OURO ? "ouro" : productId === PRATA ? "prata" : null;
     const event = String(payload.event ?? "").toLowerCase();

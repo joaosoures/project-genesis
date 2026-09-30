@@ -2,15 +2,17 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useUserPlan } from "@/hooks/useUserPlan";
+import { useAuth } from "@/contexts/AuthContext";
 
 const SESSION_KEY = "oqmed.login_alert_shown";
 
 export default function LoginAlerts() {
   const { loading, plano, assinatura } = useUserPlan();
+  const { isAdmin } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (loading || !assinatura) return;
+    if (loading || isAdmin || !assinatura) return;
     if (sessionStorage.getItem(SESSION_KEY)) return;
 
     const goPlano = () => navigate("/meu-plano");
