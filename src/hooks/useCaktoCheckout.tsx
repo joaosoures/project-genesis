@@ -8,6 +8,6 @@ export function useCaktoCheckout() {
   const [options, setOptions] = useState<CheckoutOptions | null>(null);
   const openCheckout = useCallback((value: CheckoutOptions) => { setOptions(value); setIsOpen(true); }, []);
   const closeCheckout = useCallback(() => { setIsOpen(false); setOptions(null); }, []);
-  const checkoutDialog = <Dialog open={isOpen} onOpenChange={(open) => !open && closeCheckout()}><DialogContent className="w-[95vw] max-h-[95vh] overflow-y-auto p-0 sm:max-w-lg"><DialogHeader className="px-6 pt-6"><DialogTitle>Finalizar assinatura pela Cakto</DialogTitle></DialogHeader>{options && <CaktoEmbeddedCheckout productId={options.productId} onStarted={() => setIsOpen(false)} />}</DialogContent></Dialog>;
+  const checkoutDialog = <Dialog open={isOpen} onOpenChange={(open) => !open && closeCheckout()}><DialogContent className="w-[95vw] max-h-[95vh] overflow-y-auto overflow-x-hidden rounded-2xl border-primary/10 p-0 shadow-2xl sm:max-w-lg"><DialogHeader className="sr-only"><DialogTitle>Finalizar assinatura pela Cakto</DialogTitle></DialogHeader>{options && <CaktoEmbeddedCheckout productId={options.productId} onStarted={() => setIsOpen(false)} />}</DialogContent></Dialog>;
   return { openCheckout, closeCheckout, isOpen, checkoutDialog };
 }

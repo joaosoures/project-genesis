@@ -58,8 +58,10 @@ Deno.serve(async (req) => {
     const email = required(profile?.email ?? claims.claims.email, "email");
     const name = required(profile?.nome ?? claims.claims.user_metadata?.nome ?? "Cliente OQ MED", "nome");
     const phone = required(profile?.whatsapp ?? claims.claims.user_metadata?.telefone, "telefone").replace(/\D/g, "");
+    const cpf = required(body.cpf, "cpf").replace(/\D/g, "");
+    if (cpf.length !== 11) throw new Error("CPF inválido");
     const idempotencyKey = crypto.randomUUID();
-    const payment = await createPayment({ paymentMethod: "credit_card", customer: { name, email, phone, fingerprint: antifraudReference }, items: [{ offerId: OFFERS[plan], quantity: 1, offerType: "main" }], card: { token: cardToken }, antifraud_profiling_attempt_reference: antifraudReference, metadata: { user_id: userId, product_id: PRODUCT_ID, plan } }, idempotencyKey);
+    const payment = await createPayment({ paymentMethod: "credit_card", customer: { name, email, phone, docType: "cpf", docNumber: cpf, fingerprint: antifraudReference }, items: [{ offerId: OFFERS[plan], quantity: 1, offerType: "main" }], card: { token: cardToken }, antifraud_profiling_attempt_reference: antifraudReference, metadata: { user_id: userId, product_id: PRODUCT_ID, plan } }, idempotencyKey);
     const paymentId = payment?.id ?? payment?.refId;
     if (!paymentId) throw new Error("A Cakto não retornou o ID do pagamento");
     await admin.from("assinaturas").upsert({ usuario_id: userId, plano: "trial", status: "trial", cakto_customer_id: null, cakto_subscription_id: null, metodo_pagamento: "credit_card", cancel_at_period_end: false }, { onConflict: "usuario_id" });

@@ -5,6 +5,7 @@ import { useUserPlan, type Feature, type PlanoEfetivo } from "@/hooks/useUserPla
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
@@ -19,7 +20,7 @@ import {
 import {
   Check, X, AlertTriangle, Crown, Award, CircleDashed, CreditCard,
   Calendar, Clock, Mail, User as UserIcon, ShieldCheck, Sparkles,
-  ArrowUpCircle, ArrowDownCircle, Info
+  ArrowUpCircle, ArrowDownCircle, Info, Phone, Save, Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
@@ -115,7 +116,9 @@ export default function MeuPlano() {
   const { user } = useAuth();
   const { plano, assinatura, loading, refresh } = useUserPlan();
   const [pagamentos, setPagamentos] = useState<any[]>([]);
-  const [perfil, setPerfil] = useState<{ nome?: string; foto_url?: string | null } | null>(null);
+  const [perfil, setPerfil] = useState<{ nome?: string; foto_url?: string | null; whatsapp?: string | null } | null>(null);
+  const [whatsapp, setWhatsapp] = useState("");
+  const [savingWhatsapp, setSavingWhatsapp] = useState(false);
   const { openCheckout, checkoutDialog } = useCaktoCheckout();
   const [searchParams, setSearchParams] = useSearchParams();
   const [confirmPlan, setConfirmPlan] = useState<PlanKey | null>(null);
@@ -130,6 +133,32 @@ export default function MeuPlano() {
     if (!user || key === "gratis") return;
     openCheckout({ productId: key });
     setConfirmPlan(null);
+  };
+
+  const formatWhatsapp = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 11);
+    if (digits.length <= 2) return digits.length ? `(${digits}` : "";
+    if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  };
+
+  const saveWhatsapp = async () => {
+    if (!user) return;
+    const digits = whatsapp.replace(/\D/g, "");
+    if (digits.length < 10) {
+      toast.error("Digite um WhatsApp válido com DDD.");
+      return;
+    }
+    setSavingWhatsapp(true);
+    const { data, error } = await supabase.from("profiles").update({ whatsapp: digits }).eq("id", user.id).select("nome, foto_url, whatsapp").single();
+    setSavingWhatsapp(false);
+    if (error) {
+      toast.error("Não foi possível salvar seu WhatsApp.");
+      return;
+    }
+    setPerfil(data);
+    setWhatsapp(formatWhatsapp(data.whatsapp ?? digits));
+    toast.success("WhatsApp atualizado com sucesso.");
   };
 
   const cancelSubscription = async () => {
@@ -189,10 +218,13 @@ export default function MeuPlano() {
       .then(({ data }) => setPagamentos(data || []));
     supabase
       .from("profiles")
-      .select("nome, foto_url")
+      .select("nome, foto_url, whatsapp")
       .eq("id", user.id)
       .maybeSingle()
-      .then(({ data }) => setPerfil(data));
+      .then(({ data }) => {
+        setPerfil(data);
+        setWhatsapp(formatWhatsapp(data?.whatsapp ?? ""));
+      });
   }, [user]);
 
   const planoAtualKey = useMemo(() => planoToKey(plano), [plano]);
@@ -267,11 +299,33 @@ export default function MeuPlano() {
                 {(perfil?.nome ?? user?.email ?? "U").slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className="min-w-0">
-              <p className="font-semibold truncate">{perfil?.nome ?? "Usuário"}</p>
-              <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
-                <Mail className="h-3 w-3" /> {user?.email}
-              </p>
+            <div className="min-w-0 flex-1 space-y-3">
+              <div>
+                <p className="font-semibold truncate">{perfil?.nome ?? "Usuário"}</p>
+                <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                  <Mail className="h-3 w-3" /> {user?.email}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="profile-whatsapp" className="text-xs font-medium flex items-center gap-1.5">
+                  <Phone className="h-3.5 w-3.5 text-primary" /> WhatsApp para contato
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    id="profile-whatsapp"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    placeholder="(11) 99999-9999"
+                    value={whatsapp}
+                    onChange={(event) => setWhatsapp(formatWhatsapp(event.target.value))}
+                    className="h-9"
+                  />
+                  <Button type="button" size="icon" className="h-9 w-9 shrink-0" onClick={saveWhatsapp} disabled={savingWhatsapp} aria-label="Salvar WhatsApp">
+                    {savingWhatsapp ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">Usaremos este número para facilitar o suporte da sua assinatura.</p>
+              </div>
             </div>
           </CardContent>
         </Card>
