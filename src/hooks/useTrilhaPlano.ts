@@ -416,78 +416,64 @@ export function useTrilhaPlano() {
       return { planoSemanaPorAula: {}, baselinePlano: {}, pendenciasIds: new Set<string>(), currentWeekIds: [] as string[] };
     }
 
-    const eligible = aulas
+    const elegiveis = aulas
       .filter((a) => a.total_oqs > 0 && a.tier <= tierMax && !perdidosSet.has(a.id))
       .sort((a, b) => a.tier - b.tier || a.nome.localeCompare(b.nome));
-    const eligibleIds = new Set(eligible.map((a) => a.id));
+    const idsValidos = new Set(aulas.filter((a) => a.total_oqs > 0 && !perdidosSet.has(a.id)).map((a) => a.id));
     const snapshots = settings.planos_semanais ?? {};
-    const res: Record<string, number> = {};
+    const maiorSemanaPersistida = Math.max(
+      -1,
+      ...Object.keys(snapshots).map(Number).filter(Number.isInteger),
+    );
+    const maiorSemanaRemapeada = Math.max(
+      -1,
+      ...Object.values(overrides).filter((week) => Number.isInteger(week)),
+    );
+    const semanas = Math.max(1, totalSemanas, maiorSemanaPersistida + 1, maiorSemanaRemapeada + 1);
+    const porSemana = Math.max(1, Math.ceil(elegiveis.length / semanas));
     const baseline: Record<string, number> = {};
-    const pendSet = new Set<string>();
-    const historicallyPlanned = new Set<string>();
+    const res: Record<string, number> = {};
+
+    // O baseline é calculado para toda a preparação, desde a semana zero.
+    // O passado só é exibido como fato quando há snapshot persistido; sem ele,
+    // a configuração integral continua sendo a única fonte do planejamento-base.
+    elegiveis.forEach((aula, index) => {
+      const semana = Math.min(semanas - 1, Math.floor(index / porSemana));
+      baseline[aula.id] = semana;
+      res[aula.id] = semana;
+    });
 
     Object.entries(snapshots).forEach(([weekKey, ids]) => {
       const week = Number(weekKey);
-      if (!Number.isInteger(week) || week > currentWeekIndex) return;
-      ids.filter((id) => eligibleIds.has(id)).forEach((id) => {
-        historicallyPlanned.add(id);
+      if (!Number.isInteger(week) || week < 0) return;
+      ids.filter((id) => idsValidos.has(id)).forEach((id) => {
         res[id] = week;
-        if (
-          week < currentWeekIndex &&
-          !completosSet.has(id) &&
-          !(overrides[id] !== undefined && overrides[id] >= currentWeekIndex)
-        ) {
+      });
+    });
+
+    // Um remapeamento explícito tem precedência sobre o baseline e o snapshot.
+    Object.entries(overrides).forEach(([id, week]) => {
+      if (idsValidos.has(id) && Number.isInteger(week) && week >= 0) {
+        res[id] = week;
+      }
+    });
+
+    const pendSet = new Set<string>();
+    Object.entries(snapshots).forEach(([weekKey, ids]) => {
+      const week = Number(weekKey);
+      if (week >= currentWeekIndex) return;
+      ids.forEach((id) => {
+        if (idsValidos.has(id) && !completosSet.has(id) && (overrides[id] === undefined || overrides[id] >= currentWeekIndex)) {
           pendSet.add(id);
         }
       });
     });
 
-    const remainingWeeks = Math.max(1, totalSemanas - currentWeekIndex);
-    const available = eligible.filter((a) => !historicallyPlanned.has(a.id) && !completosSet.has(a.id));
-    const targetK = Math.max(1, Math.ceil(available.length / remainingWeeks));
-    const currentSnapshot = snapshots[String(currentWeekIndex)]?.filter((id) => eligibleIds.has(id));
-    const explicitCurrent = available.filter((a) => overrides[a.id] === currentWeekIndex);
-    const currentRotation = getRodizioItemForWeek(currentWeekIndex);
-    const rotationCandidates = available.filter((a) =>
-      currentRotation?.aulas_ids?.length
-        ? currentRotation.aulas_ids.includes(a.id)
-        : currentRotation?.especialidade === a.especialidade,
-    );
-    const generatedCandidates = [...explicitCurrent, ...rotationCandidates, ...available].filter(
-      (a, index, list) =>
-        list.findIndex((item) => item.id === a.id) === index &&
-        (overrides[a.id] === undefined || explicitCurrent.some((item) => item.id === a.id)),
-    );
-    const snapshotted = currentSnapshot
-      ? currentSnapshot.map((id) => eligible.find((a) => a.id === id)!).filter(Boolean)
-      : [];
-    const currentWeekPool = [
-      ...snapshotted,
-      ...explicitCurrent.filter((a) => !snapshotted.some((item) => item.id === a.id)),
-      ...(currentSnapshot ? [] : generatedCandidates.slice(0, Math.max(targetK, explicitCurrent.length))),
-    ];
+    const currentWeekIds = Object.entries(res)
+      .filter(([, week]) => week === currentWeekIndex)
+      .map(([id]) => id);
 
-    currentWeekPool.forEach((a) => {
-      res[a.id] = currentWeekIndex;
-      baseline[a.id] = currentWeekIndex;
-    });
-
-    const assigned = new Set([...historicallyPlanned, ...currentWeekPool.map((a) => a.id)]);
-    const future = eligible.filter((a) => !assigned.has(a.id) && !completosSet.has(a.id));
-    future.forEach((a, index) => {
-      const week = overrides[a.id] !== undefined && overrides[a.id] > currentWeekIndex
-        ? overrides[a.id]
-        : currentWeekIndex + 1 + Math.floor(index / targetK);
-      res[a.id] = week;
-      baseline[a.id] = currentWeekIndex + 1 + Math.floor(index / targetK);
-    });
-
-    return {
-      planoSemanaPorAula: res,
-      baselinePlano: baseline,
-      pendenciasIds: pendSet,
-      currentWeekIds: currentWeekPool.map((a) => a.id),
-    };
+    return { planoSemanaPorAula: res, baselinePlano: baseline, pendenciasIds: pendSet, currentWeekIds };
   }, [
     aulas,
     settings.setup_done,
@@ -519,45 +505,18 @@ export function useTrilhaPlano() {
   }, [settings, currentWeekIndex, currentWeekIds, salvarSettings]);
 
 
-  // Quando a trilha foi iniciada antes da criação dos snapshots, as semanas
-  // anteriores não têm uma composição persistida. Distribuímos as matérias que
-  // ainda não possuem snapshot nessas semanas para que o histórico continue
-  // consultável, sem alterar a composição da semana atual.
-  const historicoInferido = useMemo(() => {
-    const snapshots = settings.planos_semanais ?? {};
-    const semanasSemSnapshot = Array.from({ length: currentWeekIndex }, (_, week) => week)
-      .filter((week) => !snapshots[String(week)]);
-    if (semanasSemSnapshot.length === 0) return {} as Record<string, number>;
-
-    const snapshotIds = new Set(Object.values(snapshots).flat());
-    const semHistorico = aulas
-      .filter((a) => a.total_oqs > 0 && !perdidosSet.has(a.id) && !snapshotIds.has(a.id))
-      .sort((a, b) => a.tier - b.tier || a.nome.localeCompare(b.nome));
-    const porSemana = Math.max(1, Math.ceil(semHistorico.length / semanasSemSnapshot.length));
-    const inferido: Record<string, number> = {};
-    semHistorico.forEach((a, index) => {
-      inferido[a.id] = semanasSemSnapshot[Math.min(
-        semanasSemSnapshot.length - 1,
-        Math.floor(index / porSemana),
-      )];
-    });
-    return inferido;
-  }, [aulas, settings.planos_semanais, currentWeekIndex, perdidosSet]);
 
   const aulasPorIndice = (wk: number) =>
     aulas.filter((a) =>
       a.total_oqs > 0 &&
       !perdidosSet.has(a.id) &&
-      (wk < currentWeekIndex
-        ? planoSemanaPorAula[a.id] === wk || historicoInferido[a.id] === wk
-        : planoSemanaPorAula[a.id] === wk),
+      planoSemanaPorAula[a.id] === wk,
     );
 
   const aulasSemanaAtual = aulasPorIndice(currentWeekIndex);
 
-  // Pendências = aulas que (segundo a simulação retrospectiva desde a semana 0)
-  // já deveriam ter sido feitas, mas não foram concluídas/dominadas.
-  // Excluímos as que o aluno já planejou expressamente para a semana atual ou futuras (overrides).
+  // Pendências só podem ser declaradas quando a semana de origem foi persistida.
+  // Sem snapshot não inventamos uma composição histórica.
   const pendenciasAulas = aulas.filter(
     (a) => a.total_oqs > 0 &&
       pendenciasIds.has(a.id) &&
