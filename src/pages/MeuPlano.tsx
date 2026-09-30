@@ -125,11 +125,8 @@ export default function MeuPlano() {
   };
 
   const executePlanChange = (key: PlanKey) => {
-    if (!user) return;
-    const productId = key === "ouro"
-      ? "106162cc-1620-402b-a9e6-8efa3cde5e58"
-      : "3d7c3f69-120e-4f24-b191-54241cb0660f";
-    openCheckout({ productId });
+    if (!user || key === "gratis") return;
+    openCheckout({ productId: key });
     setConfirmPlan(null);
   };
 

@@ -1,21 +1,16 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-const OURO = "106162cc-1620-402b-a9e6-8efa3cde5e58";
-const PRATA = "3d7c3f69-120e-4f24-b191-54241cb0660f";
-
-type Card = { holderName: string; number: string; expirationMonth: string; expirationYear: string; cvv: string };
+const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods": "POST, OPTIONS" };
+const PRODUCT_ID = "106162cc-1620-402b-a9e6-8efa3cde5e58";
+const OFFERS = { ouro: "37myfzv_1077920", prata: "7o3anwr" } as const;
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const required = (value: unknown, name: string) => { if (typeof value !== "string" || !value.trim()) throw new Error(`${name} é obrigatório`); return value.trim(); };
 
-async function cakto(path: string, body: unknown) {
-  const response = await fetch(path, { method: "POST", headers: { Authorization: `Bearer ${required(Deno.env.get("CAKTO_API_KEY"), "CAKTO_API_KEY")}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+async function createPayment(body: unknown, idempotencyKey: string) {
+  const apiKey = required(Deno.env.get("CAKTO_API_KEY"), "CAKTO_API_KEY");
+  const response = await fetch("https://api.cakto.com.br/public_api/payments/", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "X-Idempotency-Key": idempotencyKey }, body: JSON.stringify(body) });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data?.message ?? data?.error ?? `Cakto respondeu ${response.status}`);
+  if (!response.ok) throw new Error(data?.detail ?? data?.message ?? data?.error ?? `Cakto respondeu ${response.status}`);
   return data;
 }
 
@@ -30,37 +25,34 @@ Deno.serve(async (req) => {
     const { data: claims, error: claimError } = await supabase.auth.getClaims(token);
     if (claimError || !claims?.claims?.sub) return json({ error: "Unauthorized" }, 401);
     const userId = String(claims.claims.sub);
-    const email = String(claims.claims.email ?? "").toLowerCase();
     const body = await req.json();
     const productId = required(body.productId, "productId");
-    if (![OURO, PRATA].includes(productId)) return json({ error: "Plano inválido" }, 400);
+    const plan = productId === "ouro" ? "ouro" : productId === "prata" ? "prata" : null;
+    if (!plan) return json({ error: "Plano inválido" }, 400);
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: adminRole } = await admin.from("user_roles").select("user_id").eq("user_id", userId).eq("role", "admin").maybeSingle();
     if (adminRole) {
       await admin.from("assinaturas").upsert({ usuario_id: userId, plano: "ouro", status: "ativo", valor_mensal: 0, data_inicio_plano: new Date().toISOString(), data_congelamento: null, excluir_dados_em: null, data_inadimplencia: null, dias_inadimplente: 0, cancel_at_period_end: false }, { onConflict: "usuario_id" });
       return json({ ok: true, admin: true, plan: "ouro" });
     }
-    const card: Card = body.card;
-    required(card?.holderName, "Nome do titular");
-    const number = required(card?.number, "Número do cartão").replace(/\D/g, "");
-    const cvv = required(card?.cvv, "CVV").replace(/\D/g, "");
-    const month = required(card?.expirationMonth, "Mês de validade").replace(/\D/g, "");
-    const year = required(card?.expirationYear, "Ano de validade").replace(/\D/g, "");
-    if (number.length < 12 || cvv.length < 3) return json({ error: "Dados do cartão inválidos" }, 400);
+    const cardToken = required(body.cardToken, "cardToken");
+    const antifraudReference = required(body.antifraudReference, "antifraudReference");
     const { data: current } = await admin.from("assinaturas").select("plano, cakto_subscription_id").eq("usuario_id", userId).maybeSingle();
-    if (current?.plano === "ouro" && productId === PRATA && current.cakto_subscription_id) {
-      await cakto(required(Deno.env.get("CAKTO_CANCEL_SUBSCRIPTION_URL"), "CAKTO_CANCEL_SUBSCRIPTION_URL"), { subscriptionId: current.cakto_subscription_id });
+    if (current?.plano === "ouro" && plan === "prata" && current.cakto_subscription_id) {
+      const cancelResponse = await fetch(`https://api.cakto.com.br/public_api/subscriptions/${encodeURIComponent(current.cakto_subscription_id)}/cancel/`, { method: "POST", headers: { Authorization: `Bearer ${required(Deno.env.get("CAKTO_API_KEY"), "CAKTO_API_KEY")}` } });
+      if (!cancelResponse.ok) throw new Error("Não foi possível cancelar a assinatura Ouro anterior");
     }
-    const cardToken = await cakto(required(Deno.env.get("CAKTO_CARD_TOKEN_URL"), "CAKTO_CARD_TOKEN_URL"), { card: { holderName: card.holderName.trim(), number, expirationMonth: month, expirationYear: year, cvv } });
-    const tokenId = cardToken?.cardToken ?? cardToken?.token ?? cardToken?.data?.cardToken ?? cardToken?.data?.token;
-    if (!tokenId) throw new Error("A Cakto não retornou cardToken");
-    const subscription = await cakto(required(Deno.env.get("CAKTO_SUBSCRIPTION_URL"), "CAKTO_SUBSCRIPTION_URL"), { productId, cardToken: tokenId, customer: { email, name: card.holderName.trim() }, metadata: { userId } });
-    const subscriptionId = subscription?.subscription?.id ?? subscription?.data?.subscription?.id ?? subscription?.id;
-    const customerId = subscription?.customer?.id ?? subscription?.data?.customer?.id ?? subscription?.customerId ?? null;
-    if (!subscriptionId) throw new Error("A Cakto não retornou o ID da assinatura");
-    await admin.from("assinaturas").upsert({ usuario_id: userId, plano: productId === OURO ? "ouro" : "prata", status: "ativo", cakto_subscription_id: subscriptionId, cakto_customer_id: customerId, metodo_pagamento: "credit_card", data_inicio_plano: new Date().toISOString(), valor_mensal: productId === OURO ? 28.5 : 21.5, cancel_at_period_end: false }, { onConflict: "usuario_id" });
-    return json({ ok: true, subscriptionId });
+    const { data: profile } = await admin.from("profiles").select("email, nome, telefone").eq("id", userId).maybeSingle();
+    const email = required(profile?.email ?? claims.claims.email, "email");
+    const name = required(profile?.nome ?? claims.claims.user_metadata?.nome ?? "Cliente OQ MED", "nome");
+    const phone = required(profile?.telefone ?? claims.claims.user_metadata?.telefone, "telefone").replace(/\D/g, "");
+    const idempotencyKey = crypto.randomUUID();
+    const payment = await createPayment({ paymentMethod: "credit_card", customer: { name, email, phone, fingerprint: antifraudReference }, items: [{ offerId: OFFERS[plan], quantity: 1, offerType: "main" }], card: { token: cardToken }, antifraud_profiling_attempt_reference: antifraudReference, metadata: { user_id: userId, product_id: PRODUCT_ID, plan } }, idempotencyKey);
+    const paymentId = payment?.id ?? payment?.refId;
+    if (!paymentId) throw new Error("A Cakto não retornou o ID do pagamento");
+    await admin.from("assinaturas").upsert({ usuario_id: userId, plano: "trial", status: "trial", cakto_customer_id: null, cakto_subscription_id: null, metodo_pagamento: "credit_card", cancel_at_period_end: false }, { onConflict: "usuario_id" });
+    return json({ ok: true, paymentId, status: payment.status });
   } catch (error) {
-    return json({ error: error instanceof Error ? error.message : "Não foi possível processar a assinatura" }, 400);
+    return json({ error: error instanceof Error ? error.message : "Não foi possível processar o pagamento" }, 400);
   }
 });
