@@ -20,6 +20,7 @@ export interface AssinaturaInfo {
   status: StatusAssinatura;
   valor_mensal: number;
   metodo_pagamento: string | null;
+  data_ultima_cobranca: string | null;
   proxima_renovacao: string | null;
   data_fim_trial: string | null;
   data_inicio_trial: string | null;
