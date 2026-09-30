@@ -6,11 +6,23 @@ const OFFERS = { ouro: "37myfzv_1077920", prata: "s3zhhof" } as const;
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const required = (value: unknown, name: string) => { if (typeof value !== "string" || !value.trim()) throw new Error(`${name} é obrigatório`); return value.trim(); };
 
+class CaktoApiError extends Error {
+  constructor(public status: number, public responseBody: unknown) {
+    const detail = typeof responseBody === "object" && responseBody !== null
+      ? (responseBody as Record<string, unknown>).detail ?? (responseBody as Record<string, unknown>).message ?? (responseBody as Record<string, unknown>).error
+      : undefined;
+    super(typeof detail === "string" ? detail : `Cakto respondeu ${status}`);
+  }
+}
+
 async function createPayment(body: unknown, idempotencyKey: string) {
   const apiKey = required(Deno.env.get("CAKTO_API_KEY"), "CAKTO_API_KEY");
   const response = await fetch("https://api.cakto.com.br/public_api/payments/", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "X-Idempotency-Key": idempotencyKey }, body: JSON.stringify(body) });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data?.detail ?? data?.message ?? data?.error ?? `Cakto respondeu ${response.status}`);
+  if (!response.ok) {
+    console.error("[process-cakto-subscription] Cakto payment rejected", { status: response.status, responseBody: data });
+    throw new CaktoApiError(response.status, data);
+  }
   return data;
 }
 
@@ -42,10 +54,10 @@ Deno.serve(async (req) => {
       const cancelResponse = await fetch(`https://api.cakto.com.br/public_api/subscriptions/${encodeURIComponent(current.cakto_subscription_id)}/cancel/`, { method: "POST", headers: { Authorization: `Bearer ${required(Deno.env.get("CAKTO_API_KEY"), "CAKTO_API_KEY")}` } });
       if (!cancelResponse.ok) throw new Error("Não foi possível cancelar a assinatura Ouro anterior");
     }
-    const { data: profile } = await admin.from("profiles").select("email, nome, telefone").eq("id", userId).maybeSingle();
+    const { data: profile } = await admin.from("profiles").select("email, nome, whatsapp").eq("id", userId).maybeSingle();
     const email = required(profile?.email ?? claims.claims.email, "email");
     const name = required(profile?.nome ?? claims.claims.user_metadata?.nome ?? "Cliente OQ MED", "nome");
-    const phone = required(profile?.telefone ?? claims.claims.user_metadata?.telefone, "telefone").replace(/\D/g, "");
+    const phone = required(profile?.whatsapp ?? claims.claims.user_metadata?.telefone, "telefone").replace(/\D/g, "");
     const idempotencyKey = crypto.randomUUID();
     const payment = await createPayment({ paymentMethod: "credit_card", customer: { name, email, phone, fingerprint: antifraudReference }, items: [{ offerId: OFFERS[plan], quantity: 1, offerType: "main" }], card: { token: cardToken }, antifraud_profiling_attempt_reference: antifraudReference, metadata: { user_id: userId, product_id: PRODUCT_ID, plan } }, idempotencyKey);
     const paymentId = payment?.id ?? payment?.refId;
@@ -53,6 +65,9 @@ Deno.serve(async (req) => {
     await admin.from("assinaturas").upsert({ usuario_id: userId, plano: "trial", status: "trial", cakto_customer_id: null, cakto_subscription_id: null, metodo_pagamento: "credit_card", cancel_at_period_end: false }, { onConflict: "usuario_id" });
     return json({ ok: true, paymentId, status: payment.status });
   } catch (error) {
+    if (error instanceof CaktoApiError) {
+      return json({ error: error.message, caktoStatus: error.status, caktoResponse: error.responseBody }, error.status >= 400 && error.status < 500 ? error.status : 502);
+    }
     return json({ error: error instanceof Error ? error.message : "Não foi possível processar o pagamento" }, 400);
   }
 });
