@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods": "POST, OPTIONS" };
 const PRODUCT_ID = "106162cc-1620-402b-a9e6-8efa3cde5e58";
-const OFFERS = { ouro: "37myfzv_1077920", prata: "7o3anwr" } as const;
+const OFFERS = { ouro: "37myfzv_1077920", prata: "s3zhhof" } as const;
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const required = (value: unknown, name: string) => { if (typeof value !== "string" || !value.trim()) throw new Error(`${name} é obrigatório`); return value.trim(); };
 

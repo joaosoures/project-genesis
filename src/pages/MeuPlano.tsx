@@ -119,6 +119,8 @@ export default function MeuPlano() {
   const { openCheckout, checkoutDialog } = useCaktoCheckout();
   const [searchParams, setSearchParams] = useSearchParams();
   const [confirmPlan, setConfirmPlan] = useState<PlanKey | null>(null);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [canceling, setCanceling] = useState(false);
 
   const handleUpgrade = (key: PlanKey) => {
     setConfirmPlan(key);
@@ -128,6 +130,19 @@ export default function MeuPlano() {
     if (!user || key === "gratis") return;
     openCheckout({ productId: key });
     setConfirmPlan(null);
+  };
+
+  const cancelSubscription = async () => {
+    setCanceling(true);
+    const { data, error } = await supabase.functions.invoke("cancel-cakto-subscription", { body: {} });
+    setCanceling(false);
+    if (error || data?.error) {
+      toast.error(data?.error ?? error?.message ?? "Não foi possível cancelar a assinatura.");
+      return;
+    }
+    toast.success("Assinatura cancelada com sucesso.", { description: "Seu acesso premium foi encerrado." });
+    setCancelDialogOpen(false);
+    await refresh();
   };
 
   useEffect(() => {
@@ -455,6 +470,11 @@ export default function MeuPlano() {
                   Pagamentos processados com segurança. Cancele quando quiser. Após 45 dias de congelamento (inadimplência ou trial expirado),
                   o sistema executa a exclusão irreversível da conta e dos dados de desempenho.
                 </div>
+                {assinatura?.status === "ativo" && assinatura.cakto_subscription_id && (
+                  <Button variant="destructive" className="w-full mt-3" onClick={() => setCancelDialogOpen(true)}>
+                    Cancelar Assinatura
+                  </Button>
+                )}
               </>
             )}
           </CardContent>
@@ -487,6 +507,23 @@ export default function MeuPlano() {
       </section>
 
 
+
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancelar Assinatura</DialogTitle>
+            <DialogDescription>
+              Esta ação cancela sua assinatura na Cakto e encerra o acesso premium. Deseja continuar?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelDialogOpen(false)} disabled={canceling}>Voltar</Button>
+            <Button variant="destructive" onClick={cancelSubscription} disabled={canceling}>
+              {canceling ? "Cancelando..." : "Confirmar cancelamento"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal de Confirmação de Mudança de Plano */}
       <Dialog open={!!confirmPlan} onOpenChange={(open) => !open && setConfirmPlan(null)}>
