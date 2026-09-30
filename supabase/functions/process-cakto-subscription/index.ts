@@ -5,6 +5,19 @@ const PRODUCT_ID = "106162cc-1620-402b-a9e6-8efa3cde5e58";
 const OFFERS = { ouro: "37myfzv_1077920", prata: "s3zhhof" } as const;
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const required = (value: unknown, name: string) => { if (typeof value !== "string" || !value.trim()) throw new Error(`${name} é obrigatório`); return value.trim(); };
+const isValidCpf = (value: string) => {
+  if (!/^\d{11}$/.test(value) || /^([0-9])\1{10}$/.test(value)) return false;
+  let sum = 0;
+  for (let index = 0; index < 9; index++) sum += Number(value[index]) * (10 - index);
+  let digit = (sum * 10) % 11;
+  if (digit === 10) digit = 0;
+  if (digit !== Number(value[9])) return false;
+  sum = 0;
+  for (let index = 0; index < 10; index++) sum += Number(value[index]) * (11 - index);
+  digit = (sum * 10) % 11;
+  if (digit === 10) digit = 0;
+  return digit === Number(value[10]);
+};
 
 class CaktoApiError extends Error {
   constructor(public status: number, public responseBody: unknown) {
@@ -57,11 +70,15 @@ Deno.serve(async (req) => {
     const { data: profile } = await admin.from("profiles").select("email, nome, whatsapp").eq("id", userId).maybeSingle();
     const email = required(profile?.email ?? claims.claims.email, "email");
     const name = required(profile?.nome ?? claims.claims.user_metadata?.nome ?? "Cliente OQ MED", "nome");
-    const phone = required(profile?.whatsapp ?? claims.claims.user_metadata?.telefone, "telefone").replace(/\D/g, "");
+    const phoneDigits = required(profile?.whatsapp ?? claims.claims.user_metadata?.telefone, "telefone").replace(/\D/g, "");
+    if (phoneDigits.length !== 10 && phoneDigits.length !== 11 && !(phoneDigits.startsWith("55") && (phoneDigits.length === 12 || phoneDigits.length === 13))) {
+      throw new Error("Telefone inválido: informe um WhatsApp com DDD");
+    }
+    const phone = phoneDigits.startsWith("55") ? phoneDigits : `55${phoneDigits}`;
     const cpf = required(body.cpf, "cpf").replace(/\D/g, "");
-    if (cpf.length !== 11) throw new Error("CPF inválido");
+    if (!isValidCpf(cpf)) throw new Error("CPF inválido: confira os 11 dígitos informados");
     const idempotencyKey = crypto.randomUUID();
-    const payment = await createPayment({ paymentMethod: "credit_card", customer: { name, email, phone, docType: "cpf", docNumber: cpf, fingerprint: antifraudReference }, items: [{ offerId: OFFERS[plan], quantity: 1, offerType: "main" }], card: { token: cardToken }, antifraud_profiling_attempt_reference: antifraudReference, metadata: { user_id: userId, product_id: PRODUCT_ID, plan } }, idempotencyKey);
+    const payment = await createPayment({ paymentMethod: "credit_card", customer: { name, email, phone, docType: "cpf", docNumber: cpf }, items: [{ offerId: OFFERS[plan], quantity: 1, offerType: "main" }], card: { token: cardToken }, antifraud_profiling_attempt_reference: antifraudReference, metadata: { user_id: userId, product_id: PRODUCT_ID, plan } }, idempotencyKey);
     const paymentId = payment?.id ?? payment?.refId;
     if (!paymentId) throw new Error("A Cakto não retornou o ID do pagamento");
     await admin.from("assinaturas").upsert({ usuario_id: userId, plano: "trial", status: "trial", cakto_customer_id: null, cakto_subscription_id: null, metodo_pagamento: "credit_card", cancel_at_period_end: false }, { onConflict: "usuario_id" });

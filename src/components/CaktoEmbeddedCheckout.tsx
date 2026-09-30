@@ -56,11 +56,18 @@ export function CaktoEmbeddedCheckout({ productId, onStarted }: Props) {
       await sdk.completeAntifraudProfile();
       const { cardToken } = await sdk.createToken({ ...card, cardNumber: onlyDigits(card.cardNumber, 16) });
       const antifraudReference = sdk.getAntifraudReference();
-      const { error: invokeError } = await supabase.functions.invoke("process-cakto-subscription", { body: { productId, cardToken, antifraudReference, cpf: onlyDigits(cpf, 11) } });
-      if (invokeError) throw invokeError;
+      if (!antifraudReference) throw new Error("Não foi possível validar a sessão antifraude. Recarregue a página e tente novamente.");
+      const { data, error: invokeError } = await supabase.functions.invoke("process-cakto-subscription", { body: { productId, cardToken, antifraudReference, cpf: onlyDigits(cpf, 11) } });
+      if (invokeError) {
+        const details = typeof invokeError.context?.json === "function" ? await invokeError.context.json().catch(() => null) : null;
+        const backendMessage = typeof details?.error === "string" ? details.error : null;
+        throw new Error(backendMessage ?? invokeError.message);
+      }
+      if (data?.error) throw new Error(String(data.error));
       setDone(true); onStarted?.();
-    } catch {
-      setError("Não foi possível processar o pagamento. Confira CPF e dados do cartão e tente novamente.");
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Não foi possível processar o pagamento";
+      setError(message === "Failed to fetch" ? "Não foi possível conectar ao processador de pagamentos. Tente novamente." : message);
     } finally { setLoading(false); }
   };
 
