@@ -80,6 +80,21 @@ const MATERIAL_ESPECIALIDADE_LABEL: Record<string, string> = {
 };
 const labelEsp = (k: string) => MATERIAL_ESPECIALIDADE_LABEL[k] || k;
 
+const getMaterialNumber = (nome: string) => {
+  const match = nome.trim().match(/^(\d+)\s*[-–—]/);
+  return match ? Number(match[1]) : null;
+};
+
+const compareMaterialsByTitleNumber = (a: Material, b: Material) => {
+  const numberA = getMaterialNumber(a.nome);
+  const numberB = getMaterialNumber(b.nome);
+
+  if (numberA === null && numberB === null) return 0;
+  if (numberA === null) return 1;
+  if (numberB === null) return -1;
+  return numberA - numberB;
+};
+
 interface Material {
   id: string;
   nome: string;
@@ -554,18 +569,20 @@ export default function Materiais() {
   const isOuro = canUse("materiais") || isAdmin;
 
   const filteredMats = useMemo(() => {
-    return mats.filter((m) => {
-      const searchStr = searchTerm.toLowerCase();
-      const matchesSearch = 
-        m.nome.toLowerCase().includes(searchStr) || 
-        (m.key_words || "").toLowerCase().includes(searchStr);
-      
-      const matchesSpecialty = selectedSpecialty === "all" || m.especialidade === selectedSpecialty;
-      const matchesTier = selectedTier === "all" || m.tier.toString() === selectedTier;
-      const matchesCategory = selectedCategory === "all" || selectedCategory === "materiais";
+    return mats
+      .filter((m) => {
+        const searchStr = searchTerm.toLowerCase();
+        const matchesSearch =
+          m.nome.toLowerCase().includes(searchStr) ||
+          (m.key_words || "").toLowerCase().includes(searchStr);
+        
+        const matchesSpecialty = selectedSpecialty === "all" || m.especialidade === selectedSpecialty;
+        const matchesTier = selectedTier === "all" || m.tier.toString() === selectedTier;
+        const matchesCategory = selectedCategory === "all" || selectedCategory === "materiais";
 
-      return matchesSearch && matchesSpecialty && matchesTier && matchesCategory;
-    });
+        return matchesSearch && matchesSpecialty && matchesTier && matchesCategory;
+      })
+      .sort(compareMaterialsByTitleNumber);
   }, [mats, searchTerm, selectedSpecialty, selectedTier, selectedCategory]);
 
   const filteredSimulados = useMemo(() => {
