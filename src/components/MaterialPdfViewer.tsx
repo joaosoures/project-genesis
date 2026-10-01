@@ -73,7 +73,6 @@ export default function MaterialPdfViewer({ fileUrl, materialId, fallbackUrl }: 
       setTriedFallback(true);
       setActiveFileUrl(fallbackUrl);
       setLoading(true);
-      toast.warning("Tentando abrir o PDF por um caminho alternativo...");
       return;
     }
     setError(true);
