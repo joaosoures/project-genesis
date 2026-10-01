@@ -100,6 +100,21 @@ export interface AulaPlano {
   link_material: string | null;
 }
 
+function getAulaNumero(nome: string): number | null {
+  const match = nome.trim().match(/^(\d+)\s*[-–—]/);
+  return match ? Number(match[1]) : null;
+}
+
+function compareAulasByNumero(a: AulaPlano, b: AulaPlano): number {
+  const numeroA = getAulaNumero(a.nome);
+  const numeroB = getAulaNumero(b.nome);
+
+  if (numeroA === null && numeroB === null) return 0;
+  if (numeroA === null) return 1;
+  if (numeroB === null) return -1;
+  return numeroA - numeroB;
+}
+
 function isoWeek(d: Date) {
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   const dayNum = date.getUTCDay() || 7;
@@ -418,7 +433,7 @@ export function useTrilhaPlano() {
 
     const elegiveis = aulas
       .filter((a) => a.total_oqs > 0 && a.tier <= tierMax && !perdidosSet.has(a.id))
-      .sort((a, b) => a.tier - b.tier || a.nome.localeCompare(b.nome));
+      .sort(compareAulasByNumero);
     const idsValidos = new Set(aulas.filter((a) => a.total_oqs > 0 && !perdidosSet.has(a.id)).map((a) => a.id));
     const snapshots = settings.planos_semanais ?? {};
     const maiorSemanaPersistida = Math.max(
@@ -507,11 +522,13 @@ export function useTrilhaPlano() {
 
 
   const aulasPorIndice = (wk: number) =>
-    aulas.filter((a) =>
-      a.total_oqs > 0 &&
-      !perdidosSet.has(a.id) &&
-      planoSemanaPorAula[a.id] === wk,
-    );
+    aulas
+      .filter((a) =>
+        a.total_oqs > 0 &&
+        !perdidosSet.has(a.id) &&
+        planoSemanaPorAula[a.id] === wk,
+      )
+      .sort(compareAulasByNumero);
 
   const aulasSemanaAtual = aulasPorIndice(currentWeekIndex);
 
