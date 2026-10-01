@@ -104,17 +104,9 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
   const focoAtual: FocoIncidencia = s.foco_incidencia ?? "todas";
   const totalAtual = totalPorFoco(focoAtual);
   
-  // CORREÇÃO: Usar semanas restantes reais a partir de hoje para a configuração
-  const semanasRestantesConfig = useMemo(() => {
-    if (!s.prova_data) return null;
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const prova = new Date(s.prova_data + "T00:00:00");
-    const diff = prova.getTime() - hoje.getTime();
-    return Math.max(1, Math.round(diff / (7 * 86400000)));
-  }, [s.prova_data]);
-
-  const semanasUteisConfig = semanasRestantesConfig ? calcularSemanasUteis(semanasRestantesConfig, 4) : null;
+  // O ritmo usa o mesmo período escolhido pelo aluno, incluindo a data de início.
+  // Isso evita mostrar uma média diferente da usada para montar o plano.
+  const semanasUteisConfig = semanasAteProva ? calcularSemanasUteis(semanasAteProva, 4) : null;
   const matsPorSemana = semanasUteisConfig ? Math.ceil(totalAtual / semanasUteisConfig) : null;
   const excede = matsPorSemana !== null && matsPorSemana > MAX_MAT_SEMANA;
 
@@ -128,8 +120,6 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
   const limiteConfiguracao = calcularLimiteMateriasSemana(s.disponibilidade, totalAtual, HORAS_POR_MATERIA);
   const capacidadeAtual = limiteConfiguracao;
   const deficitMaterias = matsPorSemana !== null ? Math.max(0, matsPorSemana - capacidadeAtual) : 0;
-
-  const diasRecomendados = matsPorSemana ? Math.min(7, Math.max(3, Math.ceil(matsPorSemana * 1.3))) : null;
 
   // Sugestão automática de foco menos intenso que caiba
   const focoSugerido: FocoIncidencia | null = useMemo(() => {
@@ -273,9 +263,9 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
                       <div className="text-xs space-y-1">
                         <p className="font-bold text-destructive">Tempo curto para essa estratégia</p>
                         <p className="text-foreground/80">
-                          Seriam <strong>{matsPorSemana} matérias por semana</strong> — acima do recomendado ({MAX_MAT_SEMANA}/semana).
+                          Seriam <strong>{matsPorSemana} matérias por semana</strong> — acima do limite operacional de {MAX_MAT_SEMANA}/semana usado nesta configuração.
                           {focoSugerido && (
-                            <> Considere mudar para <strong>{FOCO_OPCOES.find(f => f.value === focoSugerido)?.label}</strong> para um ritmo sustentável.</>
+                            <> Para manter um planejamento viável, considere mudar para <strong>{FOCO_OPCOES.find(f => f.value === focoSugerido)?.label}</strong> ou ampliar o período.</>
                           )}
                         </p>
                       </div>
@@ -288,10 +278,9 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
                       <div className="text-xs space-y-0.5">
                         <p className="font-bold text-emerald-700">Ritmo recomendado</p>
                         <p className="text-foreground/80">
-                                  <strong>{matsPorSemana} {matsPorSemana === 1 ? "matéria" : "matérias"} por semana</strong>
-                                  {diasRecomendados && <> em <strong>{diasRecomendados} {diasRecomendados === 1 ? "dia" : "dias"}</strong> de estudo</>}
-                                  {" "}para cobrir tudo no período útil. As últimas quatro semanas ficam reservadas para atrasos e puxadas.
-                                </p>
+                          Para cobrir os materiais selecionados antes da reserva, a média estimada é de <strong>{matsPorSemana} {matsPorSemana === 1 ? "matéria" : "matérias"} por semana</strong>.
+                          Isso é uma referência de planejamento, não uma obrigação: o Gestor distribui as matérias conforme sua disponibilidade. As últimas quatro semanas ficam reservadas para atrasos e puxadas.
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -306,8 +295,8 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
 
           <div className="space-y-4">
             <div className="rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
-              <p className="font-black text-primary">Limite de disponibilidade: {limiteConfiguracao} {limiteConfiguracao === 1 ? "matéria" : "matérias"}/semana</p>
-              <p className="mt-1 text-xs text-muted-foreground">A média planejada é {matsPorSemana ?? "calculada após a prova"} por semana útil. As últimas quatro semanas ficam vazias no início como reserva para atrasos e inserções manuais.</p>
+              <p className="font-black text-primary">Limite de disponibilidade: até {limiteConfiguracao} {limiteConfiguracao === 1 ? "matéria" : "matérias"} por semana</p>
+              <p className="mt-1 text-xs text-muted-foreground">Este é o teto usado pelo Gestor para respeitar suas horas e dias disponíveis. Você não precisa estudar essa quantidade toda semana. A média necessária para cobrir a seleção é {matsPorSemana ?? "calculada após a prova"} por semana útil, com as últimas quatro semanas reservadas.</p>
             </div>
             <div className="flex items-center justify-between">
               <Label className="text-sm font-bold">Disponibilidade e Horas por dia</Label>
@@ -321,8 +310,11 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
               <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 space-y-3">
                 <div className="flex items-center gap-2 text-primary">
                   <Timer className="h-4 w-4" />
-                  <span className="text-xs font-bold uppercase tracking-wider">Gestor de Estudos</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">Gestor de estudos</span>
                 </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Organiza automaticamente os materiais nas semanas do período escolhido. Ele usa o limite abaixo como teto, prioriza a cobertura selecionada e preserva uma reserva no final do plano. Não é uma meta diária nem substitui seu acompanhamento.
+                </p>
                 
                 <div className="text-xs space-y-2 text-foreground/80 leading-relaxed">
                   {/* Alerta de Capacidade vs Necessidade */}
