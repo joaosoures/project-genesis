@@ -278,6 +278,7 @@ export default function Materiais() {
   const [noteContent, setNoteContent] = useState("");
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
+  const [reportMaterial, setReportMaterial] = useState<Material | null>(null);
   const [reportType, setReportType] = useState("erro");
   const [reportComment, setReportComment] = useState("");
   const [isSendingReport, setIsSendingReport] = useState(false);
@@ -447,13 +448,13 @@ export default function Materiais() {
   };
 
   const handleSendReport = async () => {
-    if (!previewMaterial || !reportComment.trim()) return;
+    if (!reportMaterial || !reportComment.trim()) return;
 
     try {
       setIsSendingReport(true);
       const { error } = await supabase.from("problemas_admin").insert({
-        titulo: `Erro em Material: ${previewMaterial.nome}`,
-        descricao: `Tipo: ${reportType}\nMaterial ID: ${previewMaterial.id}\nComentário: ${reportComment}`,
+        titulo: `Erro em Material: ${reportMaterial.nome}`,
+        descricao: `Tipo: ${reportType}\nMaterial ID: ${reportMaterial.id}\nComentário: ${reportComment}`,
         prioridade: "media",
         status: "aberto",
         origem: "material_report"
@@ -462,6 +463,7 @@ export default function Materiais() {
       if (error) throw error;
       toast.success("Report enviado com sucesso!");
       setShowReportDialog(false);
+      setReportMaterial(null);
       setReportComment("");
     } catch (error) {
       console.error("Erro ao enviar report:", error);
@@ -473,7 +475,7 @@ export default function Materiais() {
 
   const openReportForMaterial = (m: Material, e: React.MouseEvent) => {
     e.stopPropagation();
-    setPreviewMaterial(m);
+    setReportMaterial(m);
     setShowReportDialog(true);
   };
 
@@ -1313,7 +1315,10 @@ export default function Materiais() {
       </Dialog>
 
       {/* Dialog de Report */}
-      <Dialog open={showReportDialog} onOpenChange={setShowReportDialog} modal={false}>
+      <Dialog open={showReportDialog} onOpenChange={(open) => {
+        setShowReportDialog(open);
+        if (!open) setReportMaterial(null);
+      }}>
         <DialogContent className="sm:max-w-[425px] bg-[hsl(var(--background))] border-none shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-[2rem] p-8">
           <DialogHeader className="mb-4">
             <DialogTitle className="flex items-center gap-2 text-xl font-display font-black tracking-tight">
