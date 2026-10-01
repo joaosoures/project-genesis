@@ -224,6 +224,7 @@ const MaterialCard = memo(({
             variant="ghost"
             size="icon"
             className="h-8 w-8 rounded-lg hover:bg-red-500/10 text-muted-foreground/40 hover:text-red-500 transition-colors"
+            onClickCapture={(e) => e.stopPropagation()}
             onClick={(e) => openReportForMaterial(m, e)}
             title="Reportar Problema"
           >
