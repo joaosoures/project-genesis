@@ -75,10 +75,9 @@ export default function AdminPreAulaImportDialog({ open, onOpenChange }: Props) 
       const { data, error } = await supabase
         .from("materiais")
         .select("id,nome,especialidade")
-        .eq("especialidade", specialty)
         .order("nome");
       if (error) throw error;
-      if (!data?.length) throw new Error("Não há resumos cadastrados para esta especialidade.");
+      if (!data?.length) throw new Error("Não há resumos cadastrados.");
 
       const candidates = data as MaterialMatchCandidate[];
       const automaticMatches: Record<string, string> = {};
@@ -122,8 +121,8 @@ export default function AdminPreAulaImportDialog({ open, onOpenChange }: Props) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[92vh] overflow-hidden flex flex-col rounded-3xl">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[92vh] overflow-hidden flex min-h-0 flex-col rounded-3xl">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2 text-xl">
             <FileSpreadsheet className="h-5 w-5 text-accent" />
             Gerar Questões Pré-Aula
@@ -134,7 +133,7 @@ export default function AdminPreAulaImportDialog({ open, onOpenChange }: Props) 
           <Progress value={progress} className="h-1.5 mt-3" />
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4 -mr-4">
+        <ScrollArea className="min-h-0 flex-1 pr-4 -mr-4">
           {step === "upload" && (
             <div className="space-y-6 py-4">
               <div className="space-y-2">
@@ -268,7 +267,7 @@ export default function AdminPreAulaImportDialog({ open, onOpenChange }: Props) 
           )}
         </ScrollArea>
 
-        <DialogFooter className="gap-2 pt-4 border-t">
+        <DialogFooter className="shrink-0 gap-2 pt-4 border-t">
           {step === "upload" && <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>}
           {step === "matching" && (
             <>
