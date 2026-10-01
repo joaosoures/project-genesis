@@ -40,6 +40,7 @@ import CalendarioEstudos from "@/components/trilha/CalendarioEstudos";
 import AgendamentoSimulados from "@/components/trilha/AgendamentoSimulados";
 import SimuladosDaTrilha from "@/components/trilha/SimuladosDaTrilha";
 import RedistribuirDialog from "@/components/trilha/RedistribuirDialog";
+import ConfirmarRedistribuicaoDialog from "@/components/trilha/ConfirmarRedistribuicaoDialog";
 import ExplicacaoTrilha from "@/components/trilha/ExplicacaoTrilha";
 import RodizioRapido from "@/components/trilha/RodizioRapido";
 import IncidenciaBadge, { getIncidencia } from "@/components/trilha/IncidenciaBadge";
@@ -194,6 +195,8 @@ export default function TrilhaEstrategica() {
 
   const [setupOpen, setSetupOpen] = useState(false);
   const [redistOpen, setRedistOpen] = useState(false);
+  const [confirmRedistribuicaoOpen, setConfirmRedistribuicaoOpen] = useState(false);
+  const [preselecionarTodas, setPreselecionarTodas] = useState(false);
   const [pastOpen, setPastOpen] = useState(false);
   const [revealCount, setRevealCount] = useState(0); 
   const futureOpen = revealCount > 0;
@@ -328,6 +331,16 @@ export default function TrilhaEstrategica() {
     }
     return arr;
   }, [currentWeekIndex, aulasPorIndice]);
+
+  const abrirConfirmacaoRedistribuicao = () => {
+    setConfirmRedistribuicaoOpen(true);
+  };
+
+  const confirmarRedistribuicao = () => {
+    setConfirmRedistribuicaoOpen(false);
+    setPreselecionarTodas(true);
+    setRedistOpen(true);
+  };
 
 
   // Sparkline mock — usa OQs do dia (poderia vir do hook futuramente)
@@ -565,6 +578,27 @@ export default function TrilhaEstrategica() {
                             <p className="text-lg font-bold tabular-nums">{list.length}</p>
                           </div>
                         </div>
+                        {(() => {
+                          const perdidosSet = new Set(settings.perdidos ?? []);
+                          const pendenciasDaSemana = list.filter(
+                            (aula) =>
+                              pendenciasAulas.some((pendencia) => pendencia.id === aula.id) &&
+                              !completosSet.has(aula.id) &&
+                              !perdidosSet.has(aula.id),
+                          );
+                          const possuiDestinos = proximasSemanasDisponiveis(1).length > 0;
+
+                          return pendenciasDaSemana.length > 0 && possuiDestinos ? (
+                            <Button
+                              variant="outline"
+                              onClick={abrirConfirmacaoRedistribuicao}
+                              className="mb-5 w-full rounded-xl border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:text-amber-900 font-black text-[10px] uppercase tracking-wider gap-2"
+                            >
+                              <AlertTriangle className="h-4 w-4" />
+                              Redistribuir Pendências
+                            </Button>
+                          ) : null;
+                        })()}
                         <SimuladosDaTrilha
                           settings={settings}
                           semanaIndex={wk}
@@ -1340,12 +1374,22 @@ export default function TrilhaEstrategica() {
 
       <RedistribuirDialog
         open={redistOpen}
-        onOpenChange={setRedistOpen}
+        onOpenChange={(open) => {
+          setRedistOpen(open);
+          if (!open) setPreselecionarTodas(false);
+        }}
         pendencias={pendenciasAulas}
+        preselecionarTodas={preselecionarTodas}
         maxPorSemana={limiteMateriasSemana}
         proximasSemanas={proximasSemanasDisponiveis}
         currentWeekIndex={currentWeekIndex}
         onConfirm={aplicarRedistribuicao}
+      />
+
+      <ConfirmarRedistribuicaoDialog
+        open={confirmRedistribuicaoOpen}
+        onOpenChange={setConfirmRedistribuicaoOpen}
+        onConfirm={confirmarRedistribuicao}
       />
 
       <Dialog open={!!preAulaDecision} onOpenChange={(open) => !open && setPreAulaDecision(null)}>

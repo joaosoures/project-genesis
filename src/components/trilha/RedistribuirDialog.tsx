@@ -20,6 +20,7 @@ interface Props {
   maxPorSemana: number; // 4
   proximasSemanas: (qtd: number) => number[];
   currentWeekIndex: number;
+  preselecionarTodas?: boolean;
   onConfirm: (params: {
     redistribuir: { aula_id: string; semana_index: number }[];
     perder: string[];
@@ -33,6 +34,7 @@ export default function RedistribuirDialog({
   maxPorSemana,
   proximasSemanas,
   currentWeekIndex,
+  preselecionarTodas = false,
   onConfirm,
 }: Props) {
   const MAX = 12; // Aumentamos o limite para permitir espalhar mais matérias
@@ -40,10 +42,10 @@ export default function RedistribuirDialog({
 
   useEffect(() => {
     if (open) {
-      // Pré-seleciona as primeiras (até 6 por padrão para não sobrecarregar demais, mas permite mais)
-      setSelecionadas(pendencias.slice(0, 6).map((a) => a.id));
+      const quantidadeInicial = preselecionarTodas ? MAX : 6;
+      setSelecionadas(pendencias.slice(0, quantidadeInicial).map((a) => a.id));
     }
-  }, [open, pendencias]);
+  }, [open, pendencias, preselecionarTodas]);
 
   const slots = useMemo(
     () => proximasSemanas(MAX),
