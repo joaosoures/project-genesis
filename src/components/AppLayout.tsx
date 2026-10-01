@@ -23,7 +23,6 @@ import { getOverdueCounts } from "@/lib/queue";
 
 // Lazy load non-critical components
 const LoginAlerts = lazy(() => import("@/components/LoginAlerts"));
-const PaymentTestModeBanner = lazy(() => import("@/components/PaymentTestModeBanner"));
 const TrialUrgencyBanner = lazy(() => import("@/components/TrialUrgencyBanner"));
 const ErrorBoundary = lazy(() => import("@/components/ErrorBoundary"));
 
@@ -278,7 +277,6 @@ export default function AppLayout() {
         <div className="flex-1 flex flex-col min-w-0 max-w-full">
           <Suspense fallback={null}>
             <TrialUrgencyBanner />
-            <PaymentTestModeBanner />
           </Suspense>
           <SidebarTrigger
             className="fixed top-24 left-3 z-50 h-16 w-11 rounded-full bg-background/90 backdrop-blur-md border border-border/80 shadow-xl hover:bg-background transition-all active:scale-95"
