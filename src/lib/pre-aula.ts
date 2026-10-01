@@ -311,15 +311,17 @@ export function buildPreAulaImportPayload(
   rows: PreAulaSpreadsheetRow[],
   matches: Record<string, string>,
   specialty: Especialidade,
+  materials: MaterialMatchCandidate[] = [],
 ) {
   const orderByMaterial = new Map<string, number>();
   return rows.map((row) => {
     const materialId = matches[row.materia];
+    const materialSpecialty = materials.find((material) => material.id === materialId)?.especialidade;
     const nextOrder = (orderByMaterial.get(materialId) ?? 0) + 1;
     orderByMaterial.set(materialId, nextOrder);
     return {
       material_id: materialId,
-      especialidade: specialty,
+      especialidade: materialSpecialty ?? specialty,
       questao: row.questao,
       alternativa_a: row.alternativa_a,
       alternativa_b: row.alternativa_b,

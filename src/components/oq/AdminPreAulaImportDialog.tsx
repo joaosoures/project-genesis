@@ -104,7 +104,7 @@ export default function AdminPreAulaImportDialog({ open, onOpenChange }: Props) 
     if (!allMatched) return;
     setLoading(true);
     try {
-      const payload = buildPreAulaImportPayload(rows, matches, specialty);
+      const payload = buildPreAulaImportPayload(rows, matches, specialty, materials);
       const { data, error } = await supabase.rpc("admin_import_pre_aula_questoes", { payload });
       if (error) throw error;
       setResult(data as unknown as ImportResult);
@@ -121,7 +121,7 @@ export default function AdminPreAulaImportDialog({ open, onOpenChange }: Props) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[92vh] overflow-hidden flex min-h-0 flex-col rounded-3xl">
+      <DialogContent className="max-w-4xl h-[92vh] max-h-[92vh] overflow-hidden flex min-h-0 flex-col rounded-3xl">
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2 text-xl">
             <FileSpreadsheet className="h-5 w-5 text-accent" />
@@ -133,7 +133,7 @@ export default function AdminPreAulaImportDialog({ open, onOpenChange }: Props) 
           <Progress value={progress} className="h-1.5 mt-3" />
         </DialogHeader>
 
-        <ScrollArea className="min-h-0 flex-1 pr-4 -mr-4">
+        <ScrollArea className="h-0 min-h-0 flex-1 pr-4 -mr-4">
           {step === "upload" && (
             <div className="space-y-6 py-4">
               <div className="space-y-2">
@@ -181,7 +181,7 @@ export default function AdminPreAulaImportDialog({ open, onOpenChange }: Props) 
           )}
 
           {step === "matching" && (
-            <div className="space-y-5 py-4">
+            <div className="min-h-full space-y-5 py-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <Stat label="Arquivo" value={fileName} />
                 <Stat label="Válidas" value={rows.length} />
