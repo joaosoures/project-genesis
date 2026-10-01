@@ -125,6 +125,7 @@ export default function BancoCards() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [studiedIds, setStudiedIds] = useState<Set<string>>(new Set());
   const [expandedBaralhos, setExpandedBaralhos] = useState<Set<string>>(new Set());
+  const [aulas, setAulas] = useState<any[]>([]);
   const { user, isAdmin, isEditor } = useAuth();
 
   useEffect(() => {
@@ -134,6 +135,19 @@ export default function BancoCards() {
 
   async function loadData() {
     if (!user) return;
+
+    const todasAulas: any[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase
+        .from("materiais")
+        .select("id, nome, especialidade, tier")
+        .order("nome", { ascending: true })
+        .range(from, from + 999);
+      if (error || !data) break;
+      todasAulas.push(...data);
+      if (data.length < 1000) break;
+    }
+    setAulas(todasAulas);
     
     // Carregar os 500 cards mais recentes e todos os cards não verificados visíveis.
     // A política do Supabase limita os cards não verificados aos próprios do usuário (ou ao admin).
@@ -239,7 +253,8 @@ export default function BancoCards() {
           alternativa_e: editingCard.alternativa_e,
           explicacao: editingCard.explicacao,
           especialidade: editingCard.especialidade,
-          verificado: editingCard.verificado
+          verificado: editingCard.verificado,
+          aula_id: editingCard.aula_id || null
         })
         .eq("id", editingCard.id);
 
@@ -501,11 +516,11 @@ export default function BancoCards() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Especialidade</Label>
-                    <Select 
-                      value={editingCard.especialidade} 
+                    <Select
+                      value={editingCard.especialidade}
                       onValueChange={v => setEditingCard({ ...editingCard, especialidade: v })}
                     >
                       <SelectTrigger className="rounded-xl">
@@ -525,6 +540,31 @@ export default function BancoCards() {
                     </div>
                   </div>
                 </div>
+
+                {isAdmin && (
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Aula da Trilha Estratégica</Label>
+                    <Select
+                      value={editingCard.aula_id || "sem-aula"}
+                      onValueChange={value => setEditingCard({ ...editingCard, aula_id: value === "sem-aula" ? null : value })}
+                    >
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue placeholder="Selecione uma aula" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-80">
+                        <SelectItem value="sem-aula">Sem aula vinculada</SelectItem>
+                        {aulas.map(aula => (
+                          <SelectItem key={aula.id} value={aula.id}>
+                            {aula.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      O OQ aparecerá na sessão de estudo da aula selecionada. {aulas.length} aulas disponíveis.
+                    </p>
+                  </div>
+                )}
 
                 {editingCard.modo === "abcde" ? (
                   <div className="space-y-4">
