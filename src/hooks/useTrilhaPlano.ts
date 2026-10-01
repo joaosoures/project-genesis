@@ -49,6 +49,8 @@ export interface TrilhaSettings {
   completos_semana?: Record<string, number>;
   /** Snapshot imutável das aulas efetivamente apresentadas em cada semana. */
   planos_semanais?: Record<string, string[]>;
+  /** Capacidade fixa de matérias por semana da configuração atual. */
+  limite_materias_semana?: number;
   /** Cache das estatísticas globais para evitar processamento pesado. */
   stats_cache?: Record<string, { count: number; acertos: number }>;
   /** Timestamp da última sincronização do histórico. */
@@ -80,6 +82,7 @@ export const TRILHA_DEFAULT: TrilhaSettings = {
   completos: [],
   completos_semana: {},
   planos_semanais: {},
+  limite_materias_semana: undefined,
   stats_cache: {},
   last_sync_timestamp: null,
 };
@@ -100,12 +103,12 @@ export interface AulaPlano {
   link_material: string | null;
 }
 
-function getAulaNumero(nome: string): number | null {
+export function getAulaNumero(nome: string): number | null {
   const match = nome.trim().match(/^(\d+)\s*[-–—]/);
   return match ? Number(match[1]) : null;
 }
 
-function compareAulasByNumero(a: AulaPlano, b: AulaPlano): number {
+export function compareAulasByNumero(a: AulaPlano, b: AulaPlano): number {
   const numeroA = getAulaNumero(a.nome);
   const numeroB = getAulaNumero(b.nome);
 
@@ -113,6 +116,66 @@ function compareAulasByNumero(a: AulaPlano, b: AulaPlano): number {
   if (numeroA === null) return 1;
   if (numeroB === null) return -1;
   return numeroA - numeroB;
+}
+
+export function calcularLimiteMateriasSemana(
+  disponibilidade: TrilhaSettings["disponibilidade"],
+  necessidade: number,
+  duracaoMediaHoras = 1.8,
+): number {
+  const horas = disponibilidade.dias.reduce(
+    (total, ativo, index) => total + (ativo ? (disponibilidade.horas_por_dia?.[index] ?? disponibilidade.horas) : 0),
+    0,
+  );
+  if (necessidade <= 0) return 1;
+  return Math.max(1, Math.min(necessidade, Math.floor(horas / duracaoMediaHoras)));
+}
+
+export interface NormalizacaoSemanasResult {
+  distribuicao: Record<string, number>;
+  deslocamentos: { aula_id: string; de: number; para: number }[];
+  excessoUltimaSemana: string[];
+}
+
+export function normalizarSemanas(
+  distribuicao: Record<string, number>,
+  aulas: AulaPlano[],
+  completos: Set<string>,
+  limite: number,
+  totalSemanas: number,
+): NormalizacaoSemanasResult {
+  const validos = new Map(aulas.map((aula) => [aula.id, aula]));
+  const resultado: Record<string, number> = {};
+  Object.entries(distribuicao).forEach(([id, semana]) => {
+    if (validos.has(id) && Number.isInteger(semana) && semana >= 0) resultado[id] = Math.min(semana, Math.max(0, totalSemanas - 1));
+  });
+  const deslocamentos: NormalizacaoSemanasResult["deslocamentos"] = [];
+  const excessoUltimaSemana: string[] = [];
+  const capacidade = Math.max(1, limite);
+  const maxIteracoes = Math.max(1, aulas.length * Math.max(1, totalSemanas));
+  let iteracoes = 0;
+
+  while (iteracoes++ < maxIteracoes) {
+    let mudou = false;
+    for (let semana = 0; semana < totalSemanas; semana++) {
+      const ids = Object.entries(resultado).filter(([, wk]) => wk === semana).map(([id]) => id);
+      if (ids.length <= capacidade) continue;
+      const candidatos = ids
+        .filter((id) => !completos.has(id))
+        .sort((a, b) => compareAulasByNumero(validos.get(b)!, validos.get(a)!));
+      const deslocar = candidatos[0];
+      if (!deslocar) continue;
+      if (semana >= totalSemanas - 1) {
+        excessoUltimaSemana.push(deslocar);
+        continue;
+      }
+      resultado[deslocar] = semana + 1;
+      deslocamentos.push({ aula_id: deslocar, de: semana, para: semana + 1 });
+      mudou = true;
+    }
+    if (!mudou) break;
+  }
+  return { distribuicao: resultado, deslocamentos, excessoUltimaSemana: Array.from(new Set(excessoUltimaSemana)) };
 }
 
 function isoWeek(d: Date) {
@@ -445,15 +508,14 @@ export function useTrilhaPlano() {
       ...Object.values(overrides).filter((week) => Number.isInteger(week)),
     );
     const semanas = Math.max(1, totalSemanas, maiorSemanaPersistida + 1, maiorSemanaRemapeada + 1);
-    const porSemana = Math.max(1, Math.ceil(elegiveis.length / semanas));
+    const capacidadeFixa = settings.limite_materias_semana ?? Math.max(1, Math.floor((settings.disponibilidade.horas * settings.disponibilidade.dias.filter(Boolean).length) / 1.8));
     const baseline: Record<string, number> = {};
     const res: Record<string, number> = {};
 
-    // O baseline é calculado para toda a preparação, desde a semana zero.
-    // O passado só é exibido como fato quando há snapshot persistido; sem ele,
-    // a configuração integral continua sendo a única fonte do planejamento-base.
+    // O baseline usa a capacidade gravada e preenche as semanas em ordem.
+    // O passado só é exibido como fato quando há snapshot persistido.
     elegiveis.forEach((aula, index) => {
-      const semana = Math.min(semanas - 1, Math.floor(index / porSemana));
+      const semana = Math.min(semanas - 1, Math.floor(index / capacidadeFixa));
       baseline[aula.id] = semana;
       res[aula.id] = semana;
     });
@@ -472,6 +534,16 @@ export function useTrilhaPlano() {
         res[id] = week;
       }
     });
+
+    const normalizado = normalizarSemanas(
+      res,
+      elegiveis,
+      completosSet,
+      capacidadeFixa,
+      semanas,
+    );
+    Object.keys(res).forEach((id) => delete res[id]);
+    Object.assign(res, normalizado.distribuicao);
 
     const pendSet = new Set<string>();
     Object.entries(snapshots).forEach(([weekKey, ids]) => {
@@ -553,12 +625,33 @@ export function useTrilhaPlano() {
   }
 
   const perdidosAulas = aulas.filter((a) => a.total_oqs > 0 && perdidosSet.has(a.id));
+  const limiteMateriasSemana = settings.limite_materias_semana ?? Math.max(1, Math.floor((settings.disponibilidade.horas * diasAtivos) / 1.8));
+
+  const moverAulaParaSemana = useCallback(async (aulaId: string, semanaDestino: number) => {
+    if (!aulas.some((aula) => aula.id === aulaId) || totalSemanas < 1) return { deslocamentos: [], excessoUltimaSemana: [] };
+    const distribuicao = { ...planoSemanaPorAula, [aulaId]: Math.max(0, Math.min(semanaDestino, totalSemanas - 1)) };
+    const normalizado = normalizarSemanas(
+      distribuicao,
+      aulas.filter((aula) => aula.total_oqs > 0 && !perdidosSet.has(aula.id)),
+      completosSet,
+      limiteMateriasSemana,
+      totalSemanas,
+    );
+    const novosOverrides = { ...(settings.plano_overrides ?? {}) };
+    Object.entries(normalizado.distribuicao).forEach(([id, semana]) => { novosOverrides[id] = semana; });
+    await salvarSettings({
+      ...settings,
+      plano_overrides: novosOverrides,
+      perdidos: (settings.perdidos ?? []).filter((id) => id !== aulaId),
+    });
+    return normalizado;
+  }, [aulas, totalSemanas, planoSemanaPorAula, perdidosSet, completosSet, limiteMateriasSemana, settings, salvarSettings]);
 
   // Compatibilidade: déficit "antigo" baseado em meta semanal
   const deficitAnterior = Math.max(0, metaSemana - studiedLastWeek);
   const semanaIsoAtual = isoWeek(new Date());
 
-  const AULAS_POR_SEMANA = Math.max(1, Math.floor((dailyGoal * 7) / 25)); // Estimativa de aulas baseada na meta semanal de OQs
+  const AULAS_POR_SEMANA = limiteMateriasSemana; // Alias de compatibilidade para consumidores antigos.
 
   // Cálculo de puxadas e redistribuições para a análise
   const analiseEstrategica = useMemo(() => {
@@ -593,6 +686,8 @@ export function useTrilhaPlano() {
     proximasSemanasDisponiveis,
     aulasPorIndice,
     AULAS_POR_SEMANA,
+    limiteMateriasSemana,
+    moverAulaParaSemana,
     recarregar: carregar,
     getRodizioForWeek,
     analiseEstrategica,

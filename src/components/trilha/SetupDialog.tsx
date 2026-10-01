@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Plus, Trash2, ShieldCheck, CalendarClock, Target, AlertTriangle, Sparkles, Check, Timer, Clock } from "lucide-react";
 import type { TrilhaSettings, RodizioItem, AulaPlano, FocoIncidencia } from "@/hooks/useTrilhaPlano";
-import { maxTierFor } from "@/hooks/useTrilhaPlano";
+import { calcularLimiteMateriasSemana, maxTierFor } from "@/hooks/useTrilhaPlano";
 import { ESPECIALIDADE_LABEL } from "@/lib/oq";
 import { cn } from "@/lib/utils";
 
@@ -124,7 +124,8 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
 
   // Média de tempo por matéria: 1.8h a 2h
   const HORAS_POR_MATERIA = 1.8;
-  const capacidadeAtual = Math.floor(horasSemanais / HORAS_POR_MATERIA);
+  const limiteConfiguracao = calcularLimiteMateriasSemana(s.disponibilidade, totalAtual, HORAS_POR_MATERIA);
+  const capacidadeAtual = limiteConfiguracao;
   const deficitMaterias = matsPorSemana !== null ? Math.max(0, matsPorSemana - capacidadeAtual) : 0;
 
   const diasRecomendados = matsPorSemana ? Math.min(7, Math.max(3, Math.ceil(matsPorSemana * 1.3))) : null;
@@ -303,6 +304,10 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
 
 
           <div className="space-y-4">
+            <div className="rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+              <p className="font-black text-primary">Capacidade fixa desta configuração: {limiteConfiguracao} {limiteConfiguracao === 1 ? "matéria" : "matérias"}/semana</p>
+              <p className="mt-1 text-xs text-muted-foreground">Derivada de {horasSemanais}h semanais e limitada pela necessidade da estratégia. Será gravada ao salvar e não será recalculada a cada render.</p>
+            </div>
             <div className="flex items-center justify-between">
               <Label className="text-sm font-bold">Disponibilidade e Horas por dia</Label>
               <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
@@ -437,7 +442,7 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
                 setMudancas(m);
                 setConfirmOpen(true);
               } else {
-                onSave({ ...s, setup_done: true });
+                onSave({ ...s, setup_done: true, limite_materias_semana: limiteConfiguracao });
                 onOpenChange(false);
               }
             }}
@@ -454,6 +459,10 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
                   <ul className="list-disc pl-5 space-y-0.5 text-foreground">
                     {mudancas.map((m) => <li key={m}><strong>{m}</strong></li>)}
                   </ul>
+                  <div className="flex gap-2 items-start text-blue-700 bg-blue-50 border border-blue-200 rounded-lg p-2 text-xs">
+                    <Timer className="h-4 w-4 shrink-0 mt-0.5" />
+                    <span>A confirmação recalculará a capacidade fixa para <strong>{limiteConfiguracao} matérias por semana</strong> e reorganizará as semanas futuras. Histórico, conclusões e ajustes manuais serão preservados.</span>
+                  </div>
                   {mudancas.includes("Data de início dos estudos") ? (
                     <div className="flex gap-2 items-start text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs">
                       <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -476,7 +485,7 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
               <AlertDialogCancel>Revisar</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
-                  onSave({ ...s, setup_done: true });
+                  onSave({ ...s, setup_done: true, limite_materias_semana: limiteConfiguracao });
                   setConfirmOpen(false);
                   onOpenChange(false);
                 }}

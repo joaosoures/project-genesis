@@ -79,8 +79,7 @@ export default function RedistribuirDialog({
             Redistribuir pendências
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Escolha até <strong>{MAX}</strong> aulas para redistribuir — uma por semana, a partir
-            da próxima. As demais ficarão em <em>"Estudos que você perdeu"</em>.
+            Escolha até <strong>{MAX}</strong> aulas para redistribuir. A capacidade fixa é de <strong>{maxPorSemana} matérias por semana</strong>; o transbordo automático preserva sua escolha e move apenas pendências excedentes. As demais ficarão em <em>"Estudos que você perdeu"</em>.
           </DialogDescription>
         </DialogHeader>
 

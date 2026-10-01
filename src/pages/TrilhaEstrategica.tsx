@@ -171,7 +171,8 @@ export default function TrilhaEstrategica() {
     aulasSemanaAtual,
     proximasSemanasDisponiveis,
     aulasPorIndice,
-    AULAS_POR_SEMANA,
+    limiteMateriasSemana,
+    moverAulaParaSemana,
     getRodizioForWeek,
     analiseEstrategica,
     focoSemana,
@@ -204,6 +205,16 @@ export default function TrilhaEstrategica() {
   const [checkingSummaryId, setCheckingSummaryId] = useState<string | null>(null);
   const semanaAtualRef = useRef<HTMLDivElement | null>(null);
   const [fabVisible, setFabVisible] = useState(false);
+  const [draggedAulaId, setDraggedAulaId] = useState<string | null>(null);
+
+  const handleDropAula = useCallback((semana: number) => {
+    if (!draggedAulaId) return;
+    void moverAulaParaSemana(draggedAulaId, semana).then((resultado) => {
+      if (resultado.deslocamentos.length > 0) toast.info(`${resultado.deslocamentos.length} matéria(s) foram deslocadas automaticamente.`);
+      if (resultado.excessoUltimaSemana.length > 0) toast.warning("A última semana manteve excesso acima da capacidade fixa.");
+    });
+    setDraggedAulaId(null);
+  }, [draggedAulaId, moverAulaParaSemana]);
 
   useEffect(() => {
     const update = () => {
@@ -337,35 +348,35 @@ export default function TrilhaEstrategica() {
           })
           .slice(0, 6);
 
-  function aplicarRedistribuicao(params: {
+  async function aplicarRedistribuicao(params: {
     redistribuir: { aula_id: string; semana_index: number }[];
     perder: string[];
   }) {
-    const novosOverrides = { ...(settings.plano_overrides ?? {}) };
-    params.redistribuir.forEach(({ aula_id, semana_index }) => {
-      novosOverrides[aula_id] = semana_index;
-    });
-    const novosPerdidos = Array.from(
-      new Set([...(settings.perdidos ?? []), ...params.perder]),
-    );
-    salvarSettings({
-      ...settings,
-      plano_overrides: novosOverrides,
-      perdidos: novosPerdidos,
-    });
+    for (const { aula_id, semana_index } of params.redistribuir) {
+      const resultado = await moverAulaParaSemana(aula_id, semana_index);
+      if (resultado.deslocamentos.length > 0) {
+        toast.info(`${resultado.deslocamentos.length} matéria(s) foram deslocadas automaticamente para respeitar a capacidade.`);
+      }
+      if (resultado.excessoUltimaSemana.length > 0) {
+        toast.warning("A última semana manteve matérias acima da capacidade fixa.");
+      }
+    }
+    if (params.perder.length > 0) {
+      await salvarSettings({
+        ...settings,
+        perdidos: Array.from(new Set([...(settings.perdidos ?? []), ...params.perder])),
+      });
+    }
   }
 
-  function fazerAgoraPendencia(aulaId: string) {
-    const novosOverrides = { ...(settings.plano_overrides ?? {}), [aulaId]: currentWeekIndex };
-    const semanaKey = String(currentWeekIndex);
-    const semanaAtual = Array.from(
-      new Set([...(settings.planos_semanais?.[semanaKey] ?? aulasSemanaAtual.map((a) => a.id)), aulaId]),
-    );
-    salvarSettings({
-      ...settings,
-      plano_overrides: novosOverrides,
-      planos_semanais: { ...(settings.planos_semanais ?? {}), [semanaKey]: semanaAtual },
-    });
+  async function fazerAgoraPendencia(aulaId: string, semanaDestino = currentWeekIndex) {
+    const resultado = await moverAulaParaSemana(aulaId, semanaDestino);
+    if (resultado.deslocamentos.length > 0) {
+      toast.info(`${resultado.deslocamentos.length} matéria(s) foram deslocadas para as semanas seguintes.`);
+    }
+    if (resultado.excessoUltimaSemana.length > 0) {
+      toast.warning("A última semana manteve excesso acima da capacidade fixa.");
+    }
   }
 
   function handleCheckClick(aula: { id: string; nome: string }) {
@@ -571,6 +582,8 @@ export default function TrilhaEstrategica() {
                               return (
                                 <li
                                   key={a.id}
+                                  draggable={!done}
+                                  onDragStart={() => setDraggedAulaId(a.id)}
                                   className={cn(
                                     "flex items-center justify-between gap-3 px-3 py-2.5 bg-white transition-colors",
                                     !done && "hover:bg-muted/30",
@@ -628,6 +641,8 @@ export default function TrilhaEstrategica() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={() => handleDropAula(currentWeekIndex)}
             className="relative z-10 bg-white rounded-3xl shadow-xl border border-border/40 p-6 md:p-8"
           >
             <div className="flex items-start justify-between flex-wrap gap-4 mb-8">
@@ -1213,6 +1228,8 @@ export default function TrilhaEstrategica() {
                             transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] },
                           },
                         }}
+                        onDragOver={(event) => event.preventDefault()}
+                        onDrop={() => handleDropAula(wk)}
                         className="relative z-10 bg-white rounded-3xl shadow-xl border border-border/40 p-6 md:p-8"
                       >
                         <div className="flex items-center justify-between mb-8">
@@ -1250,6 +1267,8 @@ export default function TrilhaEstrategica() {
                             {list.map((a) => (
                               <li
                                 key={a.id}
+                                draggable={!isAulaDone(a.id)}
+                                onDragStart={() => setDraggedAulaId(a.id)}
                                 className="flex items-center justify-between gap-3 px-3 py-2.5 bg-white hover:bg-muted/30 transition-colors"
                               >
                                 <div className="min-w-0 flex-1">
@@ -1323,7 +1342,7 @@ export default function TrilhaEstrategica() {
         open={redistOpen}
         onOpenChange={setRedistOpen}
         pendencias={pendenciasAulas}
-        maxPorSemana={AULAS_POR_SEMANA}
+        maxPorSemana={limiteMateriasSemana}
         proximasSemanas={proximasSemanasDisponiveis}
         currentWeekIndex={currentWeekIndex}
         onConfirm={aplicarRedistribuicao}
