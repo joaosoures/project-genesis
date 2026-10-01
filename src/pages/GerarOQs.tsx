@@ -32,6 +32,7 @@ import { Input } from "@/components/ui/input";
 import AdminGerarSimulado from "@/components/simulados/AdminGerarSimulado";
 import CreateManuallyDialog from "@/components/oq/CreateManuallyDialog";
 import AdminPreAulaImportDialog from "@/components/oq/AdminPreAulaImportDialog";
+import MaterialSelect, { getMaterialName, MaterialOption } from "@/components/oq/MaterialSelect";
 
 
 interface TempOQ {
@@ -44,6 +45,7 @@ interface TempOQ {
   opcoes?: any;
   explicacao?: string;
   contexto_origem?: string | null;
+  aula_id?: string | null;
 }
 
 export default function GerarOQs() {
@@ -65,6 +67,10 @@ export default function GerarOQs() {
   const [showSimuladoCreator, setShowSimuladoCreator] = useState(false);
   const [showManualCreator, setShowManualCreator] = useState(false);
   const [showPreAulaImporter, setShowPreAulaImporter] = useState(false);
+  const [materiais, setMateriais] = useState<MaterialOption[]>([]);
+  const [materiaisLoading, setMateriaisLoading] = useState(false);
+  const [materiaisError, setMateriaisError] = useState<string | null>(null);
+  const [aulaIdSelecionada, setAulaIdSelecionada] = useState("");
   const MAX_CHARS = 20000;
 
 
@@ -72,7 +78,24 @@ export default function GerarOQs() {
     document.title = "Gerar OQs — OQ MED";
     loadTempOQs();
     fetchCredits();
-  }, [user]);
+    if (isAdmin) loadMateriais();
+  }, [user, isAdmin]);
+
+  async function loadMateriais() {
+    setMateriaisLoading(true);
+    setMateriaisError(null);
+    const { data, error } = await supabase
+      .from("materiais")
+      .select("id, nome")
+      .order("nome", { ascending: true });
+    if (error) {
+      console.error("Erro ao carregar matérias:", error);
+      setMateriaisError(error.message);
+    } else {
+      setMateriais((data || []) as MaterialOption[]);
+    }
+    setMateriaisLoading(false);
+  }
 
   async function fetchCredits() {
     try {
@@ -158,8 +181,13 @@ export default function GerarOQs() {
     const file = event.target.files?.[0];
     if (!file || !user) return;
 
-    const nomeBaralho = baralhoExcel.trim();
-    if (!nomeBaralho) {
+    const nomeBaralho = isAdmin ? getMaterialName(materiais, aulaIdSelecionada) : baralhoExcel.trim();
+    if (isAdmin && !aulaIdSelecionada) {
+      toast.error("Selecione a matéria/aula antes de importar a planilha.");
+      event.target.value = '';
+      return;
+    }
+    if (!isAdmin && !nomeBaralho) {
       toast.error("Informe o nome do baralho (matéria) antes de importar a planilha.");
       event.target.value = '';
       return;
@@ -265,6 +293,7 @@ export default function GerarOQs() {
           especialidade: esp,
           explicacao,
           contexto_origem: nomeBaralho,
+          aula_id: isAdmin ? aulaIdSelecionada : null,
           opcoes: opcoes && opcoes.some(Boolean) ? opcoes : null,
         };
       }).filter(q => q.pergunta && (q.modo === "oq_falta" ? (q.opcoes && (q.opcoes as any[]).filter(Boolean).length >= 2) : q.resposta));
@@ -317,9 +346,13 @@ export default function GerarOQs() {
     if (!user) return;
 
     const text = pastedText.trim();
-    const nomeBaralho = baralho.trim();
+    const nomeBaralho = isAdmin ? getMaterialName(materiais, aulaIdSelecionada) : baralho.trim();
 
-    if (!nomeBaralho) {
+    if (isAdmin && !aulaIdSelecionada) {
+      toast.error("Selecione a matéria/aula antes de gerar.");
+      return;
+    }
+    if (!isAdmin && !nomeBaralho) {
       toast.error("Informe o nome do baralho (matéria) antes de gerar.");
       return;
     }
@@ -362,6 +395,7 @@ export default function GerarOQs() {
         especialidade: specialty,
         explicacao: q.explicacao || q.explanation || "Explicação não gerada pela IA.",
         contexto_origem: nomeBaralho,
+        aula_id: isAdmin ? aulaIdSelecionada : null,
       }));
 
       const { error: insError } = await supabase.from("temp_oqs").insert(toInsert as any[]);
@@ -444,6 +478,7 @@ export default function GerarOQs() {
       criado_por_usuario_id: isAdmin ? null : user?.id,
       origem: (isAdmin ? "admin" : "usuario") as any,
       baralho: (q.contexto_origem || "").trim() || null,
+      aula_id: isAdmin ? (aulaIdSelecionada || q.aula_id || null) : null,
     } as any;
   }
 
@@ -453,7 +488,7 @@ export default function GerarOQs() {
       if (error) throw error;
       await supabase.from("temp_oqs").delete().eq("id", q.id);
       setTempOQs(prev => prev.filter(item => item.id !== q.id));
-      toast.success("OQ aprovado e adicionado ao seu banco!");
+      toast.success(isAdmin ? "OQ aprovado e adicionado ao banco oficial!" : "OQ aprovado e adicionado aos seus OQs!");
     } catch (err: any) {
       console.error(err);
       toast.error("Erro ao aprovar OQ: " + err.message);
@@ -484,7 +519,7 @@ export default function GerarOQs() {
       const ids = tempOQs.map(q => q.id);
       await supabase.from("temp_oqs").delete().in("id", ids);
       setTempOQs([]);
-      toast.success("Todos os OQs foram aprovados!", { id: "approve-all" });
+      toast.success(isAdmin ? "Todos os OQs foram adicionados ao banco oficial!" : "Todos os OQs foram adicionados aos seus OQs!", { id: "approve-all" });
     } catch (err: any) {
       console.error(err);
       toast.error("Erro ao aprovar todos: " + err.message, { id: "approve-all" });
@@ -534,6 +569,12 @@ export default function GerarOQs() {
           open={showManualCreator}
           onOpenChange={setShowManualCreator}
           onCreated={loadTempOQs}
+          isAdmin={isAdmin}
+          materiais={materiais}
+          aulaIdSelecionada={aulaIdSelecionada}
+          onAulaIdChange={setAulaIdSelecionada}
+          materiaisLoading={materiaisLoading}
+          materiaisError={materiaisError}
         />
       </div>
     );
@@ -585,6 +626,7 @@ export default function GerarOQs() {
                     Aguardando Aprovação ({tempOQs.length})
                   </h2>
                   <p className="text-[10px] text-muted-foreground/60 font-bold uppercase mt-0.5">Revise as questões antes de enviar ao banco</p>
+                  {isAdmin && <p className="text-[10px] text-amber-600 font-semibold mt-1">A matéria selecionada no momento da aprovação será aplicada aos OQs administrativos.</p>}
                 </div>
                 <div className="flex gap-2">
                   <button 
@@ -698,21 +740,23 @@ export default function GerarOQs() {
                     </Select>
                   </div>
                   
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      Nome do baralho (matéria) <span className="text-destructive">*</span>
-                    </label>
-                    <Input
-                      value={baralho}
-                      onChange={(e) => setBaralho(e.target.value.slice(0, 80))}
-                      placeholder="Ex.: Insuficiência Cardíaca — Aula 12"
-                      className="rounded-xl border-border/60"
-                      disabled={!canIA}
-                    />
-                    <p className="text-[10px] text-muted-foreground/70">
-                      Organiza as questões em um baralho próprio para estudo.
-                    </p>
-                  </div>
+                  {isAdmin ? (
+                    <MaterialSelect materiais={materiais} value={aulaIdSelecionada} onValueChange={setAulaIdSelecionada} loading={materiaisLoading} error={materiaisError} />
+                  ) : (
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Nome do baralho (matéria) <span className="text-destructive">*</span>
+                      </label>
+                      <Input
+                        value={baralho}
+                        onChange={(e) => setBaralho(e.target.value.slice(0, 80))}
+                        placeholder="Ex.: Insuficiência Cardíaca — Aula 12"
+                        className="rounded-xl border-border/60"
+                        disabled={!canIA}
+                      />
+                      <p className="text-[10px] text-muted-foreground/70">Organiza as questões em um baralho próprio para estudo.</p>
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -751,7 +795,7 @@ export default function GerarOQs() {
                     disabled={
                       !canIA ||
                       loading ||
-                      !baralho.trim() ||
+                      (isAdmin ? !aulaIdSelecionada : !baralho.trim()) ||
                       pastedText.trim().length < 200 ||
                       pastedText.length > MAX_CHARS
                     }
@@ -849,21 +893,22 @@ export default function GerarOQs() {
                         </Select>
                       </div>
 
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                          Nome do baralho (matéria) <span className="text-destructive">*</span>
-                        </label>
-                        <Input
-                          value={baralhoExcel}
-                          onChange={(e) => setBaralhoExcel(e.target.value.slice(0, 80))}
-                          placeholder="Ex.: Cardiologia — Semana 3"
-                          className="rounded-xl border-border/60 h-9"
-                        />
-                      </div>
+                      {isAdmin ? (
+                        <MaterialSelect materiais={materiais} value={aulaIdSelecionada} onValueChange={setAulaIdSelecionada} loading={materiaisLoading} error={materiaisError} compact />
+                      ) : (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Nome do baralho (matéria) <span className="text-destructive">*</span></label>
+                          <Input value={baralhoExcel} onChange={(e) => setBaralhoExcel(e.target.value.slice(0, 80))} placeholder="Ex.: Cardiologia — Semana 3" className="rounded-xl border-border/60 h-9" />
+                        </div>
+                      )}
 
                       <div 
                         onClick={() => {
-                          if (!baralhoExcel.trim()) {
+                          if (isAdmin && !aulaIdSelecionada) {
+                            toast.error("Selecione a matéria/aula antes de subir a planilha.");
+                            return;
+                          }
+                          if (!isAdmin && !baralhoExcel.trim()) {
                             toast.error("Informe o nome do baralho antes de subir a planilha.");
                             return;
                           }
@@ -871,7 +916,7 @@ export default function GerarOQs() {
                         }}
                         className={cn(
                           "h-28 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all group",
-                          !baralhoExcel.trim()
+                          (isAdmin ? !aulaIdSelecionada : !baralhoExcel.trim())
                             ? "border-border/40 opacity-60"
                             : "border-border/60 hover:border-accent/40 hover:bg-accent/5"
                         )}
@@ -1016,6 +1061,12 @@ export default function GerarOQs() {
         open={showManualCreator}
         onOpenChange={setShowManualCreator}
         onCreated={loadTempOQs}
+        isAdmin={isAdmin}
+        materiais={materiais}
+        aulaIdSelecionada={aulaIdSelecionada}
+        onAulaIdChange={setAulaIdSelecionada}
+        materiaisLoading={materiaisLoading}
+        materiaisError={materiaisError}
       />
       {/* Modal de Edição */}
       <Dialog open={!!editingOQ} onOpenChange={(open) => !open && setEditingOQ(null)}>

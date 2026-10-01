@@ -24,17 +24,30 @@ import {
 import { Loader2, Plus, X } from "lucide-react";
 import TactileButton from "@/components/console/TactileButton";
 import { cn } from "@/lib/utils";
+import MaterialSelect, { MaterialOption } from "@/components/oq/MaterialSelect";
 
 interface CreateManuallyDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
+  isAdmin?: boolean;
+  materiais?: MaterialOption[];
+  aulaIdSelecionada?: string;
+  onAulaIdChange?: (value: string) => void;
+  materiaisLoading?: boolean;
+  materiaisError?: string | null;
 }
 
 export default function CreateManuallyDialog({
   open,
   onOpenChange,
   onCreated,
+  isAdmin = false,
+  materiais = [],
+  aulaIdSelecionada = "",
+  onAulaIdChange,
+  materiaisLoading = false,
+  materiaisError = null,
 }: CreateManuallyDialogProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -87,6 +100,7 @@ export default function CreateManuallyDialog({
   }
 
   function isFormValid(): boolean {
+    if (isAdmin && !aulaIdSelecionada) return false;
     if (!comando.trim()) return false;
     if (!explicacao.trim()) return false;
 
@@ -112,7 +126,12 @@ export default function CreateManuallyDialog({
   }
 
   async function handleCreate() {
-    if (!user || !isFormValid()) return;
+    if (!user) return;
+    if (isAdmin && !aulaIdSelecionada) {
+      toast.error("Selecione a matéria/aula antes de criar o OQ.");
+      return;
+    }
+    if (!isFormValid()) return;
 
     setLoading(true);
     try {
@@ -180,7 +199,8 @@ export default function CreateManuallyDialog({
           especialidade,
           explicacao: explicacao.trim(),
           opcoes,
-          contexto_origem: "Manual",
+          contexto_origem: isAdmin ? materiais.find((material) => material.id === aulaIdSelecionada)?.nome || "Manual" : "Manual",
+          aula_id: isAdmin ? aulaIdSelecionada : null,
         },
       ]);
 
@@ -225,6 +245,15 @@ export default function CreateManuallyDialog({
         </DialogHeader>
 
         <div className="space-y-6 py-4">
+          {isAdmin && (
+            <MaterialSelect
+              materiais={materiais}
+              value={aulaIdSelecionada}
+              onValueChange={onAulaIdChange || (() => undefined)}
+              loading={materiaisLoading}
+              error={materiaisError}
+            />
+          )}
           {/* Especialidade e Modo */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
