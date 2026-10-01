@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Plus, Trash2, ShieldCheck, CalendarClock, Target, AlertTriangle, Sparkles, Check, Timer, Clock } from "lucide-react";
 import type { TrilhaSettings, RodizioItem, AulaPlano, FocoIncidencia } from "@/hooks/useTrilhaPlano";
-import { calcularLimiteMateriasSemana, limparDadosDerivados, maxTierFor } from "@/hooks/useTrilhaPlano";
+import { calcularLimiteMateriasSemana, limparDadosDerivados, maxTierFor, calcularSemanasUteis } from "@/hooks/useTrilhaPlano";
 import { ESPECIALIDADE_LABEL } from "@/lib/oq";
 import { cn } from "@/lib/utils";
 
@@ -34,7 +34,7 @@ interface Props {
 }
 
 const FOCO_OPCOES: { value: FocoIncidencia; label: string; desc: string; tone: string }[] = [
-  { value: "todas", label: "Cobertura total", desc: "Todas as 182 matérias (Alta + Média + Baixa)", tone: "from-primary/15 to-primary/5 border-primary/40" },
+  { value: "todas", label: "Cobertura total", desc: "Todos os materiais cadastrados (Alta + Média + Baixa)", tone: "from-primary/15 to-primary/5 border-primary/40" },
   { value: "alta_media", label: "Estratégico", desc: "Foco em Alta + Média incidência", tone: "from-amber-500/15 to-amber-500/5 border-amber-500/40" },
   { value: "alta", label: "Essencial", desc: "Apenas Alta incidência", tone: "from-emerald-500/15 to-emerald-500/5 border-emerald-500/40" },
 ];
@@ -76,7 +76,7 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
 
 
   // ===== Cálculos de cronograma e recomendações =====
-  const aulasValidas = useMemo(() => aulas.filter((a) => a.total_oqs > 0), [aulas]);
+  const aulasValidas = useMemo(() => aulas, [aulas]);
   const countByTier = useMemo(() => {
     const c = { 1: 0, 2: 0, 3: 0 };
     for (const a of aulasValidas) {
@@ -114,7 +114,8 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
     return Math.max(1, Math.round(diff / (7 * 86400000)));
   }, [s.prova_data]);
 
-  const matsPorSemana = semanasRestantesConfig ? Math.ceil(totalAtual / semanasRestantesConfig) : null;
+  const semanasUteisConfig = semanasRestantesConfig ? calcularSemanasUteis(semanasRestantesConfig, 4) : null;
+  const matsPorSemana = semanasUteisConfig ? Math.ceil(totalAtual / semanasUteisConfig) : null;
   const excede = matsPorSemana !== null && matsPorSemana > MAX_MAT_SEMANA;
 
   const diasSelecionados = s.disponibilidade.dias.filter(Boolean).length;
@@ -216,7 +217,7 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
               <div className="grid gap-2">
                 {FOCO_OPCOES.map((op) => {
                   const total = totalPorFoco(op.value);
-                  const matsWk = semanasRestantesConfig ? Math.ceil(total / semanasRestantesConfig) : null;
+                  const matsWk = semanasUteisConfig ? Math.ceil(total / semanasUteisConfig) : null;
                   const active = focoAtual === op.value;
                   const sugerido = focoSugerido === op.value;
                   return (
@@ -287,10 +288,10 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
                       <div className="text-xs space-y-0.5">
                         <p className="font-bold text-emerald-700">Ritmo recomendado</p>
                         <p className="text-foreground/80">
-                          <strong>{matsPorSemana} {matsPorSemana === 1 ? "matéria" : "matérias"} por semana</strong>
-                          {diasRecomendados && <> em <strong>{diasRecomendados} {diasRecomendados === 1 ? "dia" : "dias"}</strong> de estudo</>}
-                          {" "}para cobrir tudo até a prova.
-                        </p>
+                                  <strong>{matsPorSemana} {matsPorSemana === 1 ? "matéria" : "matérias"} por semana</strong>
+                                  {diasRecomendados && <> em <strong>{diasRecomendados} {diasRecomendados === 1 ? "dia" : "dias"}</strong> de estudo</>}
+                                  {" "}para cobrir tudo no período útil. As últimas quatro semanas ficam reservadas para atrasos e puxadas.
+                                </p>
                       </div>
                     </div>
                   </div>
@@ -305,8 +306,8 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
 
           <div className="space-y-4">
             <div className="rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
-              <p className="font-black text-primary">Capacidade fixa desta configuração: {limiteConfiguracao} {limiteConfiguracao === 1 ? "matéria" : "matérias"}/semana</p>
-              <p className="mt-1 text-xs text-muted-foreground">Derivada de {horasSemanais}h semanais e limitada pela necessidade da estratégia. Será gravada ao salvar e não será recalculada a cada render.</p>
+              <p className="font-black text-primary">Limite de disponibilidade: {limiteConfiguracao} {limiteConfiguracao === 1 ? "matéria" : "matérias"}/semana</p>
+              <p className="mt-1 text-xs text-muted-foreground">A média planejada é {matsPorSemana ?? "calculada após a prova"} por semana útil. As últimas quatro semanas ficam vazias no início como reserva para atrasos e inserções manuais.</p>
             </div>
             <div className="flex items-center justify-between">
               <Label className="text-sm font-bold">Disponibilidade e Horas por dia</Label>

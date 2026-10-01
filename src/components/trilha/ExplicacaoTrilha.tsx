@@ -143,7 +143,7 @@ export default function ExplicacaoTrilha({
           </div>
           <div className="space-y-2">
             <p className="text-[11px] text-muted-foreground leading-tight">
-              Seu plano tem <strong>{totalAulas}</strong> matérias elegíveis. Esta semana reúne <strong>{aulasSemanaAtual.length}</strong> conteúdos, organizados por incidência e disponibilidade.
+              Seu plano tem <strong>{totalAulas}</strong> materiais na cobertura. Esta semana reúne <strong>{aulasSemanaAtual.length}</strong> conteúdos; materiais sem questões ficam visíveis, mas não podem ser estudados pela sessão de OQs.
             </p>
             
             <button 

@@ -25,6 +25,7 @@ export default function BlocoAula({ aula, movidaManualmente = false }: Props) {
               {ESPECIALIDADE_LABEL[aula.especialidade as keyof typeof ESPECIALIDADE_LABEL] ?? aula.especialidade}
             </Badge>
             <IncidenciaBadge tier={aula.tier} compact />
+            {aula.total_oqs === 0 && <Badge variant="outline" className="rounded-md text-[9px] font-black uppercase tracking-widest text-amber-700 border-amber-300 bg-amber-50">Sem questões</Badge>}
             {movidaManualmente && (
               <span title="Movida manualmente" className="inline-flex items-center gap-1 text-[9px] text-muted-foreground">
                 <MoveRight className="h-3 w-3" /> Movida

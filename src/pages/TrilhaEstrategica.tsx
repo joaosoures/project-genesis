@@ -954,6 +954,7 @@ export default function TrilhaEstrategica() {
                                         {ESPECIALIDADE_LABEL[a.especialidade as keyof typeof ESPECIALIDADE_LABEL] ?? a.especialidade}
                                       </Badge>
                                       <IncidenciaBadge tier={a.tier} compact />
+                                      {a.total_oqs === 0 && <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest text-amber-700 border-amber-300 bg-amber-50">Sem questões</Badge>}
                                     </div>
                                     <h4 className={cn("font-bold text-base leading-tight tracking-tight", done && "line-through")}>
                                       {a.nome}
@@ -1000,6 +1001,7 @@ export default function TrilhaEstrategica() {
                                     size="sm"
                                     className="rounded-xl font-black text-[9px] uppercase tracking-widest h-9 gap-1.5 bg-primary hover:bg-primary/90 text-white shadow-md active:scale-95 transition-transform"
                                     onClick={() => navigate(`/estudo?tipo=aula&aula_id=${a.id}`)}
+                                    disabled={a.total_oqs === 0}
                                   >
                                     <Target className="h-3.5 w-3.5" />
                                     Estudar
@@ -1311,9 +1313,12 @@ export default function TrilhaEstrategica() {
                                 className="flex items-center justify-between gap-3 px-3 py-2.5 bg-white hover:bg-muted/30 transition-colors"
                               >
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-bold truncate leading-tight">
-                                    {a.nome}
-                                  </p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-sm font-bold truncate leading-tight">
+                                      {a.nome}
+                                    </p>
+                                    {a.total_oqs === 0 && <Badge variant="outline" className="shrink-0 text-[8px] font-black uppercase tracking-widest text-amber-700 border-amber-300 bg-amber-50">Sem questões</Badge>}
+                                  </div>
                                   <p className="text-[9px] uppercase tracking-widest font-black text-muted-foreground mt-0.5">
                                     {ESPECIALIDADE_LABEL[
                                       a.especialidade as keyof typeof ESPECIALIDADE_LABEL
