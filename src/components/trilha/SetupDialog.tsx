@@ -255,36 +255,21 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
                 })}
               </div>
 
-              {semanasAteProva !== null && matsPorSemana !== null && (
-                excede ? (
-                  <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-3">
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-                      <div className="text-xs space-y-1">
-                        <p className="font-bold text-destructive">Tempo curto para essa estratégia</p>
-                        <p className="text-foreground/80">
-                          Seriam <strong>{matsPorSemana} matérias por semana</strong> — acima do limite operacional de {MAX_MAT_SEMANA}/semana usado nesta configuração.
-                          {focoSugerido && (
-                            <> Para manter um planejamento viável, considere mudar para <strong>{FOCO_OPCOES.find(f => f.value === focoSugerido)?.label}</strong> ou ampliar o período.</>
-                          )}
-                        </p>
-                      </div>
+              {semanasAteProva !== null && matsPorSemana !== null && excede && (
+                <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-3">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                    <div className="text-xs space-y-1">
+                      <p className="font-bold text-destructive">Tempo curto para essa estratégia</p>
+                      <p className="text-foreground/80">
+                        Seriam <strong>{matsPorSemana} matérias por semana</strong> — acima do limite operacional de {MAX_MAT_SEMANA}/semana usado nesta configuração.
+                        {focoSugerido && (
+                          <> Para manter um planejamento viável, considere mudar para <strong>{FOCO_OPCOES.find(f => f.value === focoSugerido)?.label}</strong> ou ampliar o período.</>
+                        )}
+                      </p>
                     </div>
                   </div>
-                ) : (
-                  <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-3">
-                    <div className="flex items-start gap-2">
-                      <Sparkles className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                      <div className="text-xs space-y-0.5">
-                        <p className="font-bold text-emerald-700">Ritmo recomendado</p>
-                        <p className="text-foreground/80">
-                          Para cobrir os materiais selecionados antes da reserva, a média estimada é de <strong>{matsPorSemana} {matsPorSemana === 1 ? "matéria" : "matérias"} por semana</strong>.
-                          Isso é uma referência de planejamento, não uma obrigação: o Gestor distribui as matérias conforme sua disponibilidade. As últimas quatro semanas ficam reservadas para atrasos e puxadas.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )
+                </div>
               )}
             </div>
           )}
