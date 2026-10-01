@@ -690,7 +690,7 @@ export function useTrilhaPlano() {
   function proximasSemanasDisponiveis(qtd: number): number[] {
     const slots: number[] = [];
     let wk = currentWeekIndex + 1;
-    while (slots.length < qtd && wk < totalSemanas + 10) {
+    while (slots.length < qtd && wk < totalSemanas) {
       slots.push(wk);
       wk++;
     }

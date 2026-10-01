@@ -37,27 +37,29 @@ export default function RedistribuirDialog({
   preselecionarTodas = false,
   onConfirm,
 }: Props) {
-  const MAX = 12; // Aumentamos o limite para permitir espalhar mais matérias
   const [selecionadas, setSelecionadas] = useState<string[]>([]);
 
   useEffect(() => {
     if (open) {
-      const quantidadeInicial = preselecionarTodas ? MAX : 6;
-      setSelecionadas(pendencias.slice(0, quantidadeInicial).map((a) => a.id));
+      // A ação é aberta para recuperar as pendências encontradas. Portanto, a
+      // seleção inicial deve representar todas elas, não apenas um recorte fixo.
+      setSelecionadas(preselecionarTodas ? pendencias.map((a) => a.id) : []);
     }
   }, [open, pendencias, preselecionarTodas]);
 
-  const slots = useMemo(
-    () => proximasSemanas(MAX),
-    [proximasSemanas, MAX, open],
-  );
+  const slots = useMemo(() => {
+    const semanasNecessarias = Math.ceil(
+      pendencias.length / Math.max(1, maxPorSemana),
+    );
+    return proximasSemanas(semanasNecessarias)
+      .flatMap((semana) => Array.from({ length: Math.max(1, maxPorSemana) }, () => semana))
+      .slice(0, pendencias.length);
+  }, [proximasSemanas, pendencias.length, maxPorSemana, open]);
 
   function toggle(id: string) {
-    setSelecionadas((sel) => {
-      if (sel.includes(id)) return sel.filter((x) => x !== id);
-      if (sel.length >= MAX) return sel; // limite de segurança
-      return [...sel, id];
-    });
+    setSelecionadas((sel) =>
+      sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id],
+    );
   }
 
   function confirmar() {
@@ -80,17 +82,17 @@ export default function RedistribuirDialog({
             <AlertCircle className="h-5 w-5 text-[hsl(var(--destructive))]" />
             Redistribuir pendências
           </DialogTitle>
-          <DialogDescription className="text-xs">
-            Escolha até <strong>{MAX}</strong> aulas para redistribuir. A capacidade fixa é de <strong>{maxPorSemana} matérias por semana</strong>; o transbordo automático preserva sua escolha e move apenas pendências excedentes. As demais ficarão em <em>"Estudos que você perdeu"</em>.
+          <DialogDescription className="text-xs leading-relaxed">
+            Encontramos <strong>{pendencias.length}</strong>{" "}
+            {pendencias.length === 1 ? "pendência" : "pendências"}. Selecione as matérias que deseja recolocar nas próximas semanas. O limite é de <strong>{maxPorSemana} matérias por semana</strong>; matérias concluídas não serão movidas.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2 py-3">
-          {pendencias.map((a, idx) => {
+          {pendencias.map((a) => {
             const checked = selecionadas.includes(a.id);
             const ordemSel = checked ? selecionadas.indexOf(a.id) : -1;
             const semanaDestino = ordemSel >= 0 ? slots[ordemSel] : null;
-            const limiteAtingido = !checked && selecionadas.length >= MAX;
             return (
               <label
                 key={a.id}
@@ -98,11 +100,10 @@ export default function RedistribuirDialog({
                   checked
                     ? "border-[hsl(var(--accent))]/40 bg-[hsl(var(--accent))]/5"
                     : "border-border hover:bg-muted/40"
-                } ${limiteAtingido ? "opacity-50 cursor-not-allowed" : ""}`}
+                }`}
               >
                 <Checkbox
                   checked={checked}
-                  disabled={limiteAtingido}
                   onCheckedChange={() => toggle(a.id)}
                   className="mt-0.5"
                 />
@@ -125,8 +126,9 @@ export default function RedistribuirDialog({
         </div>
 
         <div className="text-[11px] text-muted-foreground bg-muted/30 rounded-xl p-3">
-          <strong>{selecionadas.length}</strong> de {MAX} selecionadas ·{" "}
-          <strong>{pendencias.length - selecionadas.length}</strong> irão para{" "}
+          <strong>{selecionadas.length}</strong> de {pendencias.length} selecionadas ·{" "}
+          <strong>{pendencias.length - selecionadas.length}</strong>{" "}
+          {pendencias.length - selecionadas.length === 1 ? "ficará" : "ficarão"} em{" "}
           <em>"Estudos que você perdeu"</em>.
         </div>
 
@@ -134,7 +136,7 @@ export default function RedistribuirDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={confirmar} disabled={pendencias.length === 0}>
+          <Button onClick={confirmar} disabled={selecionadas.length === 0}>
             Confirmar redistribuição
           </Button>
         </DialogFooter>
