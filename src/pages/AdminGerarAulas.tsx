@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   GraduationCap, Loader2, CheckCircle2, FileSpreadsheet, BarChart3,
   Download, Upload, Flame, Zap, Clock, FileDown, MousePointer2, HelpCircle,
-  ChevronDown, ChevronUp, AlertCircle
+  ChevronDown, ChevronUp, AlertCircle, Trash2
 } from "lucide-react";
 import { ESPECIALIDADE_LABEL, Especialidade, Modo, MODO_LABEL } from "@/lib/oq";
 import { Badge } from "@/components/ui/badge";
@@ -88,20 +88,26 @@ export default function AdminGerarAulas() {
 
       if (error) throw error;
 
-      const problematic = (data || []).filter(c => {
-        const semExplicacao = !c.explicacao ||
-          ['', 'Importado via planilha.', 'Explicação não disponível.'].includes(c.explicacao.trim());
-        const irregular = !c.comando || !c.comando.trim() || !c.modo;
-        return semExplicacao || irregular;
-      });
-
-      setAulaDetails(problematic);
+      setAulaDetails(data || []);
     } catch (err: any) {
       toast.error("Erro ao carregar detalhes: " + err.message);
       setExpandedAulaId(null);
     } finally {
       setLoadingDetails(false);
     }
+  }
+
+  async function deleteCard(cardId: string, aulaId: string) {
+    if (!window.confirm("Excluir este OQ permanentemente? Esta ação não pode ser desfeita.")) return;
+
+    const { error } = await supabase.from("cards").delete().eq("id", cardId);
+    if (error) {
+      toast.error("Erro ao excluir OQ: " + error.message);
+      return;
+    }
+
+    toast.success("OQ excluído permanentemente.");
+    await Promise.all([loadStats(), loadAulaDetails(aulaId, { force: true })]);
   }
 
   async function downloadTemplate() {
@@ -342,7 +348,19 @@ export default function AdminGerarAulas() {
                     </div>
                     <div className="font-bold text-base">{a.nome}</div>
                     <div className="flex flex-wrap gap-1.5">
-                      <span className="bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full text-[10px] font-black border border-emerald-500/20">TOTAL: {stat?.total || 0}</span>
+                      <button
+                        type="button"
+                        disabled={!stat?.total}
+                        onClick={() => {
+                          if (!stat?.total) return;
+                          setTab("stats");
+                          loadAulaDetails(a.id);
+                        }}
+                        className="bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full text-[10px] font-black border border-emerald-500/20 hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                        title="Ver, editar ou excluir OQs desta aula"
+                      >
+                        TOTAL: {stat?.total || 0}
+                      </button>
                       <span className="bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full text-[10px] font-black border border-blue-500/20">ABCDE: {stat?.abcde || 0}</span>
                       <span className="bg-purple-500/10 text-purple-500 px-2 py-0.5 rounded-full text-[10px] font-black border border-purple-500/20">LACUNA: {stat?.lacuna || 0}</span>
                       <span className="bg-orange-500/10 text-orange-500 px-2 py-0.5 rounded-full text-[10px] font-black border border-orange-500/20">OQ FALTA: {stat?.oq_falta || 0}</span>
@@ -444,6 +462,7 @@ export default function AdminGerarAulas() {
                     <th className="w-8"></th>
                     <th className="text-left py-2">Aula</th>
                     <th className="text-left py-2">Especialidade</th>
+                    <th className="text-center py-2">Total de OQs</th>
                     <th className="text-center py-2">Qualidade Geral</th>
                     <th className="text-right py-2">Status</th>
                   </tr>
@@ -472,8 +491,8 @@ export default function AdminGerarAulas() {
 
                     return (
                       <React.Fragment key={s.aula_id}>
-                        <tr className={cn("transition-colors", !isPerfect && hasItems && "cursor-pointer hover:bg-muted/30")} 
-                            onClick={() => !isPerfect && hasItems && loadAulaDetails(s.aula_id)}>
+                        <tr className={cn("transition-colors", hasItems && "cursor-pointer hover:bg-muted/30")}
+                            onClick={() => hasItems && loadAulaDetails(s.aula_id)}>
                           <td className="py-3">
                             {!isPerfect && hasItems && (
                               isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -481,6 +500,17 @@ export default function AdminGerarAulas() {
                           </td>
                           <td className="py-3 font-bold">{s.nome}</td>
                           <td className="py-3 text-muted-foreground">{ESPECIALIDADE_LABEL[s.especialidade as Especialidade] || s.especialidade}</td>
+                          <td className="py-3 text-center">
+                            <button
+                              type="button"
+                              disabled={!hasItems}
+                              onClick={(event) => { event.stopPropagation(); if (hasItems) loadAulaDetails(s.aula_id); }}
+                              className="font-black text-emerald-600 hover:underline disabled:opacity-40 disabled:no-underline"
+                              title="Ver, editar ou excluir OQs"
+                            >
+                              {s.total}
+                            </button>
+                          </td>
                           <td className="py-3 text-center">
                             {!hasItems ? (
                               <span className="text-[10px] font-bold text-muted-foreground uppercase opacity-40">N/A</span>
@@ -496,11 +526,11 @@ export default function AdminGerarAulas() {
                         </tr>
                         {isExpanded && (
                           <tr>
-                            <td colSpan={5} className="py-0 px-4">
+                            <td colSpan={6} className="py-0 px-4">
                               <div className="bg-muted/20 border-x border-b rounded-b-xl p-4 space-y-3 animate-in fade-in slide-in-from-top-2 mb-4">
                                 <div className="flex items-center justify-between border-b border-border/40 pb-2 mb-2">
                                   <h3 className="text-xs font-black uppercase tracking-wider flex items-center gap-2">
-                                    <AlertCircle className="h-3.5 w-3.5 text-amber-500" /> Detalhes dos Problemas
+                                    <AlertCircle className="h-3.5 w-3.5 text-amber-500" /> OQs desta aula
                                   </h3>
                                   <span className="text-[10px] text-muted-foreground font-medium">{aulaDetails.length} questões encontradas</span>
                                 </div>
@@ -510,7 +540,7 @@ export default function AdminGerarAulas() {
                                     <Loader2 className="h-6 w-6 text-accent animate-spin" />
                                   </div>
                                 ) : aulaDetails.length === 0 ? (
-                                  <div className="text-center py-4 text-xs text-muted-foreground">Nenhuma questão com problema encontrada.</div>
+                                  <div className="text-center py-4 text-xs text-muted-foreground">Nenhum OQ encontrado para esta aula.</div>
                                 ) : (
                                   <div className="grid gap-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                                     {aulaDetails.map((card, idx) => {
@@ -527,8 +557,16 @@ export default function AdminGerarAulas() {
                                                 {isSemExplicacao && <Badge variant="secondary" className="text-[8px] h-4 bg-red-500/10 text-red-500 border-red-500/20">SEM EXPLICAÇÃO</Badge>}
                                                 {isIrregular && <Badge variant="secondary" className="text-[8px] h-4 bg-amber-500/10 text-amber-500 border-amber-500/20">IRREGULAR</Badge>}
                                               </div>
-                                              <div onClick={(e) => e.stopPropagation()}>
+                                              <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-1">
                                                 <AdminEditCardBtn cardId={card.id} onSaved={() => { loadStats(); if (card?.aula_id) loadAulaDetails(card.aula_id, { force: true }); }} />
+                                                <button
+                                                  type="button"
+                                                  onClick={() => deleteCard(card.id, s.aula_id)}
+                                                  title="Excluir OQ permanentemente"
+                                                  className="h-10 w-10 rounded-full grid place-items-center hover:bg-red-500/10 transition"
+                                                >
+                                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                                </button>
                                               </div>
                                             </div>
                                           </div>
