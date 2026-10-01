@@ -8,8 +8,6 @@ interface Props {
   currentWeekIndex: number;
   totalSemanas: number;
   aulasSemanaAtual: any[];
-  focoSemana: any[];
-  baseSemana: any[];
   espLabel: string | null;
   getRodizioForWeek: (wk: number) => string | null;
   totalAulas: number;
@@ -23,8 +21,6 @@ export default function ExplicacaoTrilha({
   currentWeekIndex,
   totalSemanas,
   aulasSemanaAtual,
-  focoSemana,
-  baseSemana,
   espLabel,
   getRodizioForWeek,
   totalAulas,
@@ -147,7 +143,7 @@ export default function ExplicacaoTrilha({
           </div>
           <div className="space-y-2">
             <p className="text-[11px] text-muted-foreground leading-tight">
-              Das {totalAulas} matérias do seu plano, <strong>{focoSemana.length}</strong> são do foco sincronizado e <strong>{baseSemana.length}</strong> são matérias base.
+              Seu plano tem <strong>{totalAulas}</strong> matérias elegíveis. Esta semana reúne <strong>{aulasSemanaAtual.length}</strong> conteúdos, organizados por incidência e disponibilidade.
             </p>
             
             <button 

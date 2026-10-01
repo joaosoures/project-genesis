@@ -137,6 +137,21 @@ export interface NormalizacaoSemanasResult {
   excessoUltimaSemana: string[];
 }
 
+export interface MoverAulaResult extends NormalizacaoSemanasResult {
+  alreadyInWeek: boolean;
+}
+
+export function limparDadosDerivados(settings: TrilhaSettings): TrilhaSettings {
+  return {
+    ...settings,
+    planos_semanais: {},
+    plano_overrides: {},
+    perdidos: [],
+    redistribuidos: [],
+    plano_cache: undefined,
+  };
+}
+
 export function normalizarSemanas(
   distribuicao: Record<string, number>,
   aulas: AulaPlano[],
@@ -218,7 +233,20 @@ export function useTrilhaPlano() {
       if (error) throw error;
 
       const raw = (us?.settings as any)?.trilha;
-      currentSettings = raw ? { ...TRILHA_DEFAULT, ...raw } : TRILHA_DEFAULT;
+      const merged = raw ? { ...TRILHA_DEFAULT, ...raw } : TRILHA_DEFAULT;
+      const idsValidos = new Set<string>();
+      currentSettings = {
+        ...merged,
+        plano_overrides: Object.fromEntries(
+          Object.entries(merged.plano_overrides ?? {}).filter(([, week]) => Number.isInteger(week) && (week as number) >= 0),
+        ),
+        planos_semanais: Object.fromEntries(
+          Object.entries(merged.planos_semanais ?? {}).filter(([week, ids]) => Number.isInteger(Number(week)) && Number(week) >= 0 && Array.isArray(ids)),
+        ),
+        perdidos: Array.from(new Set((merged.perdidos ?? []).filter(Boolean))),
+        completos: Array.from(new Set((merged.completos ?? []).filter(Boolean))),
+        redistribuidos: Array.isArray(merged.redistribuidos) ? merged.redistribuidos : [],
+      };
       setSettings(currentSettings);
 
       if (currentSettings.data_inicio_plano) {
@@ -512,13 +540,53 @@ export function useTrilhaPlano() {
     const baseline: Record<string, number> = {};
     const res: Record<string, number> = {};
 
-    // O baseline usa a capacidade gravada e preenche as semanas em ordem.
-    // O passado só é exibido como fato quando há snapshot persistido.
-    elegiveis.forEach((aula, index) => {
-      const semana = Math.min(semanas - 1, Math.floor(index / capacidadeFixa));
-      baseline[aula.id] = semana;
-      res[aula.id] = semana;
-    });
+    // Durante um rodízio, cada semana recebe até duas matérias da fila geral
+    // e completa sua capacidade com a especialidade vigente.
+    const filaGeral = baseAulas.filter((a) => elegiveis.some((item) => item.id === a.id));
+    const filaEspecialidade = focoAulas.filter((a) => elegiveis.some((item) => item.id === a.id));
+    let geralIndex = 0;
+    let especialidadeIndex = 0;
+    let fallbackIndex = 0;
+    const assigned = new Set<string>();
+    for (let semana = 0; semana < semanas; semana++) {
+      const rodizio = getRodizioItemForWeek(semana);
+      const candidatos = rodizio ? [] : elegiveis;
+      const usados = new Set<string>();
+      const idsSemana: string[] = [];
+      const adicionar = (aula?: AulaPlano) => {
+        if (aula && !usados.has(aula.id) && !assigned.has(aula.id)) {
+          usados.add(aula.id);
+          assigned.add(aula.id);
+          idsSemana.push(aula.id);
+        }
+      };
+      if (rodizio) {
+        const especialidade = rodizio.aulas_ids?.length
+          ? elegiveis.filter((a) => rodizio.aulas_ids!.includes(a.id))
+          : elegiveis.filter((a) => a.especialidade === rodizio.especialidade);
+        const geraisDaSemana = Math.min(2, capacidadeFixa);
+        for (let i = 0; i < geraisDaSemana && geralIndex < filaGeral.length; i++) adicionar(filaGeral[geralIndex++]);
+        while (idsSemana.length < capacidadeFixa && especialidadeIndex < especialidade.length) adicionar(especialidade[especialidadeIndex++]);
+        while (idsSemana.length < capacidadeFixa && geralIndex < filaGeral.length) adicionar(filaGeral[geralIndex++]);
+        while (idsSemana.length < capacidadeFixa && fallbackIndex < elegiveis.length) adicionar(elegiveis[fallbackIndex++]);
+      } else {
+        while (idsSemana.length < capacidadeFixa && fallbackIndex < candidatos.length) adicionar(candidatos[fallbackIndex++]);
+      }
+      idsSemana.forEach((id) => {
+        baseline[id] = semana;
+        res[id] = semana;
+      });
+    }
+    // Se a fila geral acabou antes da especialidade, os próximos itens de
+    // especialidade ainda podem ocupar slots posteriores sem criar duplicatas.
+    while (fallbackIndex < elegiveis.length) {
+      const semana = Math.min(semanas - 1, Math.floor(Object.keys(baseline).length / capacidadeFixa));
+      const aula = elegiveis[fallbackIndex++];
+      if (baseline[aula.id] === undefined) {
+        baseline[aula.id] = semana;
+        res[aula.id] = semana;
+      }
+    }
 
     Object.entries(snapshots).forEach(([weekKey, ids]) => {
       const week = Number(weekKey);
@@ -627,9 +695,16 @@ export function useTrilhaPlano() {
   const perdidosAulas = aulas.filter((a) => a.total_oqs > 0 && perdidosSet.has(a.id));
   const limiteMateriasSemana = settings.limite_materias_semana ?? Math.max(1, Math.floor((settings.disponibilidade.horas * diasAtivos) / 1.8));
 
-  const moverAulaParaSemana = useCallback(async (aulaId: string, semanaDestino: number) => {
-    if (!aulas.some((aula) => aula.id === aulaId) || totalSemanas < 1) return { deslocamentos: [], excessoUltimaSemana: [] };
-    const distribuicao = { ...planoSemanaPorAula, [aulaId]: Math.max(0, Math.min(semanaDestino, totalSemanas - 1)) };
+  const moverAulaParaSemana = useCallback(async (aulaId: string, semanaDestino: number): Promise<MoverAulaResult> => {
+    const semanaAtual = planoSemanaPorAula[aulaId];
+    if (semanaAtual === currentWeekIndex && semanaDestino === currentWeekIndex) {
+      return { deslocamentos: [], excessoUltimaSemana: [], distribuicao: planoSemanaPorAula, alreadyInWeek: true };
+    }
+    if (!aulas.some((aula) => aula.id === aulaId) || totalSemanas < 1) {
+      return { deslocamentos: [], excessoUltimaSemana: [], distribuicao: planoSemanaPorAula, alreadyInWeek: false };
+    }
+    const destino = Math.max(0, Math.min(semanaDestino, totalSemanas - 1));
+    const distribuicao = { ...planoSemanaPorAula, [aulaId]: destino };
     const normalizado = normalizarSemanas(
       distribuicao,
       aulas.filter((aula) => aula.total_oqs > 0 && !perdidosSet.has(aula.id)),
@@ -637,14 +712,13 @@ export function useTrilhaPlano() {
       limiteMateriasSemana,
       totalSemanas,
     );
-    const novosOverrides = { ...(settings.plano_overrides ?? {}) };
-    Object.entries(normalizado.distribuicao).forEach(([id, semana]) => { novosOverrides[id] = semana; });
+    const novosOverrides = { ...(settings.plano_overrides ?? {}), [aulaId]: destino };
     await salvarSettings({
       ...settings,
       plano_overrides: novosOverrides,
       perdidos: (settings.perdidos ?? []).filter((id) => id !== aulaId),
     });
-    return normalizado;
+    return { ...normalizado, alreadyInWeek: false };
   }, [aulas, totalSemanas, planoSemanaPorAula, perdidosSet, completosSet, limiteMateriasSemana, settings, salvarSettings]);
 
   // Compatibilidade: déficit "antigo" baseado em meta semanal
@@ -696,9 +770,10 @@ export function useTrilhaPlano() {
     marcarConcluida,
     desmarcarConcluida,
     marcarDominada,
-    focoSemana: aulasSemanaAtual.filter((a) => focoIds.has(a.id) || overrides[a.id] === currentWeekIndex),
-    rodizioSemana: aulasSemanaAtual.filter((a) => focoIds.has(a.id)),
-    direcionadoSemana: aulasSemanaAtual.filter((a) => overrides[a.id] === currentWeekIndex && !focoIds.has(a.id)),
-    baseSemana: aulasSemanaAtual.filter((a) => !focoIds.has(a.id) && overrides[a.id] !== currentWeekIndex),
+    movidasManualmente: new Set(Object.keys(overrides).filter((id) => planoSemanaPorAula[id] !== undefined)),
+    focoSemana: aulasSemanaAtual,
+    rodizioSemana: [],
+    direcionadoSemana: [],
+    baseSemana: aulasSemanaAtual,
   };
 }

@@ -1,29 +1,22 @@
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { BookOpen, FileText } from "lucide-react";
+import { BookOpen, FileText, MoveRight } from "lucide-react";
 import { ESPECIALIDADE_LABEL } from "@/lib/oq";
 import type { AulaPlano } from "@/hooks/useTrilhaPlano";
-import { cn } from "@/lib/utils";
-import IncidenciaBadge, { getIncidencia } from "./IncidenciaBadge";
+import IncidenciaBadge from "./IncidenciaBadge";
 
 
 interface Props {
   aula: AulaPlano;
-  accent?: "foco" | "base";
+  movidaManualmente?: boolean;
 }
 
-export default function BlocoAula({ aula, accent = "base" }: Props) {
+export default function BlocoAula({ aula, movidaManualmente = false }: Props) {
   const navigate = useNavigate();
 
   return (
-    <div className={cn(
-      "paper-card p-5 group relative transition-all hover:-translate-y-0.5",
-      accent === "foco" && "ring-1 ring-accent/30"
-    )}>
-      {accent === "foco" && (
-        <div className="absolute top-4 right-4 h-2 w-2 rounded-full bg-accent shadow-[0_0_10px_hsl(var(--accent))] animate-pulse" />
-      )}
+    <div className="paper-card p-5 group relative transition-all hover:-translate-y-0.5">
 
       <div className="space-y-4">
         <div className="space-y-2">
@@ -32,6 +25,11 @@ export default function BlocoAula({ aula, accent = "base" }: Props) {
               {ESPECIALIDADE_LABEL[aula.especialidade as keyof typeof ESPECIALIDADE_LABEL] ?? aula.especialidade}
             </Badge>
             <IncidenciaBadge tier={aula.tier} compact />
+            {movidaManualmente && (
+              <span title="Movida manualmente" className="inline-flex items-center gap-1 text-[9px] text-muted-foreground">
+                <MoveRight className="h-3 w-3" /> Movida
+              </span>
+            )}
           </div>
 
           <button 
@@ -61,12 +59,7 @@ export default function BlocoAula({ aula, accent = "base" }: Props) {
           </Button>
           <Button
             size="sm"
-            className={cn(
-              "rounded-xl font-black text-[10px] uppercase tracking-widest h-10 gap-1.5 shadow-lg active:scale-95 transition-transform",
-              accent === "foco"
-                ? "bg-[hsl(var(--accent))] hover:bg-[hsl(var(--accent))]/90 text-[hsl(var(--accent-foreground))] shadow-[hsl(var(--accent))]/20"
-                : "bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))]/90 text-white"
-            )}
+            className="rounded-xl font-black text-[10px] uppercase tracking-widest h-10 gap-1.5 shadow-lg active:scale-95 transition-transform bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))]/90 text-white"
             onClick={() => navigate(`/estudo?tipo=aula&aula_id=${aula.id}`)}
             disabled={aula.total_oqs === 0}
           >

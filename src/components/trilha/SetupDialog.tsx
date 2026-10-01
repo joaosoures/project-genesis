@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Plus, Trash2, ShieldCheck, CalendarClock, Target, AlertTriangle, Sparkles, Check, Timer, Clock } from "lucide-react";
 import type { TrilhaSettings, RodizioItem, AulaPlano, FocoIncidencia } from "@/hooks/useTrilhaPlano";
-import { calcularLimiteMateriasSemana, maxTierFor } from "@/hooks/useTrilhaPlano";
+import { calcularLimiteMateriasSemana, limparDadosDerivados, maxTierFor } from "@/hooks/useTrilhaPlano";
 import { ESPECIALIDADE_LABEL } from "@/lib/oq";
 import { cn } from "@/lib/utils";
 
@@ -52,8 +52,8 @@ function detectarMudancasDestrutivas(antes: TrilhaSettings, depois: TrilhaSettin
   if (antes.perfil !== depois.perfil) mudancas.push("Perfil de rotina");
   if ((antes.foco_incidencia ?? "todas") !== (depois.foco_incidencia ?? "todas")) mudancas.push("Estratégia de preparação");
   const r1 = antes.rodizio_atual, r2 = depois.rodizio_atual;
-  if ((r1?.especialidade ?? null) !== (r2?.especialidade ?? null)) mudancas.push("Rodízio atual");
-  if ((r1?.semanas ?? null) !== (r2?.semanas ?? null)) mudancas.push("Duração do rodízio");
+  if (JSON.stringify(r1) !== JSON.stringify(r2)) mudancas.push("Rodízio e matérias da especialidade");
+  if ((antes.limite_materias_semana ?? null) !== (depois.limite_materias_semana ?? null)) mudancas.push("Capacidade semanal");
   if (JSON.stringify(antes.disponibilidade) !== JSON.stringify(depois.disponibilidade)) {
     mudancas.push("Disponibilidade semanal");
   }
@@ -485,7 +485,7 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
               <AlertDialogCancel>Revisar</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
-                  onSave({ ...s, setup_done: true, limite_materias_semana: limiteConfiguracao });
+                  onSave({ ...limparDadosDerivados(s), setup_done: true, limite_materias_semana: limiteConfiguracao });
                   setConfirmOpen(false);
                   onOpenChange(false);
                 }}

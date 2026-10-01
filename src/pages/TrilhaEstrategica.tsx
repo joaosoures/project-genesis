@@ -367,6 +367,10 @@ export default function TrilhaEstrategica() {
   }) {
     for (const { aula_id, semana_index } of params.redistribuir) {
       const resultado = await moverAulaParaSemana(aula_id, semana_index);
+      if (resultado.alreadyInWeek) {
+        toast.info("Esta matéria já está na semana atual");
+        continue;
+      }
       if (resultado.deslocamentos.length > 0) {
         toast.info(`${resultado.deslocamentos.length} matéria(s) foram deslocadas automaticamente para respeitar a capacidade.`);
       }
@@ -384,6 +388,10 @@ export default function TrilhaEstrategica() {
 
   async function fazerAgoraPendencia(aulaId: string, semanaDestino = currentWeekIndex) {
     const resultado = await moverAulaParaSemana(aulaId, semanaDestino);
+    if (resultado.alreadyInWeek) {
+      toast.info("Esta matéria já está na semana atual");
+      return;
+    }
     if (resultado.deslocamentos.length > 0) {
       toast.info(`${resultado.deslocamentos.length} matéria(s) foram deslocadas para as semanas seguintes.`);
     }
@@ -484,8 +492,8 @@ export default function TrilhaEstrategica() {
             </div>
 
             <MetricCard
-              label="Foco rodízio"
-              value={focoSemana.length || focoAulas.length}
+              label="Conteúdos da semana"
+              value={aulasSemanaAtual.length}
               hint={espLabel ?? (isMedico ? "Médico" : "—")}
               tone="accent"
             />
@@ -510,8 +518,6 @@ export default function TrilhaEstrategica() {
             currentWeekIndex={currentWeekIndex}
             totalSemanas={totalSemanas}
             aulasSemanaAtual={aulasSemanaAtual}
-            focoSemana={focoSemana}
-            baseSemana={baseSemana}
             espLabel={espLabel}
             getRodizioForWeek={getRodizioForWeek}
             totalAulas={aulas.length}
@@ -698,8 +704,8 @@ export default function TrilhaEstrategica() {
               </div>
             </div>
 
-            {/* Foco Sincronizado (Rodízio) */}
-            {rodizioSemana.length > 0 && (
+            {/* A composição é exibida como uma lista única. */}
+            {false && rodizioSemana.length > 0 && (
               <div className="space-y-6 mb-12">
                 <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[hsl(var(--accent))] flex items-center gap-2">
                   <Flame className="h-4 w-4" />
@@ -787,8 +793,8 @@ export default function TrilhaEstrategica() {
               </div>
             )}
 
-            {/* Foco Direcionado (Manualmente Adicionado / Puxado) */}
-            {direcionadoSemana.length > 0 && (
+            {/* Compatibilidade: conteúdo movido não cria um bloco separado. */}
+            {false && direcionadoSemana.length > 0 && (
               <div className="space-y-6 mb-12">
                 <h3 className="text-xs font-black uppercase tracking-[0.2em] text-indigo-500 flex items-center gap-2">
                   <Sparkles className="h-4 w-4" />
@@ -885,19 +891,19 @@ export default function TrilhaEstrategica() {
               inicioPlano={inicioPlano}
             />
 
-            {/* Matérias Base */}
+            {/* Lista única de matérias */}
             <div className="space-y-6">
               <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
                 <Target className="h-4 w-4 text-primary" />
-                Matérias Base
+                Conteúdos da semana
               </h3>
               {(() => {
-                const baseList = baseSemana;
+                const baseList = aulasSemanaAtual;
                 if (baseList.length === 0) {
                   return (
                     <div className="p-8 rounded-3xl bg-muted/20 border border-dashed border-border/60 text-center">
                       <p className="text-xs text-muted-foreground italic">
-                        Nenhuma matéria base disponível ainda.
+                        Nenhuma matéria disponível nesta semana.
                       </p>
                     </div>
                   );
@@ -1080,10 +1086,9 @@ export default function TrilhaEstrategica() {
                             <button
                               key={a.id}
                               onClick={() => {
-                                fazerAgoraPendencia(a.id);
+                                void fazerAgoraPendencia(a.id);
                                 setSearchOpen(false);
                                 setSearchQ("");
-                                toast.success(`"${a.nome}" adicionada à trilha desta semana!`);
                               }}
                               className="w-full text-left p-2.5 rounded-xl hover:bg-muted/60 transition flex items-center justify-between gap-2"
                             >
