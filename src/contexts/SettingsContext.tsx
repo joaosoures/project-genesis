@@ -38,14 +38,8 @@ const getInitialReduceMotion = () => {
     }
   } catch {}
 
-  // 2. Automatic detection for PC/Desktop or Preview
-  const ua = navigator.userAgent;
-  const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
-  const isTablet = /Tablet|iPad/i.test(ua);
-  const isDesktop = !isMobile && !isTablet;
-  const isPreview = window.location.hostname.includes('lovable.app');
-  
-  return isDesktop || isPreview;
+  // Respect the operating system preference only when the user has not chosen a value.
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 };
 
 const DEFAULTS: Settings = {

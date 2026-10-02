@@ -18,6 +18,7 @@ import {
   Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/contexts/SettingsContext";
 
 const TIME_PER_SLIDE = 9000;
 
@@ -52,7 +53,9 @@ const bannerStyles = `
   @keyframes attached-orbit { 0% { transform:rotate(0deg); } 100% { transform:rotate(360deg); } }
   @keyframes attached-counter-orbit-and-flip { 0% { transform:rotate(0deg) rotateY(0deg); } 50% { transform:rotate(-180deg) rotateY(180deg); } 100% { transform:rotate(-360deg) rotateY(360deg); } }
   .attached-hover-lift { transition:all .3s cubic-bezier(.4,0,.2,1); } .attached-hover-lift:hover { transform:translateY(-4px); box-shadow:0 16px 30px -10px rgba(14,165,233,.15); border-color:rgba(14,165,233,.3); background:white; }
-  @media (prefers-reduced-motion:reduce) { .attached-stagger-1,.attached-stagger-2,.attached-stagger-3,.attached-stagger-4,.attached-stagger-5,.attached-timeline-glow,.attached-audio-bar,.attached-card-in,.attached-card-out,.attached-gear-spin,.attached-scanner-line,.attached-orbit,.attached-flip-card { animation:none; } }
+  .attached-banner[data-reduce-motion="1"] .attached-stagger-1,.attached-banner[data-reduce-motion="1"] .attached-stagger-2,.attached-banner[data-reduce-motion="1"] .attached-stagger-3,.attached-banner[data-reduce-motion="1"] .attached-stagger-4,.attached-banner[data-reduce-motion="1"] .attached-stagger-5,.attached-banner[data-reduce-motion="1"] .attached-timeline-glow,.attached-banner[data-reduce-motion="1"] .attached-audio-bar,.attached-banner[data-reduce-motion="1"] .attached-card-in,.attached-banner[data-reduce-motion="1"] .attached-card-out,.attached-banner[data-reduce-motion="1"] .attached-gear-spin,.attached-banner[data-reduce-motion="1"] .attached-scanner-line,.attached-banner[data-reduce-motion="1"] .attached-orbit,.attached-banner[data-reduce-motion="1"] .attached-flip-card { animation:none; }
+  .attached-banner[data-reduce-motion="1"] .attached-hover-lift { transition:none; }
+  .attached-banner[data-reduce-motion="1"] .attached-progress-shimmer { animation:none; }
 `;
 
 function GlassCard({ children, className }: { children: ReactNode; className?: string }) {
@@ -103,14 +106,15 @@ function AiSlide() {
 }
 
 export default function AttachedBanner() {
+  const { reduceMotion } = useSettings();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [closed, setClosed] = useState(false);
 
   useEffect(() => {
-    if (closed) return;
+    if (closed || reduceMotion) return;
     const timer = window.setTimeout(() => setCurrentSlide(current => (current + 1) % 3), TIME_PER_SLIDE);
     return () => window.clearTimeout(timer);
-  }, [closed, currentSlide]);
+  }, [closed, currentSlide, reduceMotion]);
 
   if (closed) return null;
 
@@ -122,11 +126,11 @@ export default function AttachedBanner() {
   ][currentSlide];
   const HeaderIcon = slideHeader.icon;
 
-  return <section className="attached-banner relative w-full py-4 md:py-8">
+  return <section className="attached-banner relative w-full py-4 md:py-8" data-reduce-motion={reduceMotion ? "1" : "0"}>
     <style>{bannerStyles}</style>
     <div className="relative mx-auto flex min-h-[580px] w-full max-w-5xl flex-col overflow-hidden rounded-[2rem] bg-white shadow-[0_24px_50px_-12px_rgba(15,23,42,0.1),0_0_0_1px_rgba(15,23,42,0.03)]">
       <div className="attached-bg-grid pointer-events-none absolute inset-0" />
-      <div className="absolute left-0 right-0 top-0 z-50 h-1.5 bg-slate-100"><div key={currentSlide} className="relative h-full w-0 overflow-hidden rounded-r-full bg-sky-500" style={{ animation: `attached-progress ${TIME_PER_SLIDE}ms linear forwards` }}><div className="absolute inset-0 animate-pulse bg-white/30" /></div></div>
+      <div className="absolute left-0 right-0 top-0 z-50 h-1.5 bg-slate-100"><div key={currentSlide} className="relative h-full w-0 overflow-hidden rounded-r-full bg-sky-500" style={reduceMotion ? { width: "100%" } : { animation: `attached-progress ${TIME_PER_SLIDE}ms linear forwards` }}><div className={cn("attached-progress-shimmer absolute inset-0 bg-white/30", !reduceMotion && "animate-pulse")} /></div></div>
       <button type="button" aria-label="Fechar banner" onClick={() => setClosed(true)} className="absolute right-4 top-4 z-[60] rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"><X className="h-4 w-4" /></button>
       <div key={currentSlide} className="relative z-10 flex flex-1 flex-col justify-center p-6 md:p-10">
         <div className="attached-stagger-1 mb-8 text-center"><span className={cn("mb-4 inline-flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-wider", slideHeader.badge)}><HeaderIcon className="h-3.5 w-3.5" /> {slideHeader.label}</span><h1 className="text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{slideHeader.title}</h1><p className="mt-2 text-sm font-medium text-slate-500">{slideHeader.subtitle}</p></div>
