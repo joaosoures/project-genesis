@@ -66,7 +66,7 @@ function TimelineSlide() {
   const items = [
     { icon: Map, title: "1. Trilha Estratégica", text: "O seu mapa diário moldado para o ENARE e PSU." },
     { icon: Headphones, title: "2. Resumos & Áudio-aulas", text: "Teoria nativa em texto ou áudio, focada na alta incidência." },
-    { icon: Target, title: "3. OQs de Fixação", text: "Sua vez. Você lembra a resposta exata, ou você erra." },
+    { icon: Target, title: "3. OQs de Fixação", text: "Sua vez. Você lembra a resposta ou pede dicas." },
     { icon: RefreshCw, title: "4. Revisão Automática", text: "O algoritmo agenda suas pendências para o momento perfeito." },
   ];
   return <div className="relative mx-auto flex w-full max-w-2xl flex-col gap-3">

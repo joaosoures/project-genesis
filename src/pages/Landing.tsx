@@ -8,6 +8,7 @@ import { Brain, Zap, BookOpen, Target, Check, LineChart, Layers, Sparkles } from
 import LogoHero from "@/components/landing/LogoHero";
 import TactileButton from "@/components/console/TactileButton";
 import { LiquidCTAButton } from "@/components/landing/LiquidCTAButton";
+import MethodologyShowcase from "@/components/landing/MethodologyShowcase";
 
 // Non-critical components are lazy loaded
 const MegaDial = lazy(() => import("@/components/landing/MegaDial"));
@@ -195,42 +196,7 @@ export default function Landing() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-4 md:gap-6">
-            {[
-              {
-                tag: "Modo 1",
-                title: "ABCDE",
-                desc: "Questão clássica de múltipla escolha, no formato das principais provas, para você testar raciocínio clínico de forma direta.",
-              },
-              {
-                tag: "Modo 2",
-                title: "Lacunas técnicas",
-                desc: "Preenchimento dos detalhes que costumam decidir a prova: doses, critérios diagnósticos, intervalos, marcadores.",
-              },
-              {
-                tag: "Modo 3",
-                title: "OQ Falta",
-                desc: "O formato exclusivo do app. Você completa o que está faltando no raciocínio e exercita memória ativa, não reconhecimento.",
-              },
-            ].map((m) => (
-              <motion.div
-                key={m.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-                className="paper-card p-6 md:p-7 flex flex-col"
-              >
-                <div className="text-[10px] uppercase tracking-[0.25em] text-[hsl(var(--muted-foreground))] mb-3">
-                  {m.tag}
-                </div>
-                <h3 className="text-xl md:text-2xl font-semibold">{m.title}</h3>
-                <p className="mt-3 text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">
-                  {m.desc}
-                </p>
-              </motion.div>
-            ))}
-          </div>
+          <MethodologyShowcase />
         </div>
       </section>
 
