@@ -42,6 +42,7 @@ const animationStyles = `
   @keyframes attached-scan { 0% { top: -20%; opacity: 0; } 10%, 90% { opacity: 1; } 100% { top: 120%; opacity: 0; } }
   @keyframes attached-orbit { to { transform: rotate(360deg); } }
   @keyframes attached-counter-orbit { 0% { transform: rotate(0deg) rotateY(0deg); } 50% { transform: rotate(-180deg) rotateY(180deg); } 100% { transform: rotate(-360deg) rotateY(360deg); } }
+  @keyframes attached-spin { to { transform: rotate(360deg); } }
   @keyframes attached-progress { from { width: 0%; } to { width: 100%; } }
   .attached-stagger { animation: attached-fade-up .6s cubic-bezier(.16,1,.3,1) both; }
   .attached-stagger-1 { animation-delay: .1s; } .attached-stagger-2 { animation-delay: .2s; } .attached-stagger-3 { animation-delay: .3s; } .attached-stagger-4 { animation-delay: .4s; } .attached-stagger-5 { animation-delay: .5s; }
@@ -54,7 +55,7 @@ const animationStyles = `
   .attached-card-out { position: absolute; top: 60px; z-index: 15; width: 24px; height: 32px; border-radius: 4px; background: #10b981; box-shadow: 0 4px 8px rgba(16,185,129,.3); animation: attached-pop-out 3s infinite cubic-bezier(.4,0,.2,1); }
   .attached-card-in::after, .attached-card-out::after { content: ''; position: absolute; top: 6px; left: 4px; right: 4px; height: 2px; border-radius: 1px; background: rgba(255,255,255,.7); box-shadow: 0 6px 0 rgba(255,255,255,.7), 0 12px 0 rgba(255,255,255,.7); }
   .attached-card-left { left: 50%; --tx: -40px; --rot: -20deg; } .attached-card-center { left: 50%; --tx: -50%; --rot: 0deg; animation-delay: .12s; } .attached-card-right { left: 50%; --tx: 15px; --rot: 20deg; animation-delay: .24s; }
-  .attached-gear { animation: spin 4s linear infinite; } .attached-scanner-line { position: absolute; left: 0; right: 0; z-index: 10; height: 3px; background: #0ea5e9; box-shadow: 0 0 20px 4px rgba(14,165,233,.5); animation: attached-scan 2s infinite ease-in-out; } .attached-scanner-gradient { position: absolute; bottom: 100%; left: 0; right: 0; height: 60px; background: linear-gradient(to bottom, transparent, rgba(14,165,233,.15)); }
+  .attached-gear { animation: attached-spin 4s linear infinite; } .attached-scanner-line { position: absolute; left: 0; right: 0; z-index: 10; height: 3px; background: #0ea5e9; box-shadow: 0 0 20px 4px rgba(14,165,233,.5); animation: attached-scan 2s infinite ease-in-out; } .attached-scanner-gradient { position: absolute; bottom: 100%; left: 0; right: 0; height: 60px; background: linear-gradient(to bottom, transparent, rgba(14,165,233,.15)); }
   .attached-orbit { animation: attached-orbit 8s infinite linear; } .attached-flip-card { transform-style: preserve-3d; animation: attached-counter-orbit 8s infinite linear; }
   .attached-hover-lift { transition: all .3s cubic-bezier(.4,0,.2,1); } .attached-hover-lift:hover { transform: translateY(-4px); box-shadow: 0 16px 30px -10px rgba(14,165,233,.15); border-color: rgba(14,165,233,.3); background: white; }
   @media (prefers-reduced-motion: reduce) { .attached-stagger, .attached-timeline-glow, .attached-audio-bar, .attached-card-in, .attached-card-out, .attached-gear, .attached-scanner-line, .attached-orbit, .attached-flip-card { animation: none; } }
