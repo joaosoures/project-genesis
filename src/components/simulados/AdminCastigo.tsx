@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import CastigoCuradoria from "./CastigoCuradoria";
+import CastigoModelSettings from "./CastigoModelSettings";
 
 type Questao = { id: string; comando: string; ordem: number | null; simulado_id: string | null };
 
@@ -74,6 +75,7 @@ export default function AdminCastigo() {
   return <div className="space-y-4">
     <h2 className="text-xl font-bold">Castigo do Simulado</h2>
     <p className="text-sm text-muted-foreground">Selecione um simulado e uma questão para revisar as filhas geradas.</p>
+    <CastigoModelSettings />
     <div className="flex flex-wrap gap-2">{simulados.map(s => <Button key={s.id} size="sm" variant={selected === s.id ? "default" : "outline"} onClick={() => setSelected(s.id)}>{s.nome}</Button>)}</div>
     {selected && <Input placeholder="Buscar questão..." value={busca} onChange={e => setBusca(e.target.value)} className="max-w-md" />}
     {questoes.filter(q => q.comando.toLowerCase().includes(busca.toLowerCase())).map(q => <Card key={q.id} className="p-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm flex-1 line-clamp-2">{q.ordem == null ? "—" : `${q.ordem + 1}.`} {q.comando}</p><div className="flex items-center gap-2"><Badge variant="secondary">{filhasTitulares[q.id] ?? 0} filhas</Badge><Button size="sm" onClick={() => setEditing(q)}>Curadoria</Button></div></Card>)}

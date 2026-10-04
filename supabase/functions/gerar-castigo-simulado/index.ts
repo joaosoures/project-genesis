@@ -9,7 +9,7 @@ const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, 
 type ChildQuestion = Record<(typeof fields)[number], string>;
 type AiCallResult = { ok: true; content: string; finishReason: string | null } | { ok: false; status: number; body: string };
 
-async function requestQuestions(apiKey: string, systemPrompt: string, userPrompt: string): Promise<AiCallResult> {
+async function requestQuestions(apiKey: string, model: string, systemPrompt: string, userPrompt: string): Promise<AiCallResult> {
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -19,7 +19,7 @@ async function requestQuestions(apiKey: string, systemPrompt: string, userPrompt
       "X-Title": "OQMed",
     },
     body: JSON.stringify({
-      model: "openai/gpt-6-luna",
+      model,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -93,10 +93,12 @@ serve(async req => {
 
     const apiKey = Deno.env.get("ADM_OQIA_KEY")?.trim();
     if (!apiKey) return json({ error: "Serviço de IA indisponível no momento." }, 503);
+    const { data: modelSetting } = await admin.from("ai_model_settings").select("model").eq("setting_key", "castigo").maybeSingle();
+    const model = modelSetting?.model?.trim() || "openai/gpt-6-luna";
 
     try {
-      console.log("[gerar-castigo-simulado] gerando com ADM_OQIA_KEY no modelo openai/gpt-6-luna");
-      const aiResult = await requestQuestions(apiKey, systemPrompt, userPrompt);
+      console.log(`[gerar-castigo-simulado] gerando com ADM_OQIA_KEY no modelo ${model}`);
+      const aiResult = await requestQuestions(apiKey, model, systemPrompt, userPrompt);
       if (!aiResult.ok) {
         console.error(`[gerar-castigo-simulado] API de IA falhou: ${aiResult.status}`, aiResult.body.slice(0, 500));
         return json({ error: "A API de IA recebeu o pedido, mas falhou ao processá-lo. Tente novamente." }, 502);
