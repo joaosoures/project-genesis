@@ -4,38 +4,52 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
 const json = (body: object, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const fields = ["questao", "alt_a", "alt_b", "alt_c", "alt_d", "alt_e", "gabarito", "justificativa"] as const;
-const schema = { type: "ARRAY", minItems: 3, maxItems: 3, items: { type: "OBJECT", properties: Object.fromEntries(fields.map(field => [field, { type: "STRING" }])), required: [...fields] } };
-const normalizeProvider = (provider: string) => (provider || "lovable_gateway").toLowerCase();
+const responseSchema = {
+  type: "array",
+  minItems: 3,
+  maxItems: 3,
+  items: {
+    type: "object",
+    additionalProperties: false,
+    properties: Object.fromEntries(fields.map(field => [field, { type: "string" }])),
+    required: [...fields],
+  },
+};
 const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
-type ApiKey = { id: string; provider: string; key_value: string; label?: string | null };
 type ChildQuestion = Record<(typeof fields)[number], string>;
 type AiCallResult = { ok: true; content: string } | { ok: false; status: number; body: string };
 
-async function requestQuestions(keyInfo: ApiKey, systemPrompt: string, userPrompt: string): Promise<AiCallResult> {
-  const provider = normalizeProvider(keyInfo.provider);
-  const apiKey = keyInfo.key_value.trim();
-  let response: Response;
-
-  if (provider === "google") {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
-    response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ systemInstruction: { parts: [{ text: systemPrompt }] }, contents: [{ role: "user", parts: [{ text: userPrompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.5 } }) });
-  } else if (provider === "anthropic") {
-    response = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model: "claude-3-5-haiku-latest", max_tokens: 4096, system: systemPrompt, messages: [{ role: "user", content: userPrompt }] }) });
-  } else {
-    const endpoint = provider === "openai" ? "https://api.openai.com/v1/chat/completions" : "https://ai.gateway.lovable.dev/v1/chat/completions";
-    response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ model: provider === "openai" ? "gpt-4o-mini" : "google/gemini-2.5-flash", messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }], response_format: { type: "json_object" } }) });
-  }
+async function requestQuestions(apiKey: string, systemPrompt: string, userPrompt: string): Promise<AiCallResult> {
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      "HTTP-Referer": "https://oqmed.com.br",
+      "X-Title": "OQMed",
+    },
+    body: JSON.stringify({
+      model: "openai/gpt-6-luna",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "castigo_questions",
+          strict: true,
+          schema: responseSchema,
+        },
+      },
+    }),
+  });
 
   const body = await response.text();
   if (!response.ok) return { ok: false, status: response.status, body };
   const data = JSON.parse(body);
-  const content = provider === "google"
-    ? data?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part?.text ?? "").join("") ?? ""
-    : provider === "anthropic"
-      ? data?.content?.map((part: { type?: string; text?: string }) => part?.type === "text" ? part?.text ?? "" : "").join("") ?? ""
-      : data?.choices?.[0]?.message?.content ?? "";
-  return { ok: true, content };
+  return { ok: true, content: data?.choices?.[0]?.message?.content ?? "" };
 }
 
 function validate(value: unknown, original: string, originalAnswer: string): ChildQuestion[] {
@@ -85,37 +99,27 @@ serve(async req => {
     const userPrompt = JSON.stringify({ original: question, observacao: note?.observacao ?? "" });
     if (userPrompt.length > 18000) return json({ error: "Contexto muito extenso para geração." }, 400);
 
-    const keysToTry: ApiKey[] = [];
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-    if (lovableKey) keysToTry.push({ id: "default_lovable", provider: "lovable_gateway", key_value: lovableKey, label: "Padrão Lovable" });
-    const { data: dbKeys } = await admin.from("api_keys_pool").select("id,provider,key_value,label").eq("is_active", true).order("priority", { ascending: true });
-    if (dbKeys) keysToTry.push(...dbKeys);
-    if (!keysToTry.length) return json({ error: "Serviço de IA indisponível no momento." }, 503);
+    const apiKey = Deno.env.get("ADM_OQIA_KEY")?.trim();
+    if (!apiKey) return json({ error: "Serviço de IA indisponível no momento." }, 503);
 
-    let lastInvalid: string | null = null;
-    for (const keyInfo of keysToTry) {
-      console.log(`[gerar-castigo-simulado] tentando chave: ${keyInfo.label ?? keyInfo.id} (${keyInfo.provider})`);
-      try {
-        const aiResult = await requestQuestions(keyInfo, systemPrompt, userPrompt);
-        if (!aiResult.ok) {
-          console.error(`[gerar-castigo-simulado] chave ${keyInfo.label ?? keyInfo.id} falhou: ${aiResult.status}`, aiResult.body.slice(0, 200));
-          if (keyInfo.id !== "default_lovable") await admin.rpc("increment_key_error", { _id: keyInfo.id, _error: `HTTP ${aiResult.status}: ${aiResult.body.slice(0, 100)}` });
-          continue;
-        }
-        let parsed: unknown;
-        try { parsed = JSON.parse(aiResult.content); } catch { console.error(`[gerar-castigo-simulado] chave ${keyInfo.label ?? keyInfo.id} retornou JSON inválido`); continue; }
-        const batch = validate(parsed, question.comando, question.gabarito);
-        const items = body.posicao ? [batch[body.posicao - 1]] : batch;
-        const { error: publishError } = await caller.rpc("castigo_publicar", { p_original: question.id, p_posicao: body.posicao ?? null, p_lote: items });
-        if (publishError) return json({ error: "Não foi possível publicar: o conjunto mudou ou já existe. Atualize e tente novamente." }, 409);
-        if (keyInfo.id !== "default_lovable") await admin.from("api_keys_pool").update({ last_used_at: new Date().toISOString(), error_count: 0, last_error: null }).eq("id", keyInfo.id);
-        return json({ success: true });
-      } catch (error) {
-        if (error instanceof Error && (/A IA|distribuição/.test(error.message))) lastInvalid = error.message;
-        console.error(`[gerar-castigo-simulado] tentativa sem publicação: ${error instanceof Error ? error.message : "erro desconhecido"}`);
+    try {
+      console.log("[gerar-castigo-simulado] gerando com ADM_OQIA_KEY no modelo openai/gpt-6-luna");
+      const aiResult = await requestQuestions(apiKey, systemPrompt, userPrompt);
+      if (!aiResult.ok) {
+        console.error(`[gerar-castigo-simulado] API de IA falhou: ${aiResult.status}`, aiResult.body.slice(0, 200));
+        return json({ error: "Não foi possível gerar as questões agora. Tente novamente." }, 502);
       }
+      let parsed: unknown;
+      try { parsed = JSON.parse(aiResult.content); } catch { return json({ error: "A IA retornou um formato inválido. Tente novamente." }, 502); }
+      const batch = validate(parsed, question.comando, question.gabarito);
+      const items = body.posicao ? [batch[body.posicao - 1]] : batch;
+      const { error: publishError } = await caller.rpc("castigo_publicar", { p_original: question.id, p_posicao: body.posicao ?? null, p_lote: items });
+      if (publishError) return json({ error: "Não foi possível publicar: o conjunto mudou ou já existe. Atualize e tente novamente." }, 409);
+      return json({ success: true });
+    } catch (error) {
+      console.error(`[gerar-castigo-simulado] tentativa sem publicação: ${error instanceof Error ? error.message : "erro desconhecido"}`);
+      return json({ error: error instanceof Error && /A IA|distribuição/.test(error.message) ? error.message : "Não foi possível gerar as questões agora. Tente novamente." }, 502);
     }
-    return json({ error: lastInvalid ?? "Não foi possível gerar as questões agora. Tente novamente." }, 502);
   } catch (error) {
     console.error(`[gerar-castigo-simulado] falha no processamento: ${error instanceof Error ? error.message : "erro desconhecido"}`);
     return json({ error: "Não foi possível processar a solicitação." }, 500);
