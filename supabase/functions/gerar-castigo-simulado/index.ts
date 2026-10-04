@@ -4,17 +4,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
 const json = (body: object, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const fields = ["questao", "alt_a", "alt_b", "alt_c", "alt_d", "alt_e", "gabarito", "justificativa"] as const;
-const responseSchema = {
-  type: "array",
-  minItems: 3,
-  maxItems: 3,
-  items: {
-    type: "object",
-    additionalProperties: false,
-    properties: Object.fromEntries(fields.map(field => [field, { type: "string" }])),
-    required: [...fields],
-  },
-};
 const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
 type ChildQuestion = Record<(typeof fields)[number], string>;
@@ -35,14 +24,7 @@ async function requestQuestions(apiKey: string, systemPrompt: string, userPrompt
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "castigo_questions",
-          strict: true,
-          schema: responseSchema,
-        },
-      },
+      response_format: { type: "json_object" },
     }),
   });
 
