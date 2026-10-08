@@ -43,7 +43,6 @@ import { cn } from "@/lib/utils";
 import ReportsDialog from "@/components/admin/ReportsDialog";
 import PlanosDialog from "@/components/admin/PlanosDialog";
 import WaitlistDialog from "@/components/admin/WaitlistDialog";
-import ApiKeysPool from "@/components/admin/ApiKeysPool";
 import AdminCastigo from "@/components/simulados/AdminCastigo";
 import AdminGerarOQs from "@/components/admin/AdminGerarOQs";
 
@@ -327,7 +326,7 @@ export default function Admin() {
       case 'editor': return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 gap-1">Editor</Badge>;
       case 'estudante_ouro': return <Badge className="bg-yellow-500/20 text-yellow-500 border-yellow-500/30 gap-1"><Award size={12}/> Ouro</Badge>;
       case 'estudante_prata': return <Badge className="bg-slate-300/20 text-slate-300 border-slate-300/30 gap-1"><Star size={12}/> Prata</Badge>;
-      default: return <Badge variant="outline" className="text-muted-foreground">Bronze</Badge>;
+      default: return <Badge variant="outline" className="text-muted-foreground">Trial</Badge>;
     }
   };
 
@@ -413,9 +412,6 @@ export default function Admin() {
             </TabsTrigger>
             <TabsTrigger value="castigo" className="gap-2 data-[state=active]:bg-primary/20 whitespace-nowrap">Castigo do Simulado</TabsTrigger>
             <TabsTrigger value="geracao-oqs" className="gap-2 data-[state=active]:bg-primary/20 whitespace-nowrap"><Sparkles size={16} /> Geração de OQs</TabsTrigger>
-            <TabsTrigger value="permissions" className="gap-2 data-[state=active]:bg-primary/20 whitespace-nowrap">
-              <ShieldCheck size={16} /> Permissões
-            </TabsTrigger>
             <TabsTrigger value="system" className="gap-2 data-[state=active]:bg-primary/20 whitespace-nowrap">
               <ShieldAlert size={16} /> Sistema
             </TabsTrigger>
@@ -469,7 +465,7 @@ export default function Admin() {
                           <p className="text-[10px] uppercase text-muted-foreground mb-0.5">Plano & Status</p>
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="border-primary/30 capitalize">
-                              {u.plano_tipo || 'Bronze'}
+                              {u.plano_tipo || 'Trial'}
                             </Badge>
                             <Badge variant={u.plano_status === 'ativo' ? 'default' : 'secondary'} className={u.plano_status === 'ativo' ? 'bg-green-500/20 text-green-400' : ''}>
                               {u.plano_status || 'sem plano'}
@@ -982,44 +978,49 @@ export default function Admin() {
           </div>
 
           <Card className="p-6 bg-card/40 border-border/50">
-            <ApiKeysPool />
+            <h2 className="font-bold text-xl mb-6 flex items-center gap-2">
+              <ShieldCheck className="text-primary" /> Matriz de Acesso
+            </h2>
+            <p className="text-xs text-muted-foreground mb-4">
+              Regras aplicadas pelo backend. Administradores possuem acesso total e não podem ser restringidos pela interface.
+            </p>
+            <div className="overflow-x-auto rounded-xl border border-border/40">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/30">
+                  <tr className="border-b border-border/40">
+                    <th className="p-3 text-left font-semibold">Função</th>
+                    <th className="p-3 text-center font-semibold">Estudante Trial</th>
+                    <th className="p-3 text-center font-semibold">Estudante Ouro</th>
+                    <th className="p-3 text-center font-semibold">Estudante Prata</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["Estudar e revisar OQs", true, true, true],
+                    ["Ver materiais e áudios", true, true, false],
+                    ["Gerar OQs por planilha", true, true, true],
+                    ["Gerar OQs com IA", true, true, false],
+                    ["Usar trilha estratégica", true, true, true],
+                    ["Ver métricas básicas", true, true, true],
+                    ["Ver métricas avançadas", true, true, true],
+                  ].map(([label, trial, ouro, prata]) => (
+                    <tr key={String(label)} className="border-b border-border/20 last:border-0">
+                      <td className="p-3 font-medium">{String(label)}</td>
+                      {[trial, ouro, prata].map((enabled, index) => (
+                        <td key={index} className="p-3 text-center">
+                          <span className={cn("inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold", enabled ? "bg-emerald-500/15 text-emerald-400" : "bg-muted text-muted-foreground")}>{enabled ? "✓" : "—"}</span>
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-6 rounded-xl border border-red-500/20 bg-red-500/5 p-4">
+              <div className="flex items-center gap-2 font-semibold text-red-300"><ShieldAlert size={16} /> Administrador</div>
+              <p className="mt-1 text-xs text-muted-foreground">Acesso total garantido por regras de backend/RLS. Esta permissão não é editável no frontend.</p>
+            </div>
           </Card>
-        </TabsContent>
-
-
-        <TabsContent value="permissions">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="p-6 bg-card/40 border-border/50">
-              <h2 className="font-bold text-xl mb-6 flex items-center gap-2">
-                <ShieldCheck className="text-primary" /> Matriz de Acesso
-              </h2>
-              <div className="space-y-4">
-                {[
-                  { label: "Estudante Ouro", desc: "Acesso total a materiais, áudios e geradores IA ilimitados.", active: true },
-                  { label: "Estudante Prata", desc: "Acesso total a materiais, limite diário de IA.", active: true },
-                  { label: "Estudante Bronze", desc: "Acesso a materiais básicos e banco de OQs.", active: true },
-                  { label: "Admin/Editor", desc: "Acesso administrativo total ao sistema.", active: true },
-                ].map((p, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-background/40 border border-border/30">
-                    <div className="max-w-[80%]">
-                      <p className="text-sm font-bold">{p.label}</p>
-                      <p className="text-[10px] text-muted-foreground">{p.desc}</p>
-                    </div>
-                    <Switch checked={p.active} disabled />
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            <Card className="p-6 bg-card/40 border-border/50">
-              <h2 className="font-bold text-xl mb-6 flex items-center gap-2">
-                <ShieldAlert className="text-red-400" /> Logs de Segurança
-              </h2>
-              <div className="text-center py-12">
-                <p className="text-sm text-muted-foreground italic">Integração com logs de auditoria em desenvolvimento.</p>
-              </div>
-            </Card>
-          </div>
         </TabsContent>
       </Tabs>
 

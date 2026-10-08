@@ -14,48 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      api_keys_pool: {
-        Row: {
-          created_at: string | null
-          error_count: number | null
-          id: string
-          is_active: boolean | null
-          key_value: string
-          label: string | null
-          last_error: string | null
-          last_used_at: string | null
-          priority: number | null
-          provider: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          error_count?: number | null
-          id?: string
-          is_active?: boolean | null
-          key_value: string
-          label?: string | null
-          last_error?: string | null
-          last_used_at?: string | null
-          priority?: number | null
-          provider?: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          error_count?: number | null
-          id?: string
-          is_active?: boolean | null
-          key_value?: string
-          label?: string | null
-          last_error?: string | null
-          last_used_at?: string | null
-          priority?: number | null
-          provider?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       assinaturas: {
         Row: {
           atualizado_em: string
@@ -1495,10 +1453,6 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
-      }
-      increment_key_error: {
-        Args: { _error: string; _id: string }
-        Returns: undefined
       }
       is_admin: { Args: never; Returns: boolean }
       is_premium: {

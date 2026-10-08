@@ -61,11 +61,7 @@ serve(async (req) => {
     console.error("[ai-status] user lookup failed:", e);
   }
 
-  // Verifica chaves reservas
-  const { data: backupKeys } = await supabase.from("api_keys_pool").select("id").eq("is_active", true);
-  const hasBackup = (backupKeys?.length ?? 0) > 0;
-
-  if (!LOVABLE_API_KEY && !hasBackup) {
+  if (!LOVABLE_API_KEY) {
     return new Response(
       JSON.stringify({
         ok: false,
@@ -91,15 +87,10 @@ serve(async (req) => {
     let message = "Tudo funcionando normalmente.";
 
     if (ping.status === 402 || ping.status === 429 || !ping.ok) {
-      if (hasBackup) {
-        status = "online";
-        message = "Chave principal instável, usando chaves de reserva.";
-      } else {
-        if (ping.status === 402) status = "sem_creditos";
-        else if (ping.status === 429) status = "limitado";
-        else status = "offline";
-        message = `O serviço de IA está instável (HTTP ${ping.status}).`;
-      }
+      if (ping.status === 402) status = "sem_creditos";
+      else if (ping.status === 429) status = "limitado";
+      else status = "offline";
+      message = `O serviço de IA está instável (HTTP ${ping.status}).`;
     } else if (latencyMs > 4000) {
       status = "lento";
       message = "O serviço de IA está respondendo lentamente.";
@@ -118,8 +109,6 @@ serve(async (req) => {
         latencyMs,
         plano: userPlan,
         isAdmin,
-        hasBackup,
-        backupCount: backupKeys?.length ?? 0,
         credits: { remaining, limit },
         checkedAt: new Date().toISOString(),
       }),
@@ -129,9 +118,9 @@ serve(async (req) => {
     console.error("[ai-status] ping failed:", err);
     return new Response(
       JSON.stringify({
-        ok: hasBackup,
-        status: hasBackup ? "online" : "offline",
-        message: hasBackup ? "Usando chaves de reserva." : "Não conseguimos contatar o serviço de IA.",
+        ok: false,
+        status: "offline",
+        message: "Não conseguimos contatar o serviço de IA.",
         credits: { remaining, limit },
         checkedAt: new Date().toISOString(),
       }),
