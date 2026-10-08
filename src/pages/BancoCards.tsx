@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, memo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -126,12 +126,23 @@ export default function BancoCards() {
   const [studiedIds, setStudiedIds] = useState<Set<string>>(new Set());
   const [expandedBaralhos, setExpandedBaralhos] = useState<Set<string>>(new Set());
   const [aulas, setAulas] = useState<any[]>([]);
+  const [searchParams] = useSearchParams();
   const { user, isAdmin, isEditor } = useAuth();
 
   useEffect(() => {
     document.title = "Banco de OQs — OQ Falta?";
     loadData();
   }, [user]);
+
+  useEffect(() => {
+    const cardId = searchParams.get("editar");
+    if (!cardId || cards.length === 0) return;
+    const card = cards.find((item) => item.id === cardId);
+    if (card) {
+      setEditingCard({ ...card });
+      setIsEditDialogOpen(true);
+    }
+  }, [searchParams, cards]);
 
   async function loadData() {
     if (!user) return;
