@@ -39,6 +39,7 @@ export default function LoginPage() {
   const [telefone, setTelefone] = useState("");
   const [loading, setLoading] = useState(false);
   const [cadastrosAbertos, setCadastrosAbertos] = useState(true);
+  const [listaEsperaAberta, setListaEsperaAberta] = useState(true);
   const [waitlistName, setWaitlistName] = useState("");
   const [waitlistEmail, setWaitlistEmail] = useState("");
   const [waitlistWhats, setWaitlistWhats] = useState("");
@@ -59,10 +60,16 @@ export default function LoginPage() {
     (async () => {
       const { data } = await (supabase as any)
         .from("system_flags")
-        .select("value")
-        .eq("key", "cadastros_abertos")
-        .maybeSingle();
-      if (data) setCadastrosAbertos(data.value === true || data.value === "true");
+        .select("key, value")
+        .in("key", ["cadastros_abertos", "lista_espera_aberta"]);
+      if (data) {
+        const getFlag = (key: string, fallback: boolean) => {
+          const flag = data.find((item: { key: string }) => item.key === key);
+          return flag ? flag.value === true || flag.value === "true" : fallback;
+        };
+        setCadastrosAbertos(getFlag("cadastros_abertos", true));
+        setListaEsperaAberta(getFlag("lista_espera_aberta", true));
+      }
     })();
   }, []);
   async function handle(e: React.FormEvent) {
@@ -177,7 +184,7 @@ export default function LoginPage() {
         </header>
 
         <div className="paper-card p-7 md:p-8">
-          {mode === "signup" && !cadastrosAbertos ? (
+          {mode === "signup" && !cadastrosAbertos && listaEsperaAberta ? (
             waitlistSent ? (
               <div className="text-center space-y-3 py-6">
                 <div className="text-4xl">✅</div>
@@ -226,6 +233,11 @@ export default function LoginPage() {
             )
           ) : (
             <>
+              {mode === "signup" && !cadastrosAbertos && !listaEsperaAberta && (
+                <p className="mb-4 rounded-xl bg-muted/50 p-3 text-center text-sm text-muted-foreground">
+                  Novos cadastros e a lista de espera estão fechados no momento.
+                </p>
+              )}
               <form onSubmit={handle} className="space-y-4">
                 {mode === "signup" && (
                   <div>

@@ -98,9 +98,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [version] = useState(() => `v${Date.now()}`);
-  const [notifTitle, setNotifTitle] = useState("");
-  const [notifBody, setNotifBody] = useState("");
-  const [flags, setFlags] = useState({ manutencao: false, cadastros: true, geracaoIA: true });
+  const [flags, setFlags] = useState({ cadastros: true, listaEspera: true, geracaoIA: true });
   const [selectedUserLogs, setSelectedUserLogs] = useState<any[]>([]);
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [selectedUserEmail, setSelectedUserEmail] = useState("");
@@ -183,8 +181,8 @@ export default function Admin() {
           return r ? r.value === true || r.value === "true" : def;
         };
         setFlags({
-          manutencao: get("manutencao", false),
           cadastros: get("cadastros_abertos", true),
+          listaEspera: get("lista_espera_aberta", true),
           geracaoIA: get("geracao_ia", true),
         });
       }
@@ -803,179 +801,47 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="system" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card className="p-6 bg-card/40 border-border/50 backdrop-blur-md space-y-4">
-              <h3 className="font-bold flex items-center gap-2">
-                <BarChart3 className="text-primary" size={18} /> Manutenção de Dados
-              </h3>
-              <p className="text-xs text-muted-foreground">Otimize o banco de dados e recalcule estatísticas de usuários.</p>
-              <div className="space-y-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full justify-start gap-2"
-                  onClick={() => {
-                    const tid = toast.loading("Limpando cache local...");
-                    try {
-                      const keys = Object.keys(localStorage);
-                      let removed = 0;
-                      keys.forEach(k => {
-                        if (!k.includes('sb-') && !k.includes('supabase.auth')) {
-                          localStorage.removeItem(k);
-                          removed++;
-                        }
-                      });
-                      sessionStorage.clear();
-                      toast.success(`Cache local limpo (${removed} chaves removidas).`, { id: tid });
-                    } catch (e: any) {
-                      toast.error("Erro ao limpar cache: " + e.message, { id: tid });
-                    }
-                  }}
-                >
-                  <CheckCircle2 size={14} className="text-green-500" /> Limpar Cache Global
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full justify-start gap-2"
-                  onClick={async () => {
-                    const tid = toast.loading("Verificando scores SRS...");
-                    try {
-                      const { count, error } = await supabase
-                        .from("desempenho_cards")
-                        .select("id", { count: "exact", head: true });
-                      if (error) throw error;
-                      toast.success(`${count ?? 0} registros SRS analisados. Recomputação ocorre automaticamente a cada estudo.`, { id: tid, duration: 5000 });
-                    } catch (e: any) {
-                      toast.error("Erro: " + e.message, { id: tid });
-                    }
-                  }}
-                >
-                  <TrendingUp size={14} className="text-blue-500" /> Recalcular Scores SRS
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full justify-start gap-2"
-                  onClick={async () => {
-                    const tid = toast.loading("Verificando integridade do banco...");
-                    try {
-                      const [c, u, s, r] = await Promise.all([
-                        supabase.from("cards").select("id", { count: "exact", head: true }),
-                        supabase.from("profiles").select("id", { count: "exact", head: true }),
-                        supabase.from("assinaturas").select("id", { count: "exact", head: true }),
-                        supabase.from("reports_erro").select("id", { count: "exact", head: true }),
-                      ]);
-                      const errs = [c.error, u.error, s.error, r.error].filter(Boolean);
-                      if (errs.length > 0) {
-                        toast.error(`Falhas: ${errs.map(e => e!.message).join("; ")}`, { id: tid });
-                      } else {
-                        toast.success(
-                          `Integridade OK • Cards: ${c.count} • Usuários: ${u.count} • Assinaturas: ${s.count} • Reports: ${r.count}`,
-                          { id: tid, duration: 6000 }
-                        );
-                      }
-                    } catch (e: any) {
-                      toast.error("Erro na verificação: " + e.message, { id: tid });
-                    }
-                  }}
-                >
-                  <ShieldAlert size={14} className="text-red-500" /> Verificar Integridade
-                </Button>
-              </div>
-            </Card>
-
-            <Card className="p-6 bg-card/40 border-border/50 backdrop-blur-md space-y-4">
-              <h3 className="font-bold flex items-center gap-2">
-                <MessageSquare className="text-primary" size={18} /> Comunicação em Massa
-              </h3>
-              <p className="text-xs text-muted-foreground">Registra um aviso interno na fila de problemas administrativos.</p>
-              <div className="space-y-3">
-                <Input 
-                  placeholder="Título do aviso..." 
-                  className="h-8 glass text-xs"
-                  value={notifTitle}
-                  onChange={(e) => setNotifTitle(e.target.value)}
-                />
-                <textarea 
-                  placeholder="Conteúdo da mensagem..." 
-                  className="w-full h-20 glass bg-transparent rounded-md p-2 text-xs focus:ring-1 focus:ring-primary outline-none"
-                  value={notifBody}
-                  onChange={(e) => setNotifBody(e.target.value)}
-                />
-                <Button 
-                  size="sm" 
-                  className="w-full gap-2"
-                  disabled={!notifTitle.trim() || !notifBody.trim()}
-                  onClick={async () => {
-                    const tid = toast.loading("Registrando aviso...");
-                    const { error } = await supabase.from("problemas_admin").insert({
-                      titulo: notifTitle.trim(),
-                      descricao: notifBody.trim(),
-                      origem: "aviso_admin",
-                      status: "aberto",
-                      prioridade: "media"
-                    });
-                    if (error) {
-                      toast.error("Erro: " + error.message, { id: tid });
-                    } else {
-                      toast.success("Aviso registrado na aba de Reports.", { id: tid });
-                      setNotifTitle("");
-                      setNotifBody("");
-                      fetchData();
-                    }
-                  }}
-                >
-                  <CheckCircle2 size={14} /> Disparar Notificação
-                </Button>
-              </div>
-            </Card>
-
-            <Card className="p-6 bg-card/40 border-border/50 backdrop-blur-md space-y-4">
-              <h3 className="font-bold flex items-center gap-2">
-                <ShieldCheck className="text-primary" size={18} /> Configurações Globais
-              </h3>
-              <p className="text-xs text-muted-foreground">Flags globais, persistidas no banco e aplicadas para todos os usuários.</p>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs">Manutenção Ativa</span>
-                  <Switch
-                    checked={flags.manutencao}
-                    onCheckedChange={(v) => {
-                      setFlags(f => ({ ...f, manutencao: v }));
-                      persistFlag("manutencao", v);
-                      toast.success(v ? "Modo manutenção ATIVO" : "Modo manutenção desativado");
-                    }}
-                  />
+          <Card className="p-6 bg-card/40 border-border/50 space-y-4">
+            <h3 className="font-bold flex items-center gap-2">
+              <ShieldCheck className="text-primary" size={18} /> Configurações Globais
+            </h3>
+            <p className="text-xs text-muted-foreground">Controles que afetam o acesso e a geração de OQs para todos os usuários.</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex items-center justify-between rounded-lg border border-border/40 p-4">
+                <div>
+                  <span className="text-xs block">Novos Cadastros</span>
+                  <span className="text-[10px] text-muted-foreground">Permite criar novas contas.</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-xs block">Novos Cadastros</span>
-                    <span className="text-[10px] text-muted-foreground">Quando desligado, novos usuários entram na lista de espera.</span>
-                  </div>
-                  <Switch
-                    checked={flags.cadastros}
-                    onCheckedChange={(v) => {
-                      setFlags(f => ({ ...f, cadastros: v }));
-                      persistFlag("cadastros_abertos", v);
-                      toast.success(v ? "Cadastros liberados globalmente" : "Cadastros BLOQUEADOS — usuários verão a lista de espera");
-                    }}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs">Geração IA (OQs)</span>
-                  <Switch
-                    checked={flags.geracaoIA}
-                    onCheckedChange={(v) => {
-                      setFlags(f => ({ ...f, geracaoIA: v }));
-                      persistFlag("geracao_ia", v);
-                      toast.success(v ? "Geração IA ativada" : "Geração IA desativada");
-                    }}
-                  />
-                </div>
+                <Switch checked={flags.cadastros} onCheckedChange={(v) => {
+                  setFlags(f => ({ ...f, cadastros: v }));
+                  persistFlag("cadastros_abertos", v);
+                  toast.success(v ? "Cadastros liberados" : "Cadastros bloqueados");
+                }} />
               </div>
-            </Card>
-          </div>
+              <div className="flex items-center justify-between rounded-lg border border-border/40 p-4">
+                <div>
+                  <span className="text-xs block">Lista de Espera</span>
+                  <span className="text-[10px] text-muted-foreground">Permite receber novos interessados.</span>
+                </div>
+                <Switch checked={flags.listaEspera} onCheckedChange={(v) => {
+                  setFlags(f => ({ ...f, listaEspera: v }));
+                  persistFlag("lista_espera_aberta", v);
+                  toast.success(v ? "Lista de espera aberta" : "Lista de espera fechada");
+                }} />
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-border/40 p-4">
+                <div>
+                  <span className="text-xs block">Geração de OQs</span>
+                  <span className="text-[10px] text-muted-foreground">Liga ou desliga a geração por IA.</span>
+                </div>
+                <Switch checked={flags.geracaoIA} onCheckedChange={(v) => {
+                  setFlags(f => ({ ...f, geracaoIA: v }));
+                  persistFlag("geracao_ia", v);
+                  toast.success(v ? "Geração de OQs ativada" : "Geração de OQs desativada");
+                }} />
+              </div>
+            </div>
+          </Card>
 
           <Card className="p-6 bg-card/40 border-border/50">
             <h2 className="font-bold text-xl mb-6 flex items-center gap-2">
