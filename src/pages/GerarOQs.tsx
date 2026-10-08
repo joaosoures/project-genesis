@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { 
   Sparkles, Upload, FileText, CheckCircle2, Loader2, 
   AlertCircle, Trash2, AlertTriangle, FileSpreadsheet, 
-  Download, HelpCircle, Copy, Pencil, Save, X, Activity, Info
+  Download, HelpCircle, Copy, Pencil, Save, X, Info
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -337,8 +337,7 @@ export default function GerarOQs() {
 
     if (credits !== null && Number(credits.remaining) <= 0) {
       toast.error("Créditos de IA esgotados", {
-        description: "Você atingiu seu limite mensal. Verifique a aba de Status para mais informações.",
-        action: { label: "Ver Status", onClick: () => (window.location.href = "/status") }
+        description: "Seu limite diário foi atingido. Os créditos são renovados automaticamente amanhã."
       });
       return;
     }
@@ -413,9 +412,7 @@ export default function GerarOQs() {
       } else {
         console.error(err);
         const msg = err?.message || "Não conseguimos gerar suas questões agora.";
-        toast.error(msg, {
-          action: { label: "Ver status", onClick: () => (window.location.href = "/status") },
-        });
+        toast.error(msg);
         import("@/lib/aiErrorLog").then(m => m.logAiError(msg, "Gerar OQs por IA"));
       }
     } finally {
@@ -593,26 +590,12 @@ export default function GerarOQs() {
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 self-start md:self-center">
-          <Link to="/status">
-            <Button variant="outline" size="sm" className="rounded-xl border-white/10 bg-white/5 hover:bg-white/10 gap-2 h-10 px-4">
-              <Activity className="w-3.5 h-3.5 text-accent" />
-              <span className="text-[10px] font-black uppercase tracking-widest">Ver Status</span>
-            </Button>
-          </Link>
-
-          <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-primary/5 border border-primary/10 h-10">
-            <div className="grid place-items-center w-6 h-6 rounded-full bg-primary/10 text-primary">
-              <Sparkles className="w-3 h-3" />
-            </div>
-            <div>
-              <p className="text-[10px] uppercase font-black text-muted-foreground tracking-widest leading-none">Créditos de IA</p>
-              <p className="text-xs font-bold text-primary mt-0.5 leading-none">
-                {credits === null ? "..." : `${credits.remaining} gerações`}
-                {credits?.remaining === 0 && <span className="text-[9px] ml-1 text-muted-foreground font-medium">(Esgotados)</span>}
-              </p>
-            </div>
+        <div className="w-full sm:w-[330px] rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm self-start md:self-center">
+          <div className="flex items-center gap-3">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary"><Sparkles className="h-4 w-4" /></div>
+            <div><p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Créditos de IA</p><p className="text-lg font-black text-primary leading-tight">{credits === null ? "..." : `${credits.remaining} restantes`}</p></div>
           </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-primary/10 pt-3 text-[10px] font-semibold text-muted-foreground"><span>Limite: <strong className="text-foreground">30/dia</strong></span><span>Custo médio: <strong className="text-foreground">1 crédito</strong></span><span className="col-span-2">Renova automaticamente todos os dias.</span></div>
         </div>
       </header>
 

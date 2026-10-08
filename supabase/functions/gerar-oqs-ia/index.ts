@@ -198,6 +198,9 @@ serve(async (req) => {
     const model = modelSetting?.model?.trim() || "openai/gpt-6-luna";
     const { data: promptSetting } = await supabase.from("ia_prompts").select("prompt").eq("chave", "geracao_oqs").maybeSingle();
     const systemPrompt = promptSetting?.prompt?.trim() || SYSTEM_PROMPT;
+    const { data: usageLog, error: usageLogError } = await supabase.from("oq_geracao_log").insert({ usuario_id: authData.user.id, nome_arquivo: typeof fileName === "string" ? fileName.slice(0, 200) : null, creditos_gastos: 1, status: "processando" }).select("id").single();
+    if (usageLogError) console.error("[gerar-oqs-ia] não foi possível registrar a requisição", usageLogError.message);
+    const usageLogId = usageLog?.id;
     const keysToTry: ApiKey[] = [{ id: "adm_oqia", provider: "openrouter", key_value: apiKey, label: "Gateway OQ", model }];
     const userPrompt = `Especialidade: ${specialty}\nBaralho: ${fileName}\n\nGere de 8 a 12 OQs com base estritamente no conteúdo abaixo:\n\n${text}`;
 
@@ -227,6 +230,7 @@ serve(async (req) => {
           }));
 
           if (validated.length > 0) {
+            if (usageLogId) await supabase.from("oq_geracao_log").update({ quantidade_gerada: validated.length, status: "concluido" }).eq("id", usageLogId);
             return new Response(JSON.stringify({ questions: validated }), {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
@@ -240,6 +244,8 @@ serve(async (req) => {
         lastError = { status: 500, body: e.message };
       }
     }
+
+    if (usageLogId) await supabase.from("oq_geracao_log").update({ status: "erro", erro: "Todas as tentativas de geração falharam." }).eq("id", usageLogId);
 
     return new Response(
       JSON.stringify({
