@@ -63,6 +63,7 @@ type Report = {
 
 type UserAdmin = {
   id: string;
+  usuario_id?: string;
   nome: string;
   email: string;
   foto_url: string;
@@ -74,6 +75,9 @@ type UserAdmin = {
   plano_tipo: string;
   data_fim_trial?: string;
   proxima_renovacao?: string;
+  total_revisoes?: number;
+  taxa_acerto?: number;
+  oqs_criados?: number;
 };
 
 type FaturamentoData = {
@@ -108,7 +112,7 @@ export default function Admin() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [uCount, cCount, rCount, sCount, wCount, rData, paData, uData, fData] = await Promise.all([
+      const [uCount, cCount, rCount, sCount, wCount, rData, paData, uData, fData, studyStats] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }),
         supabase.from("cards").select("id", { count: "exact", head: true }),
         supabase.from("reports_erro").select("id", { count: "exact", head: true }).eq("status", "pendente"),
@@ -121,7 +125,8 @@ export default function Admin() {
         `).order("criado_em", { ascending: false }).limit(30),
         supabase.from("problemas_admin").select("*").order("criado_em", { ascending: false }).limit(30),
         supabase.from("admin_users_view").select("*"),
-        supabase.from("faturamento").select("*").order("mes", { ascending: true })
+        supabase.from("faturamento").select("*").order("mes", { ascending: true }),
+        (supabase as any).rpc("admin_user_study_stats")
       ]);
 
       setStats({ 
@@ -150,7 +155,14 @@ export default function Admin() {
       ].sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime());
 
       setReports(mergedReports);
-      setUsers(uData.data as UserAdmin[] ?? []);
+      const statsByUser = new Map<string, UserAdmin>();
+      for (const item of (studyStats.data as UserAdmin[] ?? [])) {
+        if (item.usuario_id) statsByUser.set(item.usuario_id, item);
+      }
+      setUsers((uData.data as UserAdmin[] ?? []).map((item) => {
+        const study = statsByUser.get(item.id);
+        return study ? { ...item, ...study } : item;
+      }));
       setFaturamento(fData.data as FaturamentoData[] ?? []);
     } catch (error) {
       console.error("Erro ao carregar dados admin:", error);
@@ -334,7 +346,7 @@ export default function Admin() {
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-black tracking-tight text-foreground">
             Painel do Administrador
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">Gerenciamento centralizado de usuários, permissões e reports. <span className="text-[10px] opacity-30">Build: {version}</span></p>
@@ -398,9 +410,6 @@ export default function Admin() {
             </TabsTrigger>
             <TabsTrigger value="finance" className="gap-2 data-[state=active]:bg-primary/20 whitespace-nowrap">
               <DollarSign size={16} /> Financeiro
-            </TabsTrigger>
-            <TabsTrigger value="reports" className="gap-2 data-[state=active]:bg-primary/20 whitespace-nowrap">
-              <AlertCircle size={16} /> Reports {stats.reports > 0 && <Badge variant="destructive" className="ml-1 h-5 min-w-5 p-0 flex items-center justify-center text-[10px]">{stats.reports}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="castigo" className="gap-2 data-[state=active]:bg-primary/20 whitespace-nowrap">Castigo do Simulado</TabsTrigger>
             <TabsTrigger value="permissions" className="gap-2 data-[state=active]:bg-primary/20 whitespace-nowrap">
@@ -510,15 +519,15 @@ export default function Admin() {
                             <div className="space-y-3">
                               <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">Total de Revisões</span>
-                                <span className="font-mono font-bold">1,240</span>
+                                <span className="font-mono font-bold">{u.total_revisoes ?? 0}</span>
                               </div>
                               <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">Taxa de Acerto</span>
-                                <span className="text-green-400 font-bold">84%</span>
+                                <span className="text-green-400 font-bold">{u.taxa_acerto ?? 0}%</span>
                               </div>
                               <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">OQs Criados</span>
-                                <span className="font-mono">12</span>
+                                <span className="font-mono">{u.oqs_criados ?? 0}</span>
                               </div>
                             </div>
                           </div>
@@ -975,98 +984,6 @@ export default function Admin() {
           </Card>
         </TabsContent>
 
-
-        <TabsContent value="reports" className="space-y-4">
-          <Card className="bg-card/40 border-border/50">
-            <div className="p-4 border-b border-border/50 flex justify-between items-center">
-              <h2 className="font-bold flex items-center gap-2">
-                <AlertCircle className="text-red-400" size={18} /> Reports Recentes
-              </h2>
-              <Badge variant="outline">{reports.length} reports</Badge>
-            </div>
-            <ScrollArea className="h-[600px]">
-              {reports.length === 0 ? (
-                <div className="p-12 text-center text-muted-foreground">Nenhum report encontrado.</div>
-              ) : (
-                <div className="divide-y divide-border/30">
-                  {reports.map((r) => (
-                    <div key={r.id} className="p-4 hover:bg-primary/5 transition-colors group">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className={cn("text-[10px] uppercase font-bold tracking-tighter", r.tipo === 'material_report' && "bg-red-500/10 text-red-400 border-red-500/20")}>
-                              {r.tipo.replace('_', ' ')}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">•</span>
-                            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                              <Clock size={10} /> {new Date(r.criado_em).toLocaleDateString("pt-BR")} {new Date(r.criado_em).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                          {r.titulo && <p className="text-xs font-bold text-primary mt-1">{r.titulo}</p>}
-                          <p className="text-sm font-medium mt-1">"{r.comentario || "Sem descrição"}"</p>
-                          {r.cards && (
-                            <div className="mt-2 p-2 bg-muted/40 rounded border border-border/30 text-xs">
-                              <span className="text-primary font-bold">CARD:</span> {r.cards.comando}
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2 mt-2">
-                             <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[10px]">
-                               {r.profiles?.nome?.[0] || 'U'}
-                             </div>
-                             <span className="text-[10px] text-muted-foreground">{r.profiles?.nome || r.profiles?.email || "Relato de Material"}</span>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 px-2">
-                                {getStatusIcon(r.status)}
-                                <span className="capitalize">{r.status.replace('_', ' ')}</span>
-                                <ChevronDown size={12} />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="glass">
-                              <DropdownMenuItem onClick={() => handleUpdateReportStatus(r, 'pendente')}>Pendente / Aberto</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleUpdateReportStatus(r, 'em_analise')}>Em Análise</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleUpdateReportStatus(r, 'resolvido')}>Resolvido</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleUpdateReportStatus(r, 'arquivado')}>Arquivado</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                          {(r.cards || r.card_id || r.tipo === 'material_report' || r.tipo === 'oq_temporario_report' || r.tipo === 'conteudo_incorreto' || r.tipo === 'erro_digitacao' || r.tipo === 'ambiguidade' || r.tipo === 'card_report') && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="h-6 text-[10px] text-primary hover:underline"
-                              onClick={() => {
-                                if (r.tipo === 'material_report') {
-                                  const materialId = r.comentario?.match(/Material ID: ([a-f0-9-]{36})/)?.[1];
-                                  if (materialId) {
-                                    window.open(`/materiais?id=${materialId}`, '_blank');
-                                  } else {
-                                    window.open(`/materiais`, '_blank');
-                                  }
-                                } else if (r.tipo === 'oq_temporario_report') {
-                                  window.open('/gerar-oqs', '_blank');
-                                } else {
-                                  const cid = r.cards?.id || r.card_id;
-                                  if (cid) {
-                                    window.open(`/estudo?id=${cid}`, '_blank');
-                                  }
-                                }
-                              }}
-                            >
-                              {r.tipo === 'material_report' ? 'Ir para Material' : (r.tipo === 'oq_temporario_report' ? 'Ir para Gerador' : 'Ir para Card')}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="permissions">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

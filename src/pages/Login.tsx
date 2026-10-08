@@ -85,7 +85,7 @@ export default function LoginPage() {
         const normalizedEmail = email.trim().toLowerCase();
         const normalizedPhone = telefone.trim();
         const userMetadata: Record<string, string> = { nome: nome.trim() };
-        if (normalizedPhone) userMetadata.telefone = normalizedPhone;
+        if (normalizedPhone) userMetadata.whatsapp = normalizedPhone;
 
         const { data, error } = await supabase.auth.signUp({
           email: normalizedEmail,
