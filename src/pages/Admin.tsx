@@ -9,7 +9,7 @@ import {
   MoreVertical, ShieldAlert, Award, Star, TrendingUp, 
   DollarSign, UserPlus, UserMinus, MessageSquare, Phone,
   Calendar, ArrowUpRight, ArrowDownRight, CreditCard,
-  Info, ListFilter
+  Info, ListFilter, Sparkles
 } from "lucide-react";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
@@ -45,7 +45,7 @@ import PlanosDialog from "@/components/admin/PlanosDialog";
 import WaitlistDialog from "@/components/admin/WaitlistDialog";
 import ApiKeysPool from "@/components/admin/ApiKeysPool";
 import AdminCastigo from "@/components/simulados/AdminCastigo";
-
+import AdminGerarOQs from "@/components/admin/AdminGerarOQs";
 
 type Report = {
   id: string;
@@ -412,6 +412,7 @@ export default function Admin() {
               <DollarSign size={16} /> Financeiro
             </TabsTrigger>
             <TabsTrigger value="castigo" className="gap-2 data-[state=active]:bg-primary/20 whitespace-nowrap">Castigo do Simulado</TabsTrigger>
+            <TabsTrigger value="geracao-oqs" className="gap-2 data-[state=active]:bg-primary/20 whitespace-nowrap"><Sparkles size={16} /> Geração de OQs</TabsTrigger>
             <TabsTrigger value="permissions" className="gap-2 data-[state=active]:bg-primary/20 whitespace-nowrap">
               <ShieldCheck size={16} /> Permissões
             </TabsTrigger>
@@ -423,6 +424,7 @@ export default function Admin() {
 
 
         <TabsContent value="castigo"><AdminCastigo /></TabsContent>
+        <TabsContent value="geracao-oqs"><AdminGerarOQs /></TabsContent>
 
         <TabsContent value="users" className="space-y-6">
           <div className="flex items-center gap-4 mb-4">

@@ -13,6 +13,7 @@ interface ApiKey {
   provider: string;
   key_value: string;
   label: string;
+  model?: string;
 }
 
 type AiCallResult =
@@ -73,11 +74,11 @@ async function requestQuestions(
     return { ok: true, content };
   }
 
-  let endpoint = "https://ai.gateway.lovable.dev/v1/chat/completions";
-  let model = "google/gemini-2.5-flash";
+  let endpoint = "https://openrouter.ai/api/v1/chat/completions";
+  let model = keyInfo.model ?? "openai/gpt-6-luna";
   if (provider === "openai") {
     endpoint = "https://api.openai.com/v1/chat/completions";
-    model = "gpt-4o-mini";
+    model = keyInfo.model ?? "gpt-4o-mini";
   }
 
   const res = await fetch(endpoint, {
@@ -189,48 +190,29 @@ serve(async (req) => {
       );
     }
 
-    const keysToTry: ApiKey[] = [];
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (LOVABLE_API_KEY) {
-      keysToTry.push({
-        id: "default_lovable",
-        provider: "lovable_gateway",
-        key_value: LOVABLE_API_KEY,
-        label: "Padrão Lovable",
-      });
+    const apiKey = Deno.env.get("ADM_OQIA_KEY")?.trim();
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: "O serviço de IA está temporariamente indisponível.", code: "AI_KEY_MISSING" }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-
-    const { data: dbKeys } = await supabase
-      .from("api_keys_pool")
-      .select("id, provider, key_value, label")
-      .eq("is_active", true)
-      .order("priority", { ascending: true });
-    if (dbKeys) keysToTry.push(...dbKeys);
-
-    if (keysToTry.length === 0) {
-      return new Response(
-        JSON.stringify({
-          error: "O serviço de IA está temporariamente indisponível (sem chaves configuradas).",
-          code: "AI_KEY_MISSING",
-        }),
-        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
+    const { data: modelSetting } = await supabase.from("ai_model_settings").select("model").eq("setting_key", "oqs").maybeSingle();
+    const model = modelSetting?.model?.trim() || "openai/gpt-6-luna";
+    const { data: promptSetting } = await supabase.from("ia_prompts").select("prompt").eq("chave", "geracao_oqs").maybeSingle();
+    const systemPrompt = promptSetting?.prompt?.trim() || SYSTEM_PROMPT;
+    const keysToTry: ApiKey[] = [{ id: "adm_oqia", provider: "openrouter", key_value: apiKey, label: "Gateway OQ", model }];
     const userPrompt = `Especialidade: ${specialty}\nBaralho: ${fileName}\n\nGere de 8 a 12 OQs com base estritamente no conteúdo abaixo:\n\n${text}`;
 
     let lastError: any = null;
 
     for (const keyInfo of keysToTry) {
-      console.log(`[gerar-oqs-ia] tentando chave: ${keyInfo.label} (${keyInfo.provider})`);
+      console.log(`[gerar-oqs-ia] gerando com o modelo configurado (${model})`);
       try {
-        const aiRes = await requestQuestions(keyInfo, SYSTEM_PROMPT, userPrompt);
+        const aiRes = await requestQuestions(keyInfo, systemPrompt, userPrompt);
 
         if (aiRes.ok) {
           let result: any;
           try { result = JSON.parse(aiRes.content); }
           catch {
-            console.error(`[gerar-oqs-ia] chave ${keyInfo.label} retornou JSON inválido`);
+            console.error("[gerar-oqs-ia] o modelo retornou JSON inválido");
             continue;
           }
 
@@ -245,27 +227,16 @@ serve(async (req) => {
           }));
 
           if (validated.length > 0) {
-            await supabase.from("api_keys_pool").update({
-              last_used_at: new Date().toISOString(),
-              error_count: 0,
-            }).eq("id", keyInfo.id);
-
             return new Response(JSON.stringify({ questions: validated }), {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
         } else {
-          console.error(`[gerar-oqs-ia] chave ${keyInfo.label} falhou: ${aiRes.status}`, aiRes.body.slice(0, 200));
-          if (keyInfo.id !== "default_lovable") {
-            await supabase.rpc("increment_key_error", {
-              _id: keyInfo.id,
-              _error: `HTTP ${aiRes.status}: ${aiRes.body.slice(0, 100)}`,
-            });
-          }
+          console.error(`[gerar-oqs-ia] gateway falhou: ${aiRes.status}`, aiRes.body.slice(0, 200));
           lastError = { status: aiRes.status, body: aiRes.body };
         }
       } catch (e: any) {
-        console.error(`[gerar-oqs-ia] erro fatal na chave ${keyInfo.label}:`, e.message);
+        console.error("[gerar-oqs-ia] erro fatal no gateway:", e.message);
         lastError = { status: 500, body: e.message };
       }
     }
