@@ -114,7 +114,7 @@ function ModoLacuna({ card, onFinalizar, onState, renderInput }, ref) {
           }}
           placeholder="Digite sua resposta…"
           className={cn(
-            "w-full h-14 px-5 rounded-2xl bg-white border border-border text-lg",
+            "w-full h-14 px-5 rounded-2xl bg-white border border-border text-base md:text-lg",
             "focus:outline-none focus:border-[hsl(var(--accent))] focus:shadow-neon-blue transition",
             shake && "animate-shake",
           )}
