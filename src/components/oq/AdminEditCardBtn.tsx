@@ -60,11 +60,12 @@ export function AdminEditCardBtn({ cardId, onSaved }: { cardId: string; onSaved?
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [improving, setImproving] = useState(false);
+  const [improvementComment, setImprovementComment] = useState("");
   const [card, setCard] = useState<CardRow | null>(null);
   const busy = saving || improving;
 
   useEffect(() => {
-    if (!open) { setCard(null); setLoading(false); setImproving(false); return; }
+    if (!open) { setCard(null); setLoading(false); setImproving(false); setImprovementComment(""); return; }
     let cancelled = false;
     setLoading(true);
     supabase.from("cards").select("*").eq("id", cardId).maybeSingle().then(({ data, error }) => {
@@ -95,6 +96,7 @@ export function AdminEditCardBtn({ cardId, onSaved }: { cardId: string; onSaved?
         : card.modo === "lacuna" ? { resposta: card.info_1 ?? "" } : { itens: items },
       "variações": card.modo === "abcde" ? null : card.modo === "lacuna" ? { var_1: card.var_1 ?? "" } : Object.fromEntries(items.map((_, index) => [`var_${index + 1}`, card[`var_${index + 1}`] ?? ""])),
       explicacao: card.explicacao ?? "",
+      comentario: improvementComment.trim(),
     };
     try {
       const { data, error } = await supabase.functions.invoke("aprimorar-oq-ia", { body: payload });
@@ -136,6 +138,7 @@ export function AdminEditCardBtn({ cardId, onSaved }: { cardId: string; onSaved?
               <div className="space-y-1.5"><Label className="text-xs">Peso (1-10)</Label><Input type="number" min={1} max={10} value={card.peso_importancia ?? 5} onChange={(e) => update("peso_importancia", parseInt(e.target.value) || 5)} /></div>
             </div>
             <div className="space-y-1.5"><Label className="text-xs">Comando / Pergunta</Label><Textarea value={card.comando ?? ""} onChange={(e) => update("comando", e.target.value)} rows={3} className="resize-none" /></div>
+            <div className="space-y-1.5 rounded-lg border border-primary/20 bg-primary/5 p-3"><Label htmlFor="improvement-comment" className="text-xs">Comentário de aprimoramento</Label><Textarea id="improvement-comment" value={improvementComment} onChange={(e) => setImprovementComment(e.target.value)} rows={2} className="resize-none" placeholder="Ex.: foque em melhorar a explicação ou deixe esta questão mais difícil..." /><p className="text-[11px] text-muted-foreground">Opcional. Será usado apenas para orientar o próximo aprimoramento com IA.</p></div>
             {card.modo === "abcde" && <div className="space-y-3"><Label className="text-xs uppercase tracking-wide text-muted-foreground">Alternativas</Label>{letters.map((letter) => { const key = `alternativa_${letter}`; const correct = card.alternativa_correta?.toLowerCase() === letter; return <div key={letter} className="flex gap-2 items-start"><button type="button" onClick={() => update("alternativa_correta", letter.toUpperCase())} translate="no" className={`shrink-0 h-9 w-9 rounded-lg font-black text-sm grid place-items-center transition ${correct ? "bg-emerald-500 text-white shadow-md" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>{letter.toUpperCase()}</button><Textarea value={card[key] ?? ""} onChange={(e) => update(key, e.target.value)} rows={2} className="resize-none text-sm" placeholder={`Alternativa ${letter.toUpperCase()}`} /></div>; })}</div>}
             <div className="space-y-3"><Label className="text-xs uppercase tracking-wide text-muted-foreground">Variações / Infos</Label>{[1, 2, 3, 4, 5].map((n) => <div key={n} className="grid grid-cols-1 sm:grid-cols-2 gap-2"><Input placeholder={`var_${n}`} value={card[`var_${n}`] ?? ""} onChange={(e) => update(`var_${n}`, e.target.value)} /><Input placeholder={`info_${n}`} value={card[`info_${n}`] ?? ""} onChange={(e) => update(`info_${n}`, e.target.value)} /></div>)}</div>
             <div className="space-y-1.5"><Label className="text-xs">Explicação</Label><Textarea value={card.explicacao ?? ""} onChange={(e) => update("explicacao", e.target.value)} rows={5} className="resize-none" /></div>

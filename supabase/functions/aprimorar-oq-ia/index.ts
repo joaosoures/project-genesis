@@ -9,8 +9,9 @@ const MAX_BODY = 30000;
 const MAX_TEXT = 6000;
 const MODES = new Set(["abcde", "lacuna", "oq_falta"]);
 const ROOT_KEYS = ["comando", "alternativas", "variações", "explicacao"];
+const INPUT_KEYS = ["modo", "comando", "alternativas", "variações", "explicacao", "comentario"];
 
-const SYSTEM_PROMPT = `Você é médico e professor especialista em provas de residência médica no Brasil. Aprimore uma questão OQ em português do Brasil sem inventar fatos clínicos, doses ou critérios que não estejam no conteúdo recebido. Preserve a intenção pedagógica, corrija ambiguidades, torne o comando claro, mantenha alternativas plausíveis e produza uma explicação didática e clinicamente coerente.
+const SYSTEM_PROMPT = `Você é médico e professor especialista em provas de residência médica no Brasil. Aprimore uma questão OQ em português do Brasil sem inventar fatos clínicos, doses ou critérios que não estejam no conteúdo recebido. Preserve a intenção pedagógica, corrija ambiguidades, torne o comando claro, mantenha alternativas plausíveis e produza uma explicação didática e clinicamente coerente. Se houver um comentário de aprimoramento, trate-o como uma instrução adicional do administrador e aplique-o de forma coerente, sem ignorar as regras de formato e segurança do conteúdo.
 
 Retorne SOMENTE um objeto JSON com exatamente estas quatro chaves: comando, alternativas, variações, explicacao.
 - modo abcde: alternativas deve ter exatamente a,b,c,d,e,correta. Todas as cinco alternativas devem ser não vazias e correta deve ser uma letra A-E. Não altere variações.
@@ -100,11 +101,13 @@ serve(async (req) => {
     if (rawBody.length > MAX_BODY) return response({ error: "Payload muito grande." }, 413);
     let body: Record<string, unknown>;
     try { body = JSON.parse(rawBody); } catch { return response({ error: "JSON inválido." }, 400); }
-    if (!exactKeys(body, ["modo", "comando", "alternativas", "variações", "explicacao"])) return response({ error: "Payload pedagógico inválido." }, 400);
+    if (!exactKeys(body, ["modo", "comando", "alternativas", "variações", "explicacao"]) && !exactKeys(body, INPUT_KEYS)) return response({ error: "Payload pedagógico inválido." }, 400);
     const mode = body.modo;
     if (typeof mode !== "string" || !MODES.has(mode)) return response({ error: "Modo não suportado." }, 400);
     const currentCommand = text(body.comando, "comando");
     const currentExplanation = text(body.explicacao, "explicacao", 12000);
+    if (body.comentario !== undefined && typeof body.comentario !== "string") return response({ error: "comentario inválido." }, 400);
+    const improvementComment = typeof body.comentario === "string" ? body.comentario.trim().slice(0, 4000) : "";
     const currentAlternativas = body.alternativas;
     const currentVariacoes = body["variações"];
     let itemCount = 0;
@@ -117,10 +120,13 @@ serve(async (req) => {
     const { data: setting } = await service.from("ai_model_settings").select("model").eq("setting_key", "oqs").maybeSingle();
     const configuredModel = typeof setting?.model === "string" && /^[a-z0-9][a-z0-9._/-]{1,119}$/i.test(setting.model) ? setting.model : "openai/gpt-6-luna";
     const userPrompt = JSON.stringify({ modo: mode, comando: currentCommand, alternativas: currentAlternativas, "variações": currentVariacoes, explicacao: currentExplanation });
+    const systemPrompt = improvementComment
+      ? `${SYSTEM_PROMPT}\n\nDIRECIONAMENTO DO ADMINISTRADOR (aplique ao aprimoramento):\n<comentario>${improvementComment}</comentario>`
+      : SYSTEM_PROMPT;
     const aiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: configuredModel, messages: [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: userPrompt }], response_format: { type: "json_object" }, temperature: 0.35 }),
+      body: JSON.stringify({ model: configuredModel, messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }], response_format: { type: "json_object" }, temperature: 0.35 }),
     });
     const aiBody = await aiResponse.text();
     if (!aiResponse.ok) return response({ error: "O provedor de IA recusou a solicitação." }, 502);
