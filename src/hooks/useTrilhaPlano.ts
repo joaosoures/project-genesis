@@ -364,6 +364,7 @@ export function useTrilhaPlano() {
     let lw = 0;
     const recentAulaStats: Record<string, { count: number; acertos: number }> = {};
     const globalStats: Record<string, { count: number; acertos: number }> = {};
+    const latestByCard = new Map<string, { aulaId: string; timestamp: Date; acertou: boolean }>();
 
     historyRows.forEach((h) => {
       const timestamp = new Date(h.timestamp!);
@@ -374,14 +375,22 @@ export function useTrilhaPlano() {
 
       const aulaId = aulaByCard[h.card_id as string];
       if (!aulaId) return;
+      const cardId = h.card_id as string;
+      const previous = latestByCard.get(cardId);
+      if (!previous || timestamp > previous.timestamp) {
+        latestByCard.set(cardId, { aulaId, timestamp, acertou: Boolean(h.acertou) });
+      }
+    });
+
+    latestByCard.forEach(({ aulaId, timestamp, acertou }) => {
       globalStats[aulaId] ??= { count: 0, acertos: 0 };
       globalStats[aulaId].count++;
-      if (h.acertou) globalStats[aulaId].acertos++;
+      if (acertou) globalStats[aulaId].acertos++;
 
       if (timestamp >= monday) {
         recentAulaStats[aulaId] ??= { count: 0, acertos: 0 };
         recentAulaStats[aulaId].count++;
-        if (h.acertou) recentAulaStats[aulaId].acertos++;
+        if (acertou) recentAulaStats[aulaId].acertos++;
       }
     });
 
@@ -398,7 +407,14 @@ export function useTrilhaPlano() {
   }, [user]);
 
   useEffect(() => {
-    carregar();
+    void carregar();
+    const atualizar = () => void carregar();
+    window.addEventListener("oqmed:review-updated", atualizar);
+    window.addEventListener("focus", atualizar);
+    return () => {
+      window.removeEventListener("oqmed:review-updated", atualizar);
+      window.removeEventListener("focus", atualizar);
+    };
   }, [carregar]);
 
   const salvarSettings = useCallback(
