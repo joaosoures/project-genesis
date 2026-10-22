@@ -553,14 +553,15 @@ export function useTrilhaPlano() {
   const perdidosSet = new Set(settings.perdidos ?? []);
   const completosSet = useMemo(() => {
     const set = new Set(settings.completos ?? []);
-    // Adicionar automaticamente aulas que atingiram a meta global de OQs
+    // Uma matéria é concluída quando todos os OQs vinculados a ela foram respondidos.
     Object.entries(aulaStatsGlobal).forEach(([aid, stat]) => {
-      if (stat.count >= META_OQS_POR_AULA) {
+      const total = aulas.find((aula) => aula.id === aid)?.total_oqs ?? 0;
+      if (total > 0 && stat.count >= total) {
         set.add(aid);
       }
     });
     return set;
-  }, [settings.completos, aulaStatsGlobal]);
+  }, [settings.completos, aulaStatsGlobal, aulas]);
   const overrides = settings.plano_overrides ?? {};
 
   const tierMax = maxTierFor(settings.foco_incidencia);

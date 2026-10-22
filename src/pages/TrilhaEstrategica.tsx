@@ -190,7 +190,6 @@ export default function TrilhaEstrategica() {
   const settingsCtx = useSettings();
   const reduceMotion = settingsCtx?.reduceMotion;
 
-  const META_OQS = 20;
   const ACERTO_MIN = 0.6;
 
   const [setupOpen, setSetupOpen] = useState(false);
@@ -244,9 +243,13 @@ export default function TrilhaEstrategica() {
 
 
   const completosSet = useMemo(() => new Set(settings.completos ?? []), [settings.completos]);
-  const getStats = (id: string) => aulaStatsSemana[id] ?? { count: 0, acertos: 0 };
+  const getStats = (id: string) => aulaStatsGlobal[id] ?? { count: 0, acertos: 0 };
   const getGlobalStats = (id: string) => aulaStatsGlobal[id] ?? { count: 0, acertos: 0 };
-  const isAulaDone = (id: string) => completosSet.has(id) || getGlobalStats(id).count >= META_OQS;
+  const getAulaTotal = (id: string) => aulas.find((aula) => aula.id === id)?.total_oqs ?? 0;
+  const isAulaDone = (id: string) => {
+    const total = getAulaTotal(id);
+    return completosSet.has(id) || (total > 0 && getGlobalStats(id).count >= total);
+  };
   const isAulaInsuficiente = (id: string) => {
     const s = getGlobalStats(id);
     return isAulaDone(id) && s.count > 0 && (s.acertos / s.count) < ACERTO_MIN;
@@ -413,7 +416,7 @@ export default function TrilhaEstrategica() {
       return;
     }
     const c = getStats(id).count;
-    if (c >= META_OQS) return;
+    if (c >= getAulaTotal(id)) return;
     setConfirmAula(aula);
   }
 
@@ -741,7 +744,7 @@ export default function TrilhaEstrategica() {
                               {a.nome}
                             </h4>
                             <p className="text-[10px] font-bold tabular-nums text-muted-foreground">
-                              {Math.min(s.count, META_OQS)}/{META_OQS} OQs
+                              {Math.min(s.count, a.total_oqs)}/{a.total_oqs} OQs
                               {s.count > 0 && <span className={cn("ml-2", pct >= 60 ? "text-emerald-600" : "text-amber-600")}>· {pct}% acertos</span>}
                             </p>
                             {insuf && (
@@ -833,7 +836,7 @@ export default function TrilhaEstrategica() {
                               {a.nome}
                             </h4>
                             <p className="text-[10px] font-bold tabular-nums text-muted-foreground">
-                              {Math.min(s.count, META_OQS)}/{META_OQS} OQs
+                              {Math.min(s.count, a.total_oqs)}/{a.total_oqs} OQs
                               {s.count > 0 && <span className={cn("ml-2", pct >= 60 ? "text-emerald-600" : "text-amber-600")}>· {pct}% acertos</span>}
                             </p>
                             {insuf && (
@@ -960,7 +963,7 @@ export default function TrilhaEstrategica() {
                                       {a.nome}
                                     </h4>
                                     <p className="text-[10px] font-bold tabular-nums text-muted-foreground">
-                                      {Math.min(s.count, META_OQS)}/{META_OQS} OQs
+                                      {Math.min(s.count, a.total_oqs)}/{a.total_oqs} OQs
                                       {s.count > 0 && <span className={cn("ml-2", pct >= 60 ? "text-emerald-600" : "text-amber-600")}>· {pct}% acertos</span>}
                                       <span className="ml-2 text-muted-foreground/60">· {a.total_oqs} disponíveis</span>
                                     </p>
