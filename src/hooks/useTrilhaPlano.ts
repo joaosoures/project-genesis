@@ -338,16 +338,25 @@ export function useTrilhaPlano() {
     const lastMonday = new Date(monday);
     lastMonday.setDate(monday.getDate() - 7);
 
-    const { data: history, error: historyError } = await supabase
-      .from("historico_estudo")
-      .select("card_id, timestamp, acertou, conta_meta_diaria")
-      .eq("usuario_id", user.id);
+    const historyRows: { card_id: string; timestamp: string | null; acertou: boolean; conta_meta_diaria: boolean }[] = [];
+    const historyPageSize = 1000;
+    for (let from = 0; ; from += historyPageSize) {
+      const { data: historyPage, error: historyError } = await supabase
+        .from("historico_estudo")
+        .select("card_id, timestamp, acertou, conta_meta_diaria")
+        .eq("usuario_id", user.id)
+        .order("timestamp", { ascending: true })
+        .range(from, from + historyPageSize - 1);
 
-    if (historyError) {
-      console.error("Erro ao carregar histórico da trilha:", historyError);
+      if (historyError) {
+        console.error("Erro ao carregar histórico da trilha:", historyError);
+        break;
+      }
+
+      historyRows.push(...(historyPage ?? []));
+      if (!historyPage || historyPage.length < historyPageSize) break;
     }
 
-    const historyRows = history ?? [];
     const cardIds = Array.from(new Set(historyRows.map((h) => h.card_id as string)));
     const aulaByCard: Record<string, string> = {};
     if (cardIds.length > 0) {
