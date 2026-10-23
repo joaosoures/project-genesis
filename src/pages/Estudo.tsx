@@ -24,6 +24,7 @@ import NeonProgressBar from "@/components/console/NeonProgressBar";
 import Starburst from "@/components/console/Starburst";
 import { ensureAudio } from "@/lib/sensory";
 import { ChevronRight, CheckCircle2, User, Menu, Undo2, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import logo from "@/assets/oqmed-logo.png";
 import coffeeBreak from "@/assets/coffee-break.png";
@@ -167,15 +168,19 @@ export default function Estudo() {
       setProgressoDiario(prev => prev + 1);
     }
 
-    await registrarDesempenho({
-      userId: user.id, cardId: card.id,
-      acertou: r.acertou, nivelPista: r.nivelPista, nota,
-      pesoImportancia: card.peso_importancia,
-      contaMetaDiaria,
-    });
-    window.dispatchEvent(new Event("oqmed:review-updated"));
-    
-    if (r.acertou) { setShowStar(true); setTimeout(() => setShowStar(false), 1100); }
+    try {
+      await registrarDesempenho({
+        userId: user.id, cardId: card.id,
+        acertou: r.acertou, nivelPista: r.nivelPista, nota,
+        pesoImportancia: card.peso_importancia,
+        contaMetaDiaria,
+      });
+      window.dispatchEvent(new Event("oqmed:review-updated"));
+      if (r.acertou) { setShowStar(true); setTimeout(() => setShowStar(false), 1100); }
+    } catch (error) {
+      console.error("Falha ao salvar resposta:", error);
+      toast.error("Sua resposta não foi salva. Verifique seu plano e tente novamente.");
+    }
     // Nota: não recarregamos a fila aqui para não trocar o card que o aluno está vendo.
     // A fila só é atualizada quando o aluno termina os OQs da sessão (coffee break).
   }
