@@ -357,16 +357,23 @@ export function useTrilhaPlano() {
       if (!historyPage || historyPage.length < historyPageSize) break;
     }
 
-    const cardIds = Array.from(new Set(historyRows.map((h) => h.card_id as string)));
     const aulaByCard: Record<string, string> = {};
-    if (cardIds.length > 0) {
-      const { data: cardsWithAula } = await supabase
+    const cardsPageSize = 1000;
+    for (let from = 0; ; from += cardsPageSize) {
+      const { data: cardsWithAula, error: cardsError } = await supabase
         .from("cards")
         .select("id, aula_id")
-        .in("id", cardIds);
+        .range(from, from + cardsPageSize - 1);
+
+      if (cardsError) {
+        console.error("Erro ao relacionar cards da trilha às matérias:", cardsError);
+        break;
+      }
+
       (cardsWithAula ?? []).forEach((card: any) => {
         if (card.aula_id) aulaByCard[card.id] = card.aula_id;
       });
+      if (!cardsWithAula || cardsWithAula.length < cardsPageSize) break;
     }
 
     let cw = 0;
