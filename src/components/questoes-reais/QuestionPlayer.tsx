@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { BookOpen, CircleHelp, Layers3, Loader2, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { QuestaoRealItem } from "@/lib/questoes-reais";
+import { QUESTOES_REAIS_AREAS, QuestaoRealItem } from "@/lib/questoes-reais";
 import ExplanationPanel from "./ExplanationPanel";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
+
+function areaLabel(value?: string | null) {
+  return QUESTOES_REAIS_AREAS.find((area) => area.value === value)?.label ?? value?.replace(/_/g, " ") ?? "Área não informada";
+}
 
 export default function QuestionPlayer({ item, position, total, punishment, busy, onConfirm, onNext }: {
   item: QuestaoRealItem;
@@ -22,16 +26,34 @@ export default function QuestionPlayer({ item, position, total, punishment, busy
   const [selected, setSelected] = useState(item.resposta_marcada ?? "");
   useEffect(() => setSelected(item.resposta_marcada ?? ""), [item.id, item.resposta_marcada]);
   const confirmed = Boolean(item.confirmado_em);
-  return <div className="mx-auto w-full max-w-4xl space-y-4">
-    <div className="flex items-center justify-between gap-4">
-      <Badge variant={punishment ? "destructive" : "default"} className="tracking-widest">{punishment ? "CASTIGO" : "QUESTÕES REAIS"}</Badge>
-      <span className="text-sm font-bold">Questão {position + 1} de {total}</span>
+  const punishmentNumber = position + 1;
+  const baseNumber = (item.questao_base_posicao ?? 0) + 1;
+
+  return <div className="mx-auto w-full max-w-4xl space-y-5">
+    <div className="flex items-center justify-between gap-4 px-1">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+        {punishment ? <><Sparkles className="h-3.5 w-3.5 text-destructive" /> Reforço direcionado</> : <><BookOpen className="h-3.5 w-3.5 text-accent" /> Bloco de questões</>}
+      </div>
+      <span className="text-sm font-bold text-foreground/80">Questão {position + 1} de {total}</span>
     </div>
-    <Progress value={((position + (confirmed ? 1 : 0)) / total) * 100} />
-    <Card className="overflow-hidden shadow-xl">
-      <CardHeader className="space-y-4">
+
+    {punishment ? <div className="rounded-2xl border border-destructive/20 bg-destructive/[0.04] px-4 py-3 text-sm text-muted-foreground shadow-sm">
+      <div className="flex items-center gap-2 font-semibold text-foreground"><Layers3 className="h-4 w-4 text-destructive" /> {punishmentNumber} de {total} da Questão {baseNumber}</div>
+      <p className="mt-1 pl-6 text-xs">Uma nova abordagem para consolidar o ponto que você errou.</p>
+    </div> : <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-2xl border border-border/70 bg-muted/25 px-4 py-2.5 text-xs text-muted-foreground">
+      <span className="inline-flex items-center gap-1.5 font-medium"><BookOpen className="h-3.5 w-3.5 text-accent" /> {item.prova ?? "Prova não informada"}</span>
+      <span className="hidden h-3 w-px bg-border sm:block" />
+      <span><span className="font-medium text-foreground/80">Área</span> · {areaLabel(item.area)}</span>
+    </div>}
+
+    <Progress value={((position + (confirmed ? 1 : 0)) / total) * 100} className="h-1.5" />
+    <Card className="overflow-hidden border-border/70 shadow-xl shadow-primary/[0.04]">
+      <CardHeader className="space-y-5 pb-4">
         {item.image_url && <img src={item.image_url} alt="Imagem da questão" className="max-h-80 w-full rounded-2xl object-contain" />}
-        <p className="text-base font-semibold leading-relaxed md:text-lg">{item.questao}</p>
+        <div className="flex items-start gap-3">
+          <Badge variant={punishment ? "destructive" : "secondary"} className="mt-0.5 shrink-0 rounded-md px-2 py-1 text-[10px] tracking-[0.12em]">{punishment ? "CASTIGO" : "REAL"}</Badge>
+          <p className="text-base font-semibold leading-relaxed md:text-lg">{item.questao}</p>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {item.alternativas.map((option, index) => option && <button

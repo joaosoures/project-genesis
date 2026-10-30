@@ -18,6 +18,9 @@ export interface QuestaoRealItem {
   posicao: number;
   questao_original_id: string;
   castigo_filha_id: string | null;
+  prova?: string | null;
+  area?: string | null;
+  questao_base_posicao?: number | null;
   resposta_marcada: string | null;
   acertou: boolean | null;
   confirmado_em: string | null;
