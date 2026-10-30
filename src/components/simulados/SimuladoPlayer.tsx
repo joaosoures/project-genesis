@@ -139,6 +139,9 @@ export default function SimuladoPlayer({
 
         if (questionError) throw questionError;
         const loadedQuestions = questionData || [];
+        if (loadedQuestions.length === 0) {
+          throw new Error("Este simulado ainda não possui questões disponíveis.");
+        }
         setQuestions(loadedQuestions);
 
         if (initialReportMode) {

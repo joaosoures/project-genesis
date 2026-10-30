@@ -61,6 +61,20 @@ export default function AdminGerarSimulado({ onFinished }: { onFinished: () => v
 
     setLoading(true);
     try {
+      const normalizedName = nome.trim();
+      const { data: existingSimulado, error: existingError } = await supabase
+        .from("simulados")
+        .select("id")
+        .eq("nome", normalizedName)
+        .limit(1)
+        .maybeSingle();
+
+      if (existingError) throw existingError;
+      if (existingSimulado) {
+        toast.error("Já existe um simulado com esse nome.");
+        return;
+      }
+
       const buf = await file.arrayBuffer();
       const wb = new ExcelJS.Workbook();
       await wb.xlsx.load(buf);
@@ -122,6 +136,10 @@ export default function AdminGerarSimulado({ onFinished }: { onFinished: () => v
         const exp2 = textValue(r[9]);
         const exp3 = textValue(r[10]);
 
+        if (!esp || !comando || !["A", "B", "C", "D", "E"].includes(gab)) {
+          throw new Error(`Linha ${idx + 2}: especialidade, comando ou gabarito inválido.`);
+        }
+
         return {
           simulado_id: sim.id,
           especialidade: esp,
@@ -137,10 +155,15 @@ export default function AdminGerarSimulado({ onFinished }: { onFinished: () => v
           explicacao_3: exp3 || null,
           ordem: idx
         };
-      }).filter(q => q.comando && q.gabarito && q.especialidade);
+      }).filter(q => q.comando);
+
+      if (questions.length === 0) throw new Error("O arquivo não contém questões válidas.");
 
       const { error: qErr } = await supabase.from("simulado_questoes").insert(questions);
-      if (qErr) throw qErr;
+      if (qErr) {
+        await supabase.from("simulados").delete().eq("id", sim.id);
+        throw qErr;
+      }
 
       toast.success("Simulado criado com sucesso!");
       onFinished();
