@@ -64,8 +64,8 @@ function AppSidebar() {
   }, [user]);
 
   const main = [
-    { title: "Estudar", url: "/estudo", icon: BookOpen, count: overdueCounts?.total ?? 0 },
-    { title: "Questões Reais", url: hasQuestoesReais ? "/questoes-reais" : "/meu-plano", activeUrl: "/questoes-reais", icon: Target, locked: !hasQuestoesReais },
+    { title: "Fila de OQs", url: "/estudo", icon: BookOpen, count: overdueCounts?.total ?? 0 },
+    { title: "OQ cai", url: hasQuestoesReais ? "/questoes-reais" : "/meu-plano", activeUrl: "/questoes-reais", icon: Target, locked: !hasQuestoesReais },
     { title: "Área do aluno", url: "/dashboard", icon: LayoutDashboard },
     { title: "Trilha Estratégica", url: "/trilha", icon: Map },
     { title: "Materiais", url: "/materiais", icon: Files },
