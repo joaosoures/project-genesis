@@ -71,8 +71,20 @@ export default function AdminGerarSimulado({ onFinished }: { onFinished: () => v
         if (rowNumber === 1) return; // Skip header
         const values: any[] = [];
         row.eachCell({ includeEmpty: true }, (cell) => {
-          const v = cell.value;
-          values.push(v && typeof v === "object" && "text" in v ? (v as any).text : v);
+          const value = cell.value;
+          if (!value || typeof value !== "object") {
+            values.push(value);
+            return;
+          }
+          if ("text" in value && typeof value.text === "string") {
+            values.push(value.text);
+            return;
+          }
+          if ("richText" in value && Array.isArray(value.richText)) {
+            values.push(value.richText.map((part: { text?: string }) => part.text ?? "").join(""));
+            return;
+          }
+          values.push("");
         });
         rows.push(values);
       });
@@ -105,9 +117,10 @@ export default function AdminGerarSimulado({ onFinished }: { onFinished: () => v
         const opD = String(r[5] || "").trim();
         const opE = String(r[6] || "").trim();
         const gab = String(r[7] || "").trim().toUpperCase();
-        const exp1 = String(r[8] || "").trim();
-        const exp2 = String(r[9] || "").trim();
-        const exp3 = String(r[10] || "").trim();
+        const textValue = (value: unknown) => typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
+        const exp1 = textValue(r[8]);
+        const exp2 = textValue(r[9]);
+        const exp3 = textValue(r[10]);
 
         return {
           simulado_id: sim.id,
