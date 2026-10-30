@@ -12,6 +12,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { useUserPlan } from "@/hooks/useUserPlan";
 import BentoCard from "@/components/ui/bento-card";
 import AttachedBanner from "@/components/dashboard/AttachedBanner";
+import { questoesReaisApi } from "@/lib/questoes-reais";
 
 // Lazy load heavy dashboard components
 const EspecialidadesRanking = lazy(() => import("@/components/dashboard/EspecialidadesRanking"));
@@ -153,6 +154,7 @@ export default function Dashboard() {
   const { canUse } = useUserPlan();
   const lockFocado = !canUse("estudo_focado");
   const [stats, setStats] = useState({ total: 0, acertos: 0, erros: 0, hoje: 0, dist: [0,0,0,0,0] });
+  const [questoesReais, setQuestoesReais] = useState(0);
   const [historico, setHistorico] = useState<any[]>([]);
   const [especialidadeStats, setEspecialidadeStats] = useState<EspecialidadeStats[]>([]);
   const [aulasCriticas, setAulasCriticas] = useState<{ id: string; nome: string; especialidade: Especialidade; erros: number }[]>([]);
@@ -162,7 +164,11 @@ export default function Dashboard() {
     if (!user) return;
     (async () => {
       // Get daily progress via RPC for accuracy (total completions)
-      const { data: dailyCount } = await supabase.rpc("get_daily_progress", { p_user_id: user.id });
+      const [{ data: dailyCount }, realQuestionsCount] = await Promise.all([
+        supabase.rpc("get_daily_progress", { p_user_id: user.id }),
+        questoesReaisApi.metrica().catch(() => 0),
+      ]);
+      setQuestoesReais(Number(realQuestionsCount) || 0);
 
       const { data } = await supabase
         .from("desempenho_cards")
@@ -293,6 +299,12 @@ export default function Dashboard() {
         </BentoCard>
         <BentoCard>
           <Stat label="Erros" value={stats.erros} negative />
+        </BentoCard>
+        <BentoCard className="col-span-2 md:col-span-2 bg-accent/5 border-accent/20">
+          <div className="flex h-full items-center justify-between gap-4">
+            <Stat label="Questões Reais Realizadas" value={questoesReais} accent />
+            <Target className="h-10 w-10 text-accent/50" />
+          </div>
         </BentoCard>
       </div>
 

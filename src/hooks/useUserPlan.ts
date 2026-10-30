@@ -13,7 +13,8 @@ export type Feature =
   | "gerar_oq_planilha"
   | "gerar_oq_ia"
   | "materiais"
-  | "trilha";
+  | "trilha"
+  | "questoes_reais";
 
 export interface AssinaturaInfo {
   plano: string;
@@ -58,6 +59,7 @@ const FEATURE_MAP: Record<Feature, PlanoEfetivo[]> = {
   gerar_oq_ia: ["trial", "ouro"],
   materiais: ["trial", "ouro"],
   trilha: ["trial", "ouro", "prata"],
+  questoes_reais: ["ouro", "prata"],
 };
 
 export function useUserPlan(): UserPlanState {

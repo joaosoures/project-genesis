@@ -903,6 +903,90 @@ export type Database = {
           },
         ]
       }
+      questoes_reais_sessoes: {
+        Row: {
+          id: string
+          usuario_id: string
+          quantidade_solicitada: number
+          quantidade_efetiva: number
+          areas: string[]
+          fase: string
+          status: string
+          posicao_base: number
+          posicao_castigo: number
+          criado_em: string
+          atualizado_em: string
+          encerrado_em: string | null
+        }
+        Insert: {
+          id?: string
+          usuario_id: string
+          quantidade_solicitada: number
+          quantidade_efetiva: number
+          areas: string[]
+          fase?: string
+          status?: string
+          posicao_base?: number
+          posicao_castigo?: number
+          criado_em?: string
+          atualizado_em?: string
+          encerrado_em?: string | null
+        }
+        Update: {
+          id?: string
+          usuario_id?: string
+          quantidade_solicitada?: number
+          quantidade_efetiva?: number
+          areas?: string[]
+          fase?: string
+          status?: string
+          posicao_base?: number
+          posicao_castigo?: number
+          criado_em?: string
+          atualizado_em?: string
+          encerrado_em?: string | null
+        }
+        Relationships: []
+      }
+      questoes_reais_itens: {
+        Row: {
+          id: string
+          sessao_id: string
+          tipo: string
+          posicao: number
+          questao_original_id: string
+          castigo_filha_id: string | null
+          resposta_marcada: string | null
+          acertou: boolean | null
+          confirmado_em: string | null
+          criado_em: string
+        }
+        Insert: {
+          id?: string
+          sessao_id: string
+          tipo: string
+          posicao: number
+          questao_original_id: string
+          castigo_filha_id?: string | null
+          resposta_marcada?: string | null
+          acertou?: boolean | null
+          confirmado_em?: string | null
+          criado_em?: string
+        }
+        Update: {
+          id?: string
+          sessao_id?: string
+          tipo?: string
+          posicao?: number
+          questao_original_id?: string
+          castigo_filha_id?: string | null
+          resposta_marcada?: string | null
+          acertou?: boolean | null
+          confirmado_em?: string | null
+          criado_em?: string
+        }
+        Relationships: []
+      }
       castigo_filhas: {
         Row: {
           id: string
@@ -1016,6 +1100,7 @@ export type Database = {
           opcao_e: string | null
           ordem: number | null
           simulado_id: string | null
+          image_url: string | null
         }
         Insert: {
           comando: string
@@ -1033,6 +1118,7 @@ export type Database = {
           opcao_e?: string | null
           ordem?: number | null
           simulado_id?: string | null
+          image_url?: string | null
         }
         Update: {
           comando?: string
@@ -1050,6 +1136,7 @@ export type Database = {
           opcao_e?: string | null
           ordem?: number | null
           simulado_id?: string | null
+          image_url?: string | null
         }
         Relationships: [
           {
@@ -1404,6 +1491,13 @@ export type Database = {
       castigo_reiniciar: { Args: { p_tentativa: string; p_filhas: string[] }; Returns: undefined }
       simulado_refazer: { Args: { p_simulado: string }; Returns: undefined }
       get_simulado_comparison: { Args: { p_simulado_id: string }; Returns: Json }
+      questoes_reais_sessao_ativa: { Args: never; Returns: Json }
+      questoes_reais_criar_sessao: { Args: { p_quantidade: number; p_areas: string[] }; Returns: Json }
+      questoes_reais_confirmar: { Args: { p_item: string; p_resposta: string }; Returns: Json }
+      questoes_reais_avancar: { Args: { p_item: string }; Returns: Json }
+      questoes_reais_preparar_castigo: { Args: { p_sessao: string }; Returns: Json }
+      questoes_reais_encerrar: { Args: { p_sessao: string; p_acao: string }; Returns: undefined }
+      questoes_reais_metrica: { Args: never; Returns: number }
 
       admin_import_pre_aula_questoes: {
         Args: { payload: Json }

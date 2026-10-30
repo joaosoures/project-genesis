@@ -4,7 +4,7 @@ import {
   BookOpen, LayoutDashboard, Database, Sparkles, Files,
   Heart, Shield, LogOut, Stethoscope, Baby, Activity,
   Clock, AlertTriangle, Settings, CreditCard, Map,
-  Loader2,
+  Loader2, Target, Lock,
 } from "lucide-react";
 import { UteroIcon, BisturiIcon } from "@/components/icons/MedIcons";
 import {
@@ -20,6 +20,7 @@ import { feedback } from "@/lib/sensory";
 import { useSettings } from "@/contexts/SettingsContext";
 import { Especialidade } from "@/lib/oq";
 import { getOverdueCounts } from "@/lib/queue";
+import { useUserPlan } from "@/hooks/useUserPlan";
 
 // Lazy load non-critical components
 const LoginAlerts = lazy(() => import("@/components/LoginAlerts"));
@@ -37,8 +38,10 @@ function AppSidebar() {
   const collapsed = isMobile ? false : state === "collapsed";
   const { pathname } = useLocation();
   const { isAdmin: isAuthAdmin, signOut, user } = useAuth();
+  const { plano } = useUserPlan();
   const [overdueCounts, setOverdueCounts] = useState<Record<Especialidade | "total", number> | null>(null);
   const isAdmin = isAuthAdmin || user?.email === 'joaoresende2603@gmail.com';
+  const hasQuestoesReais = isAdmin || plano === "prata" || plano === "ouro";
   const isActive = (p: string) => pathname === p || pathname.startsWith(p + "/");
   const handleNav = () => {
     feedback("flip");
@@ -62,6 +65,7 @@ function AppSidebar() {
 
   const main = [
     { title: "Estudar", url: "/estudo", icon: BookOpen, count: overdueCounts?.total ?? 0 },
+    { title: "Questões Reais", url: hasQuestoesReais ? "/questoes-reais" : "/meu-plano", activeUrl: "/questoes-reais", icon: Target, locked: !hasQuestoesReais },
     { title: "Área do aluno", url: "/dashboard", icon: LayoutDashboard },
     { title: "Trilha Estratégica", url: "/trilha", icon: Map },
     { title: "Materiais", url: "/materiais", icon: Files },
@@ -100,11 +104,12 @@ function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {main.map((i) => (
-                <SidebarMenuItem key={i.url}>
-                  <SidebarMenuButton asChild isActive={isActive(i.url)} onClick={handleNav}>
+                <SidebarMenuItem key={i.title}>
+                  <SidebarMenuButton asChild isActive={isActive("activeUrl" in i ? i.activeUrl : i.url)} onClick={handleNav}>
                     <NavLink to={i.url}>
                       <i.icon className="h-4 w-4" />
                       {!collapsed && <span>{i.title}</span>}
+                      {"locked" in i && i.locked && <Lock className="ml-auto h-3.5 w-3.5 text-amber-500" />}
                       {"count" in i && i.count > 0 && (
                         <Badge className="ml-auto h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] tabular-nums">
                           {i.count}
