@@ -56,13 +56,17 @@ serve(async (req) => {
     const quantity = Number(payload?.quantidade);
     const orientacao = text(payload?.orientacao).slice(0, 1000);
     if (!itemId || !Number.isInteger(quantity) || quantity < 1 || quantity > 3) return json({ error: "Item e quantidade inválidos." }, 400);
-    const { data: ownedSessions } = await db.from("questoes_reais_sessoes").select("id,usuario_id,status").eq("usuario_id", auth.user.id).in("status", ["concluida", "pulada"]);
-    let { data: item } = await db.from("questoes_reais_itens").select("id,sessao_id,tipo,confirmado_em,resposta_marcada,acertou,questao_original_id,castigo_filha_id,area").eq("id", itemId).maybeSingle();
+    const { data: ownedSessions, error: sessionsError } = await db.from("questoes_reais_sessoes").select("id,usuario_id,status").eq("usuario_id", auth.user.id).in("status", ["concluida", "pulada"]);
+    if (sessionsError) throw new Error(`Falha ao consultar sessões: ${sessionsError.message}`);
+    const itemFields = "id,sessao_id,tipo,confirmado_em,resposta_marcada,acertou,questao_original_id,castigo_filha_id";
+    let { data: item, error: itemError } = await db.from("questoes_reais_itens").select(itemFields).eq("id", itemId).maybeSingle();
+    if (itemError) throw new Error(`Falha ao consultar questão: ${itemError.message}`);
     if (!item) {
       const sessionIds = (ownedSessions ?? []).map((ownedSession) => ownedSession.id);
       if (sessionIds.length > 0) {
-        const { data: fallbackItem } = await db.from("questoes_reais_itens").select("id,sessao_id,tipo,confirmado_em,resposta_marcada,acertou,questao_original_id,castigo_filha_id,area").eq("questao_original_id", itemId).eq("tipo", "base").in("sessao_id", sessionIds).not("confirmado_em", "is", null).order("criado_em", { ascending: false }).limit(1).maybeSingle();
-        item = fallbackItem;
+        const fallback = await db.from("questoes_reais_itens").select(itemFields).eq("questao_original_id", itemId).eq("tipo", "base").in("sessao_id", sessionIds).not("confirmado_em", "is", null).order("criado_em", { ascending: false }).limit(1).maybeSingle();
+        if (fallback.error) throw new Error(`Falha ao consultar questão original: ${fallback.error.message}`);
+        item = fallback.data;
       }
     }
     if (!item) return json({ error: "Questão não encontrada. Atualize o histórico e tente novamente." }, 404);
@@ -75,7 +79,7 @@ serve(async (req) => {
     if (!source) return json({ error: "Fonte da questão indisponível." }, 404);
     const { data: materials } = await db.from("materiais").select("id,nome").order("nome");
     const materialIds = new Set((materials ?? []).map((m) => m.id));
-    const { data: reserved, error: reservationError } = await authClient.rpc("questoes_reais_reservar_extracao", { p_item: itemId, p_quantidade: quantity });
+    const { data: reserved, error: reservationError } = await authClient.rpc("questoes_reais_reservar_extracao", { p_item: item.id, p_quantidade: quantity });
     reservation = reserved;
     if (reservationError || !reservation) return json({ error: reservationError?.message ?? "Não foi possível reservar a extração." }, 409);
     const model = (await db.from("ai_model_settings").select("model").eq("setting_key", "castigo").maybeSingle()).data?.model || "anthropic/claude-3.5-haiku";
@@ -93,7 +97,7 @@ serve(async (req) => {
     const parsed = JSON.parse(content);
     if (!validOqs(parsed, quantity, materialIds)) throw new Error(`Resposta inválida: ${JSON.stringify(parsed).slice(0, 2000)}`);
     const normalized = parsed.oqs.map(normalizeOq);
-    const rows = normalized.map((oq: any) => ({ user_id: auth.user.id, pergunta: oq.pergunta, resposta: oq.resposta, opcoes: oq.modo === "oq_falta" ? oq.opcoes : null, modo: oq.modo, especialidade: source.especialidade ?? item.area ?? "clinica_medica", explicacao: oq.explicacao, variacoes: oq.variacoes.join("||"), aula_id: oq.aula_id, modelo_ia: model, contexto_origem: "Questões Reais", questoes_reais_item_id: item.id, questoes_reais_sessao_id: item.sessao_id, questoes_reais_extracao_id: reservation, questoes_reais_orientacao: orientacao || null }));
+    const rows = normalized.map((oq: any) => ({ user_id: auth.user.id, pergunta: oq.pergunta, resposta: oq.resposta, opcoes: oq.modo === "oq_falta" ? oq.opcoes : null, modo: oq.modo, especialidade: source.especialidade ?? "clinica_medica", explicacao: oq.explicacao, variacoes: oq.variacoes.join("||"), aula_id: oq.aula_id, modelo_ia: model, contexto_origem: "Questões Reais", questoes_reais_item_id: item.id, questoes_reais_sessao_id: item.sessao_id, questoes_reais_extracao_id: reservation, questoes_reais_orientacao: orientacao || null }));
     const { error: insertError } = await db.from("temp_oqs").insert(rows);
     if (insertError) throw new Error(`Falha ao inserir OQs na fila: ${insertError.message}`);
     await db.from("questoes_reais_extracoes").update({ status: "concluida", resultado: normalized, concluido_em: new Date().toISOString() }).eq("id", reservation);
