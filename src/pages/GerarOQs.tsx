@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import TactileButton from "@/components/console/TactileButton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ESPECIALIDADE_LABEL, Especialidade, Modo, MODO_LABEL } from "@/lib/oq";
+import { registrarDesempenho } from "@/lib/queue";
 import { cn } from "@/lib/utils";
 import ExcelJS from 'exceljs';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -498,11 +499,26 @@ export default function GerarOQs() {
       return;
     }
     try {
-      const { error } = await supabase.from("cards").insert([buildCardPayload(q)]);
+      const { data: card, error } = await supabase
+        .from("cards")
+        .insert([buildCardPayload(q)])
+        .select("id, peso_importancia")
+        .single();
       if (error) throw error;
+      if (user && card) {
+        await registrarDesempenho({
+          userId: user.id,
+          cardId: card.id,
+          acertou: true,
+          nivelPista: 0,
+          nota: 1,
+          pesoImportancia: card.peso_importancia,
+          contaMetaDiaria: false,
+        });
+      }
       await supabase.from("temp_oqs").delete().eq("id", q.id);
       setTempOQs(prev => prev.filter(item => item.id !== q.id));
-      toast.success(isAdmin ? "OQ aprovado e adicionado ao banco oficial!" : "OQ aprovado e adicionado aos seus OQs!");
+      toast.success(isAdmin ? "OQ aprovado e agendado na sua fila de revisão!" : "OQ aprovado e agendado na sua fila de revisão!");
     } catch (err: any) {
       console.error(err);
       toast.error("Erro ao aprovar OQ: " + err.message);
@@ -528,16 +544,36 @@ export default function GerarOQs() {
     toast.loading("Aprovando todos os OQs...", { id: "approve-all" });
     
     try {
+      const insertedCards: Array<{ id: string; peso_importancia: number }> = [];
       for (const q of tempOQs) {
-        const { error } = await supabase.from("cards").insert([buildCardPayload(q)]);
+        const { data: card, error } = await supabase
+          .from("cards")
+          .insert([buildCardPayload(q)])
+          .select("id, peso_importancia")
+          .single();
         if (error) throw error;
+        if (card) insertedCards.push(card);
+      }
+
+      if (user) {
+        for (const card of insertedCards) {
+          await registrarDesempenho({
+            userId: user.id,
+            cardId: card.id,
+            acertou: true,
+            nivelPista: 0,
+            nota: 1,
+            pesoImportancia: card.peso_importancia,
+            contaMetaDiaria: false,
+          });
+        }
       }
       
       // Deletar todos do temp após sucesso
       const ids = tempOQs.map(q => q.id);
       await supabase.from("temp_oqs").delete().in("id", ids);
       setTempOQs([]);
-      toast.success(isAdmin ? "Todos os OQs foram adicionados ao banco oficial!" : "Todos os OQs foram adicionados aos seus OQs!", { id: "approve-all" });
+      toast.success("Todos os OQs foram aprovados e agendados na sua fila de revisão!", { id: "approve-all" });
     } catch (err: any) {
       console.error(err);
       toast.error("Erro ao aprovar todos: " + err.message, { id: "approve-all" });
