@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { currentItem, punishmentIntensity, QuestaoRealState } from "@/lib/questoes-reais";
+import { answerText, currentItem, punishmentIntensity, QuestaoRealState } from "@/lib/questoes-reais";
 
 describe("Questões Reais helpers", () => {
   it("reduz linearmente a intensidade do castigo", () => {
@@ -14,5 +14,10 @@ describe("Questões Reais helpers", () => {
       itens: [{ id: "item", tipo: "base", posicao: 0, confirmado_em: "2026-01-01" }],
     } as unknown as QuestaoRealState;
     expect(currentItem(state)?.id).toBe("item");
+  });
+
+  it("resolve o texto da alternativa correta para o laboratório", () => {
+    const item = { gabarito: "B", alternativas: ["A", "B correta", "C"] } as unknown as QuestaoRealState["itens"][number];
+    expect(answerText(item)).toBe("B correta");
   });
 });

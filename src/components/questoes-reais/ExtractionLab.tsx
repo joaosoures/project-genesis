@@ -1,0 +1,22 @@
+import { useEffect, useState } from "react";
+import { ArrowLeft, LockKeyhole, Loader2, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Slider } from "@/components/ui/slider";
+import { toast } from "sonner";
+import HistoryMiniCard from "./HistoryMiniCard";
+import ExtractedOQEditor from "./ExtractedOQEditor";
+import { ExtractedOQ, LaboratorioSession, QuestaoRealItem, questoesReaisApi, extrairOQs } from "@/lib/questoes-reais";
+
+export default function ExtractionLab({ session, canExtract, admin, onBack }: { session: LaboratorioSession; canExtract: boolean; admin: boolean; onBack: () => void }) {
+  const [drafts, setDrafts] = useState<Record<string, ExtractedOQ[]>>({});
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  const [materials, setMaterials] = useState<Array<{ id: string; nome: string }>>([]);
+  useEffect(() => { if (!canExtract) return; import("@/integrations/supabase/client").then(({ supabase }) => supabase.from("materiais").select("id,nome").order("nome").then(({ data }) => setMaterials(data ?? []))); }, [canExtract]);
+  const updateDraft = (itemId: string, index: number, value: ExtractedOQ) => setDrafts((current) => ({ ...current, [itemId]: current[itemId].map((item, i) => i === index ? value : item) }));
+  const extract = async (item: QuestaoRealItem) => { setBusy(item.id); try { const result = await extrairOQs(item.id, counts[item.id] ?? 1); setDrafts((current) => ({ ...current, [item.id]: result.oqs.map((oq, i) => ({ ...oq, draftKey: `${result.extraction_id}-${i}` })) })); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível extrair. Tente novamente."); } finally { setBusy(null); } };
+  const save = async (item: QuestaoRealItem, oq: ExtractedOQ, index: number) => { updateDraft(item.id, index, { ...oq, saving: true, error: undefined }); try { await questoesReaisApi.salvarCard({ p_item: item.id, p_sessao: session.sessao.id, p_chave: oq.draftKey, p_modo: oq.modo, p_comando: oq.comando, p_info: oq.info, p_variacoes: oq.variacoes, p_explicacao: oq.explicacao, p_aula: oq.aula_id }); updateDraft(item.id, index, { ...oq, saved: true, saving: false }); } catch (error) { updateDraft(item.id, index, { ...oq, saving: false, error: error instanceof Error ? error.message : "Falha ao salvar." }); } };
+  const answered = session.itens.filter((item) => item.confirmado_em);
+  return <div className="mx-auto max-w-3xl space-y-6 px-4 py-8"><header className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-accent">Laboratório de OQs</p><h1 className="text-2xl font-black">{session.sessao.status === "pulada" ? "Castigo pulado" : "Sessão encerrada"}</h1><p className="text-sm text-muted-foreground">{answered.length} questões respondidas · {Object.values(drafts).flat().filter((oq) => oq.saved).length} OQs salvos</p></div><Button variant="outline" onClick={onBack}><ArrowLeft className="mr-2 h-4 w-4" />Voltar</Button></header>{!canExtract && <Card className="border-amber-300 bg-amber-50/60"><CardContent className="flex gap-3 p-4 text-sm"><LockKeyhole className="h-5 w-5 shrink-0" /><span>Seu plano Prata permite revisar o histórico, mas a extração de OQs exige um plano elegível.</span></CardContent></Card>}<div className="space-y-4">{answered.map((item) => <HistoryMiniCard key={item.id} item={item}><div className="space-y-3 border-t pt-3">{canExtract && <><div className="flex items-center gap-3"><Slider aria-label="Quantidade de OQs" min={1} max={3} step={1} value={[counts[item.id] ?? 1]} onValueChange={([value]) => setCounts((current) => ({ ...current, [item.id]: value }))} /><span className="w-8 text-center font-bold">{counts[item.id] ?? 1}</span><Button size="sm" onClick={() => void extract(item)} disabled={busy !== null}>{busy === item.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}Extrair</Button></div></>}{drafts[item.id]?.map((oq, index) => <ExtractedOQEditor key={oq.draftKey ?? index} oq={oq} materials={materials} admin={admin} onChange={(value) => updateDraft(item.id, index, value)} onSave={() => void save(item, oq, index)} onDiscard={() => setDrafts((current) => ({ ...current, [item.id]: current[item.id].filter((_, i) => i !== index) }))} />)}</div></HistoryMiniCard>)}</div></div>;
+}

@@ -987,6 +987,18 @@ export type Database = {
         }
         Relationships: []
       }
+      questoes_reais_extracoes: {
+        Row: { id: string; usuario_id: string; sessao_id: string; item_id: string; quantidade: number; status: string; resultado: Json | null; erro: string | null; criado_em: string; concluido_em: string | null }
+        Insert: { id?: string; usuario_id: string; sessao_id: string; item_id: string; quantidade: number; status: string; resultado?: Json | null; erro?: string | null; criado_em?: string; concluido_em?: string | null }
+        Update: { id?: string; usuario_id?: string; sessao_id?: string; item_id?: string; quantidade?: number; status?: string; resultado?: Json | null; erro?: string | null; criado_em?: string; concluido_em?: string | null }
+        Relationships: []
+      }
+      questoes_reais_laboratorio_cards: {
+        Row: { id: string; usuario_id: string; sessao_id: string; item_id: string; chave_idempotencia: string; card_id: string; criado_em: string }
+        Insert: { id?: string; usuario_id: string; sessao_id: string; item_id: string; chave_idempotencia: string; card_id: string; criado_em?: string }
+        Update: { id?: string; usuario_id?: string; sessao_id?: string; item_id?: string; chave_idempotencia?: string; card_id?: string; criado_em?: string }
+        Relationships: []
+      }
       castigo_filhas: {
         Row: {
           id: string
@@ -1498,6 +1510,9 @@ export type Database = {
       questoes_reais_preparar_castigo: { Args: { p_sessao: string }; Returns: Json }
       questoes_reais_encerrar: { Args: { p_sessao: string; p_acao: string }; Returns: undefined }
       questoes_reais_metrica: { Args: never; Returns: number }
+      questoes_reais_sessoes_historico: { Args: { p_limit?: number; p_offset?: number }; Returns: Json }
+      questoes_reais_reservar_extracao: { Args: { p_item: string; p_quantidade: number }; Returns: string }
+      questoes_reais_salvar_card: { Args: { p_item: string; p_sessao: string; p_chave: string; p_modo: Database["public"]["Enums"]["modo_oq"]; p_comando: string; p_info: Json; p_variacoes: Json; p_explicacao: string; p_aula?: string | null }; Returns: Json }
 
       admin_import_pre_aula_questoes: {
         Args: { payload: Json }
