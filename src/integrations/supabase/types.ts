@@ -1294,6 +1294,10 @@ export type Database = {
           contexto_origem: string | null
           created_at: string
           especialidade: string
+          questoes_reais_extracao_id: string | null
+          questoes_reais_item_id: string | null
+          questoes_reais_orientacao: string | null
+          questoes_reais_sessao_id: string | null
           etapa_filtro_motivo: string | null
           etapa_filtro_status: string | null
           explicacao: string | null
@@ -1312,6 +1316,10 @@ export type Database = {
           contexto_origem?: string | null
           created_at?: string
           especialidade: string
+          questoes_reais_extracao_id?: string | null
+          questoes_reais_item_id?: string | null
+          questoes_reais_orientacao?: string | null
+          questoes_reais_sessao_id?: string | null
           etapa_filtro_motivo?: string | null
           etapa_filtro_status?: string | null
           explicacao?: string | null
@@ -1330,6 +1338,10 @@ export type Database = {
           contexto_origem?: string | null
           created_at?: string
           especialidade?: string
+          questoes_reais_extracao_id?: string | null
+          questoes_reais_item_id?: string | null
+          questoes_reais_orientacao?: string | null
+          questoes_reais_sessao_id?: string | null
           etapa_filtro_motivo?: string | null
           etapa_filtro_status?: string | null
           explicacao?: string | null
@@ -1512,6 +1524,7 @@ export type Database = {
       questoes_reais_metrica: { Args: never; Returns: number }
       questoes_reais_sessoes_historico: { Args: { p_limit?: number; p_offset?: number }; Returns: Json }
       questoes_reais_reservar_extracao: { Args: { p_item: string; p_quantidade: number }; Returns: string }
+      questoes_reais_oqs_pendentes: { Args: { p_item_ids: string[] }; Returns: { item_id: string; pending_count: number }[] }
       questoes_reais_salvar_card: { Args: { p_item: string; p_sessao: string; p_chave: string; p_modo: Database["public"]["Enums"]["modo_oq"]; p_comando: string; p_info: Json; p_variacoes: Json; p_explicacao: string; p_aula?: string | null }; Returns: Json }
 
       admin_import_pre_aula_questoes: {

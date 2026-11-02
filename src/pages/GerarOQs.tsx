@@ -46,6 +46,10 @@ interface TempOQ {
   explicacao?: string;
   contexto_origem?: string | null;
   aula_id?: string | null;
+  questoes_reais_item_id?: string | null;
+  questoes_reais_sessao_id?: string | null;
+  questoes_reais_extracao_id?: string | null;
+  questoes_reais_orientacao?: string | null;
 }
 
 export default function GerarOQs() {
@@ -126,6 +130,10 @@ export default function GerarOQs() {
 
   async function handleSaveEdit() {
     if (!editingOQ) return;
+    if (editingOQ.modo === "oq_falta" && !Array.isArray(editingOQ.opcoes)) {
+      toast.error("OQ Falta precisa manter pelo menos duas informações em opções.");
+      return;
+    }
     
     setLoading(true);
     try {
@@ -640,10 +648,12 @@ export default function GerarOQs() {
                       <span className="text-[9px] font-black uppercase tracking-[0.15em] text-accent/80">
                         {q.modo} • {ESPECIALIDADE_LABEL[q.especialidade as Especialidade]}
                       </span>
+                      {q.questoes_reais_item_id && <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-violet-700">Questões Reais</span>}
                     </div>
                     <h3 className="font-bold text-sm text-foreground truncate max-w-full">
                       {q.pergunta}
                     </h3>
+                    {q.questoes_reais_orientacao && <p className="mt-1 line-clamp-2 text-[11px] text-violet-700"><strong>Orientação:</strong> {q.questoes_reais_orientacao}</p>}
                     <div className="flex items-center justify-between gap-2 mt-1">
                       <p className="text-[11px] text-muted-foreground line-clamp-1">
                         Gabarito: <span className="text-emerald-500 font-bold">{q.resposta}</span>
@@ -1108,8 +1118,13 @@ export default function GerarOQs() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+              {editingOQ.modo === "oq_falta" && <div className="space-y-2">
+                <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Informações do conjunto</Label>
+                <Textarea value={Array.isArray(editingOQ.opcoes) ? editingOQ.opcoes.join("\n") : ""} onChange={(e) => setEditingOQ({ ...editingOQ, opcoes: e.target.value.split("\n").map((value) => value.trim()).filter(Boolean), resposta: e.target.value.split("\n").map((value) => value.trim()).filter(Boolean)[0] || "" })} className="rounded-2xl bg-background border-border/40 min-h-[100px]" placeholder="Uma informação por linha" />
+              </div>}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
                   <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Resposta Correta</Label>
                   <Input 
                     value={editingOQ.resposta}

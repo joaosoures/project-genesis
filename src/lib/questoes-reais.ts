@@ -29,7 +29,8 @@ export interface QuestaoRealSessao {
 }
 export interface QuestaoRealState { sessao: QuestaoRealSessao; itens: QuestaoRealItem[]; erros_base: number; castigo_total?: number; indisponivel?: boolean; }
 export interface LaboratorioSession { sessao: QuestaoRealSessao; itens: QuestaoRealItem[]; }
-export type ExtractedOQ = { modo: "lacuna" | "oq_falta"; comando: string; info: string[]; variacoes: string[]; explicacao: string; aula_id: string | null; aula_titulo: string | null; draftKey?: string; saved?: boolean; saving?: boolean; error?: string };
+export type ExtractedOQ = { modo: "lacuna" | "oq_falta"; pergunta: string; resposta: string; opcoes: string[]; variacoes: string[]; explicacao: string; aula_id: string | null };
+export type ExtractionResult = { extraction_id: string; oqs: ExtractedOQ[]; created_count: number; pending_count: number; remaining: number | null };
 
 const rpc = async <T>(name: string, args?: Record<string, unknown>) => {
   const { data, error } = await supabase.rpc(name as never, args as never);
@@ -49,7 +50,7 @@ export const questoesReaisApi = {
   salvarCard: (payload: Record<string, unknown>) => rpc<{ card_id: string }>("questoes_reais_salvar_card", payload),
 };
 
-export async function extrairOQs(itemId: string, quantidade: number) {
+export async function extrairOQs(itemId: string, quantidade: number, orientacao = ""): Promise<ExtractionResult> {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   if (sessionError || !sessionData.session) throw new Error("Sua sessão expirou. Faça login novamente.");
   const response = await fetch("https://nlfdqokhrvcwukfxqrjx.supabase.co/functions/v1/extrair-oqs-questao", {
@@ -59,14 +60,14 @@ export async function extrairOQs(itemId: string, quantidade: number) {
       apikey: "sb_publishable_TalDQtulaeHoZIaMCsLgmg_cMcslHIB",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ item_id: itemId, quantidade }),
+    body: JSON.stringify({ item_id: itemId, quantidade, orientacao: orientacao.trim().slice(0, 1000) }),
   });
   const rawBody = await response.text();
-  let body: { error?: string; extraction_id?: string; oqs?: ExtractedOQ[]; remaining?: number | null } = {};
+  let body: Partial<ExtractionResult> & { error?: string } = {};
   try { body = JSON.parse(rawBody); } catch { /* Mantém o corpo bruto para o diagnóstico abaixo. */ }
   if (!response.ok) throw new Error(body.error || rawBody || `A extração falhou (${response.status}).`);
-  if (!body.extraction_id || !body.oqs) throw new Error("A resposta da extração está incompleta.");
-  return body as { extraction_id: string; oqs: ExtractedOQ[]; remaining: number | null };
+  if (!body.extraction_id || !body.oqs || typeof body.pending_count !== "number") throw new Error("A resposta da extração está incompleta.");
+  return body as ExtractionResult;
 }
 export function punishmentIntensity(position: number, total: number) { if (total <= 1) return 0; return Math.max(0, Math.min(1, 1 - position / (total - 1))); }
 export function currentItem(state: QuestaoRealState) { const tipo = state.sessao.fase === "castigo" ? "castigo" : "base"; const position = tipo === "base" ? state.sessao.posicao_base : state.sessao.posicao_castigo; return state.itens.find((item) => item.tipo === tipo && item.posicao === position) ?? null; }
