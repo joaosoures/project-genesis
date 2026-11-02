@@ -66,7 +66,7 @@ export default function CastigoModelSettings() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 mr-auto">
           <Cpu className="h-4 w-4 text-primary" />
-          <div><p className="text-sm font-semibold">Modelo da IA do Castigo</p><p className="text-xs text-muted-foreground">Validado no servidor antes de salvar</p></div>
+          <div><p className="text-sm font-semibold">Modelo da IA do Castigo e do Laboratório de OQs</p><p className="text-xs text-muted-foreground">A mesma chave OpenRouter e este modelo também são usados para extrair OQs das questões respondidas.</p></div>
         </div>
         {valid === true && <Badge className="gap-1 bg-emerald-500/15 text-emerald-600"><Check className="h-3 w-3" /> válido</Badge>}
         {valid === false && <Badge variant="destructive">inválido</Badge>}
