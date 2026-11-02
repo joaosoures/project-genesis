@@ -130,8 +130,8 @@ export default function GerarOQs() {
 
   async function handleSaveEdit() {
     if (!editingOQ) return;
-    if (editingOQ.modo === "oq_falta" && !Array.isArray(editingOQ.opcoes)) {
-      toast.error("OQ Falta precisa manter pelo menos duas informações em opções.");
+    if (editingOQ.modo === "oq_falta" && (!Array.isArray(editingOQ.opcoes) || editingOQ.opcoes.filter((item: string) => item?.trim()).length < 2)) {
+      toast.error("OQ Falta precisa manter pelo menos duas respostas no conjunto.");
       return;
     }
     
@@ -1118,25 +1118,52 @@ export default function GerarOQs() {
                 />
               </div>
 
-              {editingOQ.modo === "oq_falta" && <div className="space-y-2">
-                <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Informações do conjunto</Label>
-                <Textarea value={Array.isArray(editingOQ.opcoes) ? editingOQ.opcoes.join("\n") : ""} onChange={(e) => setEditingOQ({ ...editingOQ, opcoes: e.target.value.split("\n").map((value) => value.trim()).filter(Boolean), resposta: e.target.value.split("\n").map((value) => value.trim()).filter(Boolean)[0] || "" })} className="rounded-2xl bg-background border-border/40 min-h-[100px]" placeholder="Uma informação por linha" />
-              </div>}
+              {editingOQ.modo === "oq_falta" && (
+                <div className="space-y-3">
+                  <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Itens do conjunto (o app sorteia qual omitir)</Label>
+                  {[0, 1, 2, 3, 4].map((index) => (
+                    <div key={index} className="space-y-2 rounded-xl border border-border/40 p-3">
+                      <Label className="text-[10px] font-bold text-muted-foreground">Item {index + 1}</Label>
+                      <Input
+                        aria-label={`Resposta ${index + 1}`}
+                        value={Array.isArray(editingOQ.opcoes) ? editingOQ.opcoes[index] || "" : ""}
+                        onChange={(e) => {
+                          const opcoes = Array.isArray(editingOQ.opcoes) ? [...editingOQ.opcoes] : Array(5).fill("");
+                          opcoes[index] = e.target.value;
+                          setEditingOQ({ ...editingOQ, opcoes, resposta: opcoes[0] || "" });
+                        }}
+                        placeholder="Termo curto e direto"
+                      />
+                      <Input
+                        aria-label={`Variações ${index + 1}`}
+                        value={(editingOQ.variacoes || "").split("||")[index] || ""}
+                        onChange={(e) => {
+                          const variacoes = (editingOQ.variacoes || "").split("||");
+                          while (variacoes.length < 5) variacoes.push("");
+                          variacoes[index] = e.target.value;
+                          setEditingOQ({ ...editingOQ, variacoes: variacoes.join("||") });
+                        }}
+                        placeholder="Sinônimos ou siglas separados por ;"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
+              {editingOQ.modo !== "oq_falta" && <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Resposta Correta</Label>
-                  <Input 
+                  <Input
                     value={editingOQ.resposta}
                     onChange={(e) => setEditingOQ({...editingOQ, resposta: e.target.value})}
                     className="rounded-xl bg-background border-border/40"
                     placeholder="Seja direto (1-3 palavras)"
                   />
                 </div>
-                {(editingOQ.modo === 'lacuna' || editingOQ.modo === 'oq_falta') && (
+                {editingOQ.modo === 'lacuna' && (
                   <div className="space-y-2">
                     <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Variações (Abreviações/Sinônimos)</Label>
-                    <Input 
+                    <Input
                       value={editingOQ.variacoes || ""}
                       onChange={(e) => setEditingOQ({...editingOQ, variacoes: e.target.value})}
                       className="rounded-xl bg-background border-border/40"
@@ -1144,7 +1171,7 @@ export default function GerarOQs() {
                     />
                   </div>
                 )}
-              </div>
+              </div>}
 
               {editingOQ.modo === 'abcde' && (
                 <div className="space-y-3">
