@@ -56,8 +56,16 @@ serve(async (req) => {
     const quantity = Number(payload?.quantidade);
     const orientacao = text(payload?.orientacao).slice(0, 1000);
     if (!itemId || !Number.isInteger(quantity) || quantity < 1 || quantity > 3) return json({ error: "Item e quantidade inválidos." }, 400);
-    const { data: item } = await db.from("questoes_reais_itens").select("id,sessao_id,tipo,confirmado_em,resposta_marcada,acertou,questao_original_id,castigo_filha_id,area").eq("id", itemId).maybeSingle();
-    if (!item) return json({ error: "Questão não encontrada." }, 404);
+    const { data: ownedSessions } = await db.from("questoes_reais_sessoes").select("id,usuario_id,status").eq("usuario_id", auth.user.id).in("status", ["concluida", "pulada"]);
+    let { data: item } = await db.from("questoes_reais_itens").select("id,sessao_id,tipo,confirmado_em,resposta_marcada,acertou,questao_original_id,castigo_filha_id,area").eq("id", itemId).maybeSingle();
+    if (!item) {
+      const sessionIds = (ownedSessions ?? []).map((ownedSession) => ownedSession.id);
+      if (sessionIds.length > 0) {
+        const { data: fallbackItem } = await db.from("questoes_reais_itens").select("id,sessao_id,tipo,confirmado_em,resposta_marcada,acertou,questao_original_id,castigo_filha_id,area").eq("questao_original_id", itemId).eq("tipo", "base").in("sessao_id", sessionIds).not("confirmado_em", "is", null).order("criado_em", { ascending: false }).limit(1).maybeSingle();
+        item = fallbackItem;
+      }
+    }
+    if (!item) return json({ error: "Questão não encontrada. Atualize o histórico e tente novamente." }, 404);
     const { data: session } = await db.from("questoes_reais_sessoes").select("id,usuario_id,status").eq("id", item.sessao_id).eq("usuario_id", auth.user.id).maybeSingle();
     if (!session || !["concluida", "pulada"].includes(session.status) || !item.confirmado_em) return json({ error: "A questão precisa pertencer a uma sessão encerrada e respondida." }, 403);
     const { data: role } = await db.from("user_roles").select("role").eq("user_id", auth.user.id).eq("role", "admin").maybeSingle();
