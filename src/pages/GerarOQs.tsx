@@ -82,7 +82,7 @@ export default function GerarOQs() {
     document.title = "Gerar OQs — OQ MED";
     loadTempOQs();
     fetchCredits();
-    if (isAdmin) loadMateriais();
+    loadMateriais();
   }, [user, isAdmin]);
 
   async function loadMateriais() {
@@ -146,7 +146,11 @@ export default function GerarOQs() {
           modo: editingOQ.modo,
           especialidade: editingOQ.especialidade,
           opcoes: editingOQ.opcoes,
-          explicacao: editingOQ.explicacao
+          explicacao: editingOQ.explicacao,
+          aula_id: editingOQ.aula_id || null,
+          contexto_origem: editingOQ.aula_id
+            ? getMaterialName(materiais, editingOQ.aula_id)
+            : editingOQ.contexto_origem
         })
         .eq("id", editingOQ.id);
 
@@ -483,11 +487,16 @@ export default function GerarOQs() {
       criado_por_usuario_id: isAdmin ? null : user?.id,
       origem: (isAdmin ? "admin" : "usuario") as any,
       baralho: (q.contexto_origem || "").trim() || null,
-      aula_id: isAdmin ? (aulaIdSelecionada || q.aula_id || null) : null,
+      aula_id: isAdmin ? (aulaIdSelecionada || q.aula_id || null) : (q.aula_id || null),
     } as any;
   }
 
   async function approveOQ(q: TempOQ) {
+    if (q.questoes_reais_item_id && !q.aula_id) {
+      toast.error("Vincule um material antes de aprovar este OQ extraído.");
+      setEditingOQ(q);
+      return;
+    }
     try {
       const { error } = await supabase.from("cards").insert([buildCardPayload(q)]);
       if (error) throw error;
@@ -507,6 +516,10 @@ export default function GerarOQs() {
 
   async function approveAll() {
     if (tempOQs.length === 0) return;
+    if (tempOQs.some((q) => q.questoes_reais_item_id && !q.aula_id)) {
+      toast.error("Vincule um material a todos os OQs extraídos antes de aprovar em lote.");
+      return;
+    }
     
     if (!confirm(`Tem certeza que deseja aprovar e adicionar ao banco todos os ${tempOQs.length} OQs pendentes?`)) {
       return;
@@ -620,9 +633,10 @@ export default function GerarOQs() {
                   {isAdmin && <p className="text-[10px] text-amber-600 font-semibold mt-1">A matéria selecionada no momento da aprovação será aplicada aos OQs administrativos.</p>}
                 </div>
                 <div className="flex gap-2">
-                  <button 
+                  <button
                     onClick={approveAll}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+                    disabled={tempOQs.some((q) => q.questoes_reais_item_id && !q.aula_id)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" /> Aprovar Todos
                   </button>
@@ -653,6 +667,9 @@ export default function GerarOQs() {
                     <h3 className="font-bold text-sm text-foreground truncate max-w-full">
                       {q.pergunta}
                     </h3>
+                    <p className={cn("mt-1 text-[11px] line-clamp-1", q.aula_id ? "text-muted-foreground" : "font-semibold text-amber-600")}>
+                      Material: {q.aula_id ? getMaterialName(materiais, q.aula_id) || "vínculo não encontrado" : "não vinculado — edite antes de aprovar"}
+                    </p>
                     {q.questoes_reais_orientacao && <p className="mt-1 line-clamp-2 text-[11px] text-violet-700"><strong>Orientação:</strong> {q.questoes_reais_orientacao}</p>}
                     <div className="flex items-center justify-between gap-2 mt-1">
                       <p className="text-[11px] text-muted-foreground line-clamp-1">
@@ -678,10 +695,11 @@ export default function GerarOQs() {
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
-                    <button 
+                    <button
                       onClick={() => approveOQ(q)}
-                      className="p-2 md:p-2.5 rounded-xl bg-accent text-accent-foreground shadow-lg hover:brightness-110 transition-all ml-1"
-                      title="Aprovar"
+                      disabled={Boolean(q.questoes_reais_item_id && !q.aula_id)}
+                      className="p-2 md:p-2.5 rounded-xl bg-accent text-accent-foreground shadow-lg hover:brightness-110 transition-all ml-1 disabled:cursor-not-allowed disabled:opacity-50"
+                      title={q.questoes_reais_item_id && !q.aula_id ? "Vincule um material para aprovar" : "Aprovar"}
                     >
                       <CheckCircle2 className="h-4 w-4" />
                     </button>
@@ -1109,8 +1127,27 @@ export default function GerarOQs() {
               </div>
 
               <div className="space-y-2">
+                <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Material vinculado</Label>
+                <Select
+                  value={editingOQ.aula_id || "sem-material"}
+                  onValueChange={(value) => setEditingOQ({ ...editingOQ, aula_id: value === "sem-material" ? null : value })}
+                >
+                  <SelectTrigger className="rounded-xl bg-background border-border/40">
+                    <SelectValue placeholder="Selecione um material" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl max-h-80">
+                    <SelectItem value="sem-material">Sem material vinculado</SelectItem>
+                    {materiais.map((material) => (
+                      <SelectItem key={material.id} value={material.id}>{material.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground">Escolha ou troque o material que ficará associado ao OQ após a aprovação.</p>
+              </div>
+
+              <div className="space-y-2">
                 <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Comando da Questão</Label>
-                <Textarea 
+                <Textarea
                   value={editingOQ.pergunta}
                   onChange={(e) => setEditingOQ({...editingOQ, pergunta: e.target.value})}
                   className="rounded-2xl bg-background border-border/40 min-h-[100px]"
