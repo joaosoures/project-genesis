@@ -51,7 +51,19 @@ export const questoesReaisApi = {
 
 export async function extrairOQs(itemId: string, quantidade: number) {
   const { data, error } = await supabase.functions.invoke("extrair-oqs-questao", { body: { item_id: itemId, quantidade } });
-  if (error) throw error;
+  if (error) {
+    let message = error.message;
+    const context = "context" in error ? (error as { context?: Response }).context : undefined;
+    if (context) {
+      try {
+        const body = await context.clone().json() as { error?: string };
+        if (body.error) message = body.error;
+      } catch {
+        // A resposta pode não conter JSON.
+      }
+    }
+    throw new Error(message);
+  }
   return data as { extraction_id: string; oqs: ExtractedOQ[]; remaining: number | null };
 }
 export function punishmentIntensity(position: number, total: number) { if (total <= 1) return 0; return Math.max(0, Math.min(1, 1 - position / (total - 1))); }

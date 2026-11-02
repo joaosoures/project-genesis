@@ -13,10 +13,13 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization") ?? "";
     if (!authHeader.startsWith("Bearer ")) return json({ error: "Autenticação obrigatória." }, 401);
-    const authClient = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "");
-    const { data: auth, error: authError } = await authClient.auth.getUser(authHeader.slice(7));
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const accessToken = authHeader.slice(7);
+    const authClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: `Bearer ${accessToken}` } } });
+    const { data: auth, error: authError } = await authClient.auth.getUser();
     if (authError || !auth.user) return json({ error: "Sessão inválida." }, 401);
-    const db = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+    const db = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
     const payload = await req.json();
     const itemId = typeof payload?.item_id === "string" ? payload.item_id : "";
     const quantity = Number(payload?.quantidade);
@@ -32,11 +35,14 @@ serve(async (req) => {
     if (!source) return json({ error: "Fonte da questão indisponível." }, 404);
     const { data: materials } = await db.from("materiais").select("id,nome").order("nome");
     const materialIds = new Set((materials ?? []).map((m) => m.id));
-    const { data: reservation, error: reservationError } = await db.rpc("questoes_reais_reservar_extracao", { p_item: itemId, p_quantidade: quantity });
-    if (reservationError) return json({ error: reservationError.message }, 409);
-    const model = (await db.from("ai_model_settings").select("model").eq("setting_key", "castigo").maybeSingle()).data?.model || "openai/gpt-6-luna";
+    const { data: reservation, error: reservationError } = await authClient.rpc("questoes_reais_reservar_extracao", { p_item: itemId, p_quantidade: quantity });
+    if (reservationError || !reservation) return json({ error: reservationError?.message ?? "Não foi possível reservar a extração." }, 409);
+    const model = (await db.from("ai_model_settings").select("model").eq("setting_key", "castigo").maybeSingle()).data?.model || "anthropic/claude-3.5-haiku";
     const apiKey = Deno.env.get("ADM_OQIA_KEY");
-    if (!apiKey) return json({ error: "Serviço de IA indisponível." }, 503);
+    if (!apiKey) {
+      await db.from("questoes_reais_extracoes").update({ status: "erro", erro: "Chave de IA ausente" }).eq("id", reservation);
+      return json({ error: "Serviço de IA indisponível." }, 503);
+    }
     const prompt = `Extraia ${quantity} OQs independentes como um preceptor rigoroso. Converta dados do paciente em categorias gerais, não copie o caso, não invente números ou condutas e nunca gere ABCDE. O modo lacuna tem exatamente um [___] e info_1 contém a resposta; oq_falta traz 2-5 informações completas sem escolher item oculto. Use somente o conteúdo-fonte e sugira aula_id apenas entre os materiais fornecidos. Justificativa clínica curta.\n\nMATERIAIS: ${JSON.stringify(materials ?? [])}\n\nFONTE: ${JSON.stringify(source)}`;
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "HTTP-Referer": "https://oqmed.com.br", "X-Title": "OQMed" }, body: JSON.stringify({ model, messages: [{ role: "system", content: "Você escreve JSON estrito e seguro para revisão médica humana." }, { role: "user", content: prompt }], response_format: { type: "json_schema", json_schema: { name: "oq_extraction", strict: true, schema: outputSchema } }, temperature: 0.2 }) });
     const body = await response.text();
