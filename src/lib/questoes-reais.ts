@@ -50,21 +50,23 @@ export const questoesReaisApi = {
 };
 
 export async function extrairOQs(itemId: string, quantidade: number) {
-  const { data, error } = await supabase.functions.invoke("extrair-oqs-questao", { body: { item_id: itemId, quantidade } });
-  if (error) {
-    let message = error.message;
-    const context = "context" in error ? (error as { context?: Response }).context : undefined;
-    if (context) {
-      try {
-        const body = await context.clone().json() as { error?: string };
-        if (body.error) message = body.error;
-      } catch {
-        // A resposta pode não conter JSON.
-      }
-    }
-    throw new Error(message);
-  }
-  return data as { extraction_id: string; oqs: ExtractedOQ[]; remaining: number | null };
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError || !sessionData.session) throw new Error("Sua sessão expirou. Faça login novamente.");
+  const response = await fetch("https://nlfdqokhrvcwukfxqrjx.supabase.co/functions/v1/extrair-oqs-questao", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${sessionData.session.access_token}`,
+      apikey: "sb_publishable_TalDQtulaeHoZIaMCsLgmg_cMcslHIB",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ item_id: itemId, quantidade }),
+  });
+  const rawBody = await response.text();
+  let body: { error?: string; extraction_id?: string; oqs?: ExtractedOQ[]; remaining?: number | null } = {};
+  try { body = JSON.parse(rawBody); } catch { /* Mantém o corpo bruto para o diagnóstico abaixo. */ }
+  if (!response.ok) throw new Error(body.error || rawBody || `A extração falhou (${response.status}).`);
+  if (!body.extraction_id || !body.oqs) throw new Error("A resposta da extração está incompleta.");
+  return body as { extraction_id: string; oqs: ExtractedOQ[]; remaining: number | null };
 }
 export function punishmentIntensity(position: number, total: number) { if (total <= 1) return 0; return Math.max(0, Math.min(1, 1 - position / (total - 1))); }
 export function currentItem(state: QuestaoRealState) { const tipo = state.sessao.fase === "castigo" ? "castigo" : "base"; const position = tipo === "base" ? state.sessao.posicao_base : state.sessao.posicao_castigo; return state.itens.find((item) => item.tipo === tipo && item.posicao === position) ?? null; }

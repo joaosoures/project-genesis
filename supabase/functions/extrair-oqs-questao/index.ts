@@ -44,13 +44,46 @@ serve(async (req) => {
       return json({ error: "Serviço de IA indisponível." }, 503);
     }
     const prompt = `Extraia ${quantity} OQs independentes como um preceptor rigoroso. Converta dados do paciente em categorias gerais, não copie o caso, não invente números ou condutas e nunca gere ABCDE. O modo lacuna tem exatamente um [___] e info_1 contém a resposta; oq_falta traz 2-5 informações completas sem escolher item oculto. Use somente o conteúdo-fonte e sugira aula_id apenas entre os materiais fornecidos. Justificativa clínica curta.\n\nMATERIAIS: ${JSON.stringify(materials ?? [])}\n\nFONTE: ${JSON.stringify(source)}`;
+    console.info("[extrair-oqs-questao] Chamando OpenRouter", { model, quantity, itemId, reservation });
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "HTTP-Referer": "https://oqmed.com.br", "X-Title": "OQMed" }, body: JSON.stringify({ model, messages: [{ role: "system", content: "Você escreve JSON estrito e seguro para revisão médica humana." }, { role: "user", content: prompt }], response_format: { type: "json_schema", json_schema: { name: "oq_extraction", strict: true, schema: outputSchema } }, temperature: 0.2 }) });
     const body = await response.text();
-    if (!response.ok) { await db.from("questoes_reais_extracoes").update({ status: "erro", erro: "Falha no provedor" }).eq("id", reservation); return json({ error: "A extração falhou. Tente novamente." }, 502); }
-    const content = JSON.parse(body).choices?.[0]?.message?.content;
-    const parsed = JSON.parse(content);
-    if (!validOqs(parsed, quantity, materialIds)) { await db.from("questoes_reais_extracoes").update({ status: "erro", erro: "Resposta inválida" }).eq("id", reservation); return json({ error: "A IA retornou uma estrutura inválida. Tente novamente." }, 502); }
-    await db.from("questoes_reais_extracoes").update({ status: "concluida", resultado: parsed.oqs, concluido_em: new Date().toISOString() }).eq("id", reservation);
-    return json({ extraction_id: reservation, oqs: parsed.oqs, remaining: role ? null : Math.max(0, 5 - ((await db.from("questoes_reais_extracoes").select("id", { count: "exact", head: true }).eq("usuario_id", auth.user.id).eq("sessao_id", item.sessao_id).eq("status", "concluida")).count ?? 0)) });
-  } catch (error) { return json({ error: error instanceof Error ? error.message : "Erro interno." }, 500); }
+    if (!response.ok) {
+      console.error("[extrair-oqs-questao] OpenRouter respondeu com erro", { status: response.status, body: body.slice(0, 2000), model, reservation });
+      await db.from("questoes_reais_extracoes").update({ status: "erro", erro: `OpenRouter ${response.status}: ${body.slice(0, 500)}` }).eq("id", reservation);
+      return json({ error: `A extração falhou no provedor (${response.status}): ${body.slice(0, 500)}` }, 502);
+    }
+    let providerPayload: { choices?: Array<{ message?: { content?: string | null } }> };
+    try {
+      providerPayload = JSON.parse(body);
+    } catch {
+      await db.from("questoes_reais_extracoes").update({ status: "erro", erro: "Resposta não JSON do provedor" }).eq("id", reservation);
+      console.error("[extrair-oqs-questao] Resposta não JSON do OpenRouter", { body: body.slice(0, 2000), reservation });
+      return json({ error: "O provedor retornou uma resposta inválida." }, 502);
+    }
+    const content = providerPayload.choices?.[0]?.message?.content;
+    if (!content) {
+      await db.from("questoes_reais_extracoes").update({ status: "erro", erro: "Conteúdo ausente na resposta" }).eq("id", reservation);
+      console.error("[extrair-oqs-questao] Conteúdo ausente na resposta do OpenRouter", { body: body.slice(0, 2000), reservation });
+      return json({ error: "O provedor não retornou conteúdo para a extração." }, 502);
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      await db.from("questoes_reais_extracoes").update({ status: "erro", erro: "Conteúdo não JSON" }).eq("id", reservation);
+      console.error("[extrair-oqs-questao] Conteúdo não JSON", { content: content.slice(0, 2000), reservation });
+      return json({ error: "A IA retornou conteúdo fora do formato esperado." }, 502);
+    }
+    if (!validOqs(parsed, quantity, materialIds)) {
+      const diagnostic = JSON.stringify(parsed).slice(0, 2000);
+      await db.from("questoes_reais_extracoes").update({ status: "erro", erro: `Resposta inválida: ${diagnostic}` }).eq("id", reservation);
+      console.error("[extrair-oqs-questao] Estrutura inválida retornada pelo OpenRouter", { parsed: diagnostic, quantity, reservation });
+      return json({ error: "A IA retornou uma estrutura inválida. Tente novamente." }, 502);
+    }
+    await db.from("questoes_reais_extracoes").update({ status: "concluida", resultado: (parsed as { oqs: unknown }).oqs, concluido_em: new Date().toISOString() }).eq("id", reservation);
+    return json({ extraction_id: reservation, oqs: (parsed as { oqs: unknown[] }).oqs, remaining: role ? null : Math.max(0, 5 - ((await db.from("questoes_reais_extracoes").select("id", { count: "exact", head: true }).eq("usuario_id", auth.user.id).eq("sessao_id", item.sessao_id).eq("status", "concluida")).count ?? 0)) });
+  } catch (error) {
+    console.error("[extrair-oqs-questao] Erro inesperado", { error: error instanceof Error ? error.message : String(error) });
+    return json({ error: error instanceof Error ? error.message : "Erro interno." }, 500);
+  }
 });
