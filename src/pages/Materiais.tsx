@@ -1315,10 +1315,10 @@ export default function Materiais() {
               />
             )}
             {isHtmlPreview && previewMaterial?.link_2 && previewMaterial.link_2 !== "SEM AUDIO" && (
-              <section className="relative z-20 shrink-0 border-b border-accent/20 bg-gradient-to-r from-accent/10 via-card to-accent/5 px-4 py-3 shadow-sm sm:px-6">
+              <section className="relative z-20 shrink-0 border-b border-border bg-card px-4 py-3 text-card-foreground shadow-sm sm:px-6">
                 <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
-                    <p className="text-sm font-bold sm:text-base">🎧 Que tal ouvir um mini podcast sobre este assunto?</p>
+                    <p className="text-sm font-bold text-foreground sm:text-base">🎧 Que tal ouvir um mini podcast sobre este assunto?</p>
                     <p className="text-xs text-muted-foreground">Ouça a áudio-aula como alternativa ao resumo.</p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -1402,10 +1402,10 @@ export default function Materiais() {
             {isHtmlPreview && (
               <>
                 <div className="fixed bottom-8 right-5 z-[170] flex flex-col items-end gap-3 sm:bottom-10 sm:right-8">
-                  {isPlaying && (
+                  {previewMaterial?.link_2 && previewMaterial.link_2 !== "SEM AUDIO" && (
                     <div className="flex items-center gap-1 rounded-full border border-border/60 bg-background/95 p-1 shadow-xl backdrop-blur">
-                      <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full" onClick={togglePlay} aria-label="Pausar áudio-aula">
-                        <Pause className="h-4 w-4" />
+                      <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full" onClick={audioStatus === "error" ? retryAudio : togglePlay} aria-label={isPlaying ? "Pausar áudio-aula" : "Reproduzir áudio-aula"}>
+                        {audioStatus === "error" ? <RotateCcw className="h-4 w-4" /> : audioStatus === "loading" && !isPlaying ? <Loader2 className="h-4 w-4 animate-spin" /> : isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
                       </Button>
                       <Button variant="ghost" size="sm" className="h-9 min-w-12 rounded-full px-2 text-xs font-bold" onClick={handleSpeedChange} aria-label="Alterar velocidade">
                         {playbackSpeed}x
@@ -1413,7 +1413,7 @@ export default function Materiais() {
                     </div>
                   )}
                   <Button
-                    className="relative h-12 rounded-full px-4 shadow-xl sm:h-14 sm:px-5"
+                    className="relative h-12 rounded-full bg-card px-4 text-card-foreground shadow-xl hover:bg-card/90 sm:h-14 sm:px-5"
                     onClick={() => setShowNotes(true)}
                     aria-label="Abrir anotações"
                   >
@@ -1426,7 +1426,7 @@ export default function Materiais() {
                   if (!open) saveNote(true);
                   setShowNotes(open);
                 }}>
-                  <DrawerContent className="fixed inset-y-0 right-0 left-auto mt-0 h-[100dvh] w-full max-w-md rounded-none border-l bg-[hsl(var(--background))] p-4 sm:p-6 flex flex-col gap-4 z-[200]">
+                  <DrawerContent className="fixed inset-y-auto bottom-0 right-0 left-auto mt-0 h-[70dvh] w-full max-w-md rounded-t-2xl border-l bg-[hsl(var(--background))] p-4 sm:p-6 flex flex-col gap-4 z-[200]">
                     <DrawerHeader className="shrink-0 p-0">
                       <DrawerTitle className="flex items-center gap-2 text-sm font-black uppercase tracking-wider">
                         <MessageSquareText className="h-4 w-4" /> Minhas Anotações
