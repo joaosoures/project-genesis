@@ -27,8 +27,8 @@ describe("utilitários de questões pré-aula", () => {
 
   it("prioriza correspondência exata normalizada", () => {
     const matches = suggestMaterialMatches("Pré Eclâmpsia", [
-      { id: "1", nome: "Hipertensão", especialidade: "ginecologia_obstetricia" },
-      { id: "2", nome: "Pré-eclâmpsia", especialidade: "ginecologia_obstetricia" },
+      { id: "1", nome: "Hipertensão", ordem_incidencia: 1, especialidade: "ginecologia_obstetricia" },
+      { id: "2", nome: "Pré-eclâmpsia", ordem_incidencia: 2, especialidade: "ginecologia_obstetricia" },
     ]);
     expect(matches[0]).toMatchObject({ id: "2", score: 1 });
     expect(similarityScore("pré eclâmpsia", "Pré-eclâmpsia")).toBe(1);

@@ -73,6 +73,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import MaterialPdfViewer from "@/components/MaterialPdfViewer";
 import ResumoHtmlViewer from "@/components/ResumoHtmlViewer";
+import { compareMaterialsByOrder } from "@/lib/materialOrder";
 
 
 const MATERIAL_ESPECIALIDADE_LABEL: Record<string, string> = {
@@ -81,24 +82,10 @@ const MATERIAL_ESPECIALIDADE_LABEL: Record<string, string> = {
 };
 const labelEsp = (k: string) => MATERIAL_ESPECIALIDADE_LABEL[k] || k;
 
-const getMaterialNumber = (nome: string) => {
-  const match = nome.trim().match(/^(\d+)\s*[-–—]/);
-  return match ? Number(match[1]) : null;
-};
-
-const compareMaterialsByTitleNumber = (a: Material, b: Material) => {
-  const numberA = getMaterialNumber(a.nome);
-  const numberB = getMaterialNumber(b.nome);
-
-  if (numberA === null && numberB === null) return 0;
-  if (numberA === null) return 1;
-  if (numberB === null) return -1;
-  return numberA - numberB;
-};
-
 interface Material {
   id: string;
   nome: string;
+  ordem_incidencia: number;
   tipo_1: string;
   link_1: string;
   tipo_2: string | null;
@@ -530,8 +517,7 @@ export default function Materiais() {
       const { data, error } = await supabase
         .from("materiais")
         .select("*")
-        .order("tier", { ascending: true })
-        .order("nome", { ascending: true });
+        .order("ordem_incidencia", { ascending: true });
 
       if (error) throw error;
       setMats((data as Material[]) || []);
@@ -587,7 +573,7 @@ export default function Materiais() {
 
         return matchesSearch && matchesSpecialty && matchesTier && matchesCategory;
       })
-      .sort(compareMaterialsByTitleNumber);
+      .sort(compareMaterialsByOrder);
   }, [mats, searchTerm, selectedSpecialty, selectedTier, selectedCategory]);
 
   const filteredSimulados = useMemo(() => {

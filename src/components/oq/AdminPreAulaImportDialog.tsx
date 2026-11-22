@@ -74,8 +74,8 @@ export default function AdminPreAulaImportDialog({ open, onOpenChange }: Props) 
 
       const { data, error } = await supabase
         .from("materiais")
-        .select("id,nome,especialidade")
-        .order("nome");
+        .select("id,nome,ordem_incidencia,especialidade")
+        .order("ordem_incidencia", { ascending: true });
       if (error) throw error;
       if (!data?.length) throw new Error("Não há resumos cadastrados.");
 

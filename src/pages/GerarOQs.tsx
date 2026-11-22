@@ -91,8 +91,8 @@ export default function GerarOQs() {
     setMateriaisError(null);
     const { data, error } = await supabase
       .from("materiais")
-      .select("id, nome")
-      .order("nome", { ascending: true });
+      .select("id, nome, ordem_incidencia")
+      .order("ordem_incidencia", { ascending: true });
     if (error) {
       console.error("Erro ao carregar matérias:", error);
       setMateriaisError(error.message);

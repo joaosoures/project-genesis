@@ -623,6 +623,7 @@ export type Database = {
           link_1: string
           link_2: string | null
           nome: string
+          ordem_incidencia: number | null
           resumo_html_url: string | null
           tier: number
           tipo_1: string
@@ -637,6 +638,7 @@ export type Database = {
           link_1: string
           link_2?: string | null
           nome: string
+          ordem_incidencia?: number | null
           resumo_html_url?: string | null
           tier?: number
           tipo_1?: string
@@ -651,6 +653,7 @@ export type Database = {
           link_1?: string
           link_2?: string | null
           nome?: string
+          ordem_incidencia?: number | null
           resumo_html_url?: string | null
           tier?: number
           tipo_1?: string

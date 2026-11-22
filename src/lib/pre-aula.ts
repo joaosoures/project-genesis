@@ -43,6 +43,7 @@ export interface PreAulaQuestionRow {
 export interface MaterialMatchCandidate {
   id: string;
   nome: string;
+  ordem_incidencia?: number | null;
   especialidade: string;
 }
 

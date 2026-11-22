@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSettings } from "@/contexts/SettingsContext";
+import { compareMaterialsByOrder } from "@/lib/materialOrder";
 
 export type TrilhaPerfil = "medico" | "interno_4" | "interno_geral";
 
@@ -96,6 +97,7 @@ export function maxTierFor(foco: FocoIncidencia | undefined): number {
 export interface AulaPlano {
   id: string;
   nome: string;
+  ordem_incidencia: number;
   especialidade: string;
   tier: number;
   key_words: string | null;
@@ -103,19 +105,8 @@ export interface AulaPlano {
   link_material: string | null;
 }
 
-export function getAulaNumero(nome: string): number | null {
-  const match = nome.trim().match(/^(\d+)\s*[-–—]/);
-  return match ? Number(match[1]) : null;
-}
-
 export function compareAulasByNumero(a: AulaPlano, b: AulaPlano): number {
-  const numeroA = getAulaNumero(a.nome);
-  const numeroB = getAulaNumero(b.nome);
-
-  if (numeroA === null && numeroB === null) return 0;
-  if (numeroA === null) return 1;
-  if (numeroB === null) return -1;
-  return numeroA - numeroB;
+  return compareMaterialsByOrder(a, b);
 }
 
 export function calcularLimiteMateriasSemana(
@@ -310,8 +301,8 @@ export function useTrilhaPlano() {
 
     const { data: mats, error: matsError } = await supabase
       .from("materiais")
-      .select("id, nome, especialidade, tier, key_words, link_1, cards(count)")
-      .order("tier", { ascending: true });
+      .select("id, nome, ordem_incidencia, especialidade, tier, key_words, link_1, cards(count)")
+      .order("ordem_incidencia", { ascending: true });
 
     if (matsError) {
       console.error("Erro ao carregar materiais:", matsError);
@@ -321,6 +312,7 @@ export function useTrilhaPlano() {
       (mats ?? []).map((m: any) => ({
         id: m.id,
         nome: m.nome,
+        ordem_incidencia: m.ordem_incidencia,
         especialidade: m.especialidade,
         tier: m.tier,
         key_words: m.key_words,

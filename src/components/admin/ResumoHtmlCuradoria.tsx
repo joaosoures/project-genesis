@@ -46,8 +46,8 @@ export default function ResumoHtmlCuradoria() {
       for (let from = 0; ; from += pageSize) {
         const { data, error } = await supabase
           .from("materiais")
-          .select("id,nome,especialidade,tier,resumo_html_url")
-          .order("nome", { ascending: true })
+          .select("id,nome,ordem_incidencia,especialidade,tier,resumo_html_url")
+          .order("ordem_incidencia", { ascending: true })
           .range(from, from + pageSize - 1);
         if (error) throw error;
         all.push(...((data ?? []) as MaterialCuradoria[]));

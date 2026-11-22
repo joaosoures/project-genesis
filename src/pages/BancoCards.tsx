@@ -151,8 +151,8 @@ export default function BancoCards() {
     for (let from = 0; ; from += 1000) {
       const { data, error } = await supabase
         .from("materiais")
-        .select("id, nome, especialidade, tier")
-        .order("nome", { ascending: true })
+        .select("id, nome, ordem_incidencia, especialidade, tier")
+        .order("ordem_incidencia", { ascending: true })
         .range(from, from + 999);
       if (error || !data) break;
       todasAulas.push(...data);

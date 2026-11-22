@@ -17,7 +17,7 @@ import ExcelJS from "exceljs";
 import { TEMPLATE_HEADERS, TEMPLATE_ROWS, TEMPLATE_COLUMNS, addGuideSheet } from "@/lib/oq-template-guide";
 import { AdminEditCardBtn } from "@/components/oq/AdminEditCardBtn";
 
-type Aula = { id: string; nome: string; especialidade: Especialidade; link_aula: string | null; tier: number; };
+type Aula = { id: string; nome: string; ordem_incidencia: number; especialidade: Especialidade; link_aula: string | null; tier: number; };
 type AulaStat = { aula_id: string; nome: string; especialidade: string; total: number; abcde: number; lacuna: number; oq_falta: number; sem_explicacao: number; irregularidades: number; };
 
 export default function AdminGerarAulas() {
@@ -50,16 +50,12 @@ export default function AdminGerarAulas() {
   async function loadAulas() {
     const { data, error } = await supabase
       .from("materiais")
-      .select("id, nome, especialidade, link_1, tipo_1, tier")
-      .eq("tipo_1", "PDF").not("link_1", "is", null);
+      .select("id, nome, ordem_incidencia, especialidade, link_1, tipo_1, tier")
+      .eq("tipo_1", "PDF").not("link_1", "is", null)
+      .order("ordem_incidencia", { ascending: true });
     if (error) return toast.error("Erro: " + error.message);
-    const getNum = (s: string) => { const m = s.match(/^(\d+)/); return m ? parseInt(m[1], 10) : Infinity; };
-    setAulas((data || []).sort((a: any, b: any) => {
-      const nA = getNum(a.nome), nB = getNum(b.nome);
-      if (nA !== nB) return nA - nB;
-      return a.nome.localeCompare(b.nome);
-    }).map((m: any) => ({
-      id: m.id, nome: m.nome, especialidade: m.especialidade as Especialidade,
+    setAulas((data || []).map((m: any) => ({
+      id: m.id, nome: m.nome, ordem_incidencia: m.ordem_incidencia, especialidade: m.especialidade as Especialidade,
       link_aula: m.link_1, tier: m.tier || 3,
     })));
   }
