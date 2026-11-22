@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 
 interface ResumoHtmlViewerProps {
   url: string;
   title: string;
   className?: string;
+  onScrollChange?: (scrollTop: number) => void;
 }
 
 function prepareHtmlDocument(html: string) {
@@ -48,6 +49,10 @@ function prepareHtmlDocument(html: string) {
       };
 
       prepareExternalLinks();
+      window.addEventListener('scroll', () => {
+        parent.postMessage({ type: 'resumo-html-scroll', scrollTop: window.scrollY }, '*');
+      }, { passive: true });
+
       document.addEventListener('click', (event) => {
         const link = event.target.closest('a[href]');
         if (!link) return;
@@ -78,10 +83,22 @@ function prepareHtmlDocument(html: string) {
   return `${document}<body>${linkBehaviorScript}</body>`;
 }
 
-export default function ResumoHtmlViewer({ url, title, className = "" }: ResumoHtmlViewerProps) {
+export default function ResumoHtmlViewer({ url, title, className = "", onScrollChange }: ResumoHtmlViewerProps) {
   const [htmlDocument, setHtmlDocument] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      if (event.data?.type === "resumo-html-scroll" && typeof event.data.scrollTop === "number") {
+        onScrollChange?.(event.data.scrollTop);
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [onScrollChange]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -123,6 +140,7 @@ export default function ResumoHtmlViewer({ url, title, className = "" }: ResumoH
         </div>
       ) : (
         <iframe
+          ref={iframeRef}
           title={title}
           srcDoc={htmlDocument}
           sandbox="allow-scripts allow-forms allow-popups"

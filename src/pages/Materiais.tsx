@@ -275,6 +275,7 @@ export default function Materiais() {
   const [visibleCount, setVisibleCount] = useState(24);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [htmlReaderScrollTop, setHtmlReaderScrollTop] = useState(0);
 
   // Notes state
   const [noteContent, setNoteContent] = useState("");
@@ -671,6 +672,7 @@ export default function Materiais() {
       return;
     }
     setPreviewMaterial(material);
+    setHtmlReaderScrollTop(0);
     fetchNote(material.id);
     setIsPlaying(false);
     setAudioStatus("idle");
@@ -1315,7 +1317,13 @@ export default function Materiais() {
               />
             )}
             {isHtmlPreview && previewMaterial?.link_2 && previewMaterial.link_2 !== "SEM AUDIO" && (
-              <section className="relative z-20 shrink-0 border-b border-border bg-card px-4 py-3 text-card-foreground shadow-sm sm:px-6">
+              <section
+                aria-hidden={htmlReaderScrollTop > 24}
+                className={cn(
+                  "relative z-20 shrink-0 overflow-hidden border-b border-border bg-card px-4 py-3 text-card-foreground shadow-sm transition-all duration-200 sm:px-6",
+                  htmlReaderScrollTop > 24 ? "max-h-0 -translate-y-full border-transparent py-0 opacity-0" : "max-h-40 opacity-100",
+                )}
+              >
                 <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-foreground sm:text-base">🎧 Que tal ouvir um mini podcast sobre este assunto?</p>
@@ -1350,6 +1358,7 @@ export default function Materiais() {
                 url={previewMaterial.resumo_html_url}
                 title={previewMaterial.nome}
                 className="min-h-0 flex-1"
+                onScrollChange={setHtmlReaderScrollTop}
               />
             ) : (
               <MaterialPdfViewer
