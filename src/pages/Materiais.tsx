@@ -72,6 +72,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import MaterialPdfViewer from "@/components/MaterialPdfViewer";
+import ResumoHtmlViewer from "@/components/ResumoHtmlViewer";
 
 
 const MATERIAL_ESPECIALIDADE_LABEL: Record<string, string> = {
@@ -102,6 +103,7 @@ interface Material {
   link_1: string;
   tipo_2: string | null;
   link_2: string | null;
+  resumo_html_url: string | null;
   especialidade: string;
   tier: 1 | 2 | 3;
   key_words: string | null;
@@ -1262,13 +1264,18 @@ export default function Materiais() {
               }
             }}
           >
-            {previewMaterial && (
+            {previewMaterial && (previewMaterial.resumo_html_url ? (
+              <ResumoHtmlViewer
+                url={previewMaterial.resumo_html_url}
+                title={previewMaterial.nome}
+              />
+            ) : (
               <MaterialPdfViewer
                 fileUrl={getDirectDownloadUrl(previewMaterial.link_1)}
                 fallbackUrl={getPdfFallbackUrl(previewMaterial.link_1)}
                 materialId={previewMaterial.id}
               />
-            )}
+            ))}
 
             {/* Ícones Flutuantes no Canto Inferior */}
             <div className="absolute bottom-8 right-8 z-30 flex flex-col items-end gap-3">
