@@ -31,10 +31,51 @@ function prepareHtmlDocument(html: string) {
   ].filter(Boolean).join("");
 
   if (/<head(?:\s[^>]*)?>/i.test(document)) {
-    return document.replace(/<head(?:\s[^>]*)?>/i, (head) => `${head}${metadata}`);
+    document = document.replace(/<head(?:\s[^>]*)?>/i, (head) => `${head}${metadata}`);
+  } else {
+    document = document.replace(/<html(?:\s[^>]*)?>/i, (htmlTag) => `${htmlTag}<head>${metadata}</head>`);
   }
 
-  return document.replace(/<html(?:\s[^>]*)?>/i, (htmlTag) => `${htmlTag}<head>${metadata}</head>`);
+  const linkBehaviorScript = `<script>
+    (() => {
+      const prepareExternalLinks = (root = document) => {
+        root.querySelectorAll('a[href]').forEach((link) => {
+          if (/^https?:\\/\\//i.test(link.getAttribute('href') || '')) {
+            link.setAttribute('target', '_blank');
+            link.setAttribute('rel', 'noopener noreferrer');
+          }
+        });
+      };
+
+      prepareExternalLinks();
+      document.addEventListener('click', (event) => {
+        const link = event.target.closest('a[href]');
+        if (!link) return;
+
+        const href = link.getAttribute('href') || '';
+        if (href.startsWith('#')) {
+          event.preventDefault();
+          const id = decodeURIComponent(href.slice(1));
+          const target = document.getElementById(id);
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return;
+        }
+
+        if (/^https?:\\/\\//i.test(href)) {
+          link.setAttribute('target', '_blank');
+          link.setAttribute('rel', 'noopener noreferrer');
+        }
+      });
+    })();
+  </script>`;
+
+  if (/<\/body\s*>/i.test(document)) {
+    return document.replace(/<\/body\s*>/i, `${linkBehaviorScript}</body>`);
+  }
+  if (/<\/html\s*>/i.test(document)) {
+    return document.replace(/<\/html\s*>/i, `<body>${linkBehaviorScript}</body></html>`);
+  }
+  return `${document}<body>${linkBehaviorScript}</body>`;
 }
 
 export default function ResumoHtmlViewer({ url, title, className = "" }: ResumoHtmlViewerProps) {
