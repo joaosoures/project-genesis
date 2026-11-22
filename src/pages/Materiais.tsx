@@ -1009,13 +1009,13 @@ export default function Materiais() {
           </DialogHeader>
           {/* Header Minimalista */}
           <header className={cn("relative flex flex-col bg-card/40 backdrop-blur-xl shrink-0 z-20", isHtmlPreview && "[&>div:first-child]:h-11 [&>div:first-child]:px-2 [&>div:first-child]:py-0 [&>div:first-child]:gap-2 [&>div:first-child]:md:px-3 [&>div:first-child>div:first-child]:gap-1")}>
-            <div className={cn("px-3 py-2 md:px-8 flex items-center justify-between border-b border-white/5 h-14 sm:h-16 relative", isHtmlPreview && "h-11 sm:h-11")}>
+            <div className={cn("px-3 py-2 md:px-8 flex items-center justify-between border-b border-white/5 h-14 sm:h-16 relative", isHtmlPreview && "h-11 sm:h-11 px-2 md:px-3 py-0")}>
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 {/* Botão de Voltar */}
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-9 w-9 rounded-xl hover:bg-white/10 transition-colors shrink-0" 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-xl hover:bg-white/10 transition-colors shrink-0"
                   onClick={() => {
                     saveNote(true);
                     setPreviewMaterial(null);
@@ -1025,22 +1025,20 @@ export default function Materiais() {
                 </Button>
 
                 {/* Título logo após o botão */}
-                <div className="flex flex-col min-w-0">
+                <div className="flex flex-col min-w-0 flex-1">
                   <span className="text-[10px] sm:text-[11px] font-black text-muted-foreground/60 uppercase tracking-[0.2em] truncate">
                     {previewMaterial?.nome}
                   </span>
                 </div>
               </div>
-              
-              {/* Player Customizado (Direita) */}
-              <div className="flex items-center justify-end min-w-[40px] gap-1">
-                {isHtmlPreview && (
-                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setShowNotes(true)} aria-label="Abrir anotações">
-                    <FileEdit className="h-4 w-4" />
-                  </Button>
-                )}
-                {previewMaterial?.link_2 && previewMaterial.link_2 !== "SEM AUDIO" && (
-                  <div className={cn("flex items-center gap-1 sm:gap-3", isHtmlPreview && "gap-1")}>
+              {isHtmlPreview ? (
+                <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => { saveNote(true); setPreviewMaterial(null); }} aria-label="Fechar leitor">
+                  <span aria-hidden="true" className="text-xl leading-none">×</span>
+                </Button>
+              ) : (
+                <div className="flex items-center justify-end min-w-[40px] gap-1">
+                  {previewMaterial?.link_2 && previewMaterial.link_2 !== "SEM AUDIO" && (
+                    <div className="flex items-center gap-1 sm:gap-3">
                     <audio
                       ref={audioRef}
                       src={getDirectDownloadUrl(previewMaterial.link_2)}
@@ -1142,9 +1140,10 @@ export default function Materiais() {
                         {playbackSpeed}x
                       </Button>
                     </div>
-                  </div>
-                )}
-              </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Barra de Progresso Horizontal (Enchimento) */}
@@ -1221,8 +1220,8 @@ export default function Materiais() {
             )}
           </header>
 
-          <div 
-            className="relative flex-1 w-full h-full bg-neutral-900 overflow-hidden"
+          <div
+            className={cn("relative flex-1 w-full h-full bg-neutral-900 overflow-hidden", isHtmlPreview && "flex flex-col")}
             onPointerDown={(e) => {
               if (e.pointerType === 'touch' && e.clientX < 40) {
                 const startX = e.clientX;
@@ -1275,10 +1274,82 @@ export default function Materiais() {
               }
             }}
           >
+            {isHtmlPreview && previewMaterial?.link_2 && previewMaterial.link_2 !== "SEM AUDIO" && (
+              <audio
+                className="hidden"
+                ref={audioRef}
+                src={getDirectDownloadUrl(previewMaterial.link_2)}
+                onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+                onLoadedMetadata={(e) => {
+                  setDuration(e.currentTarget.duration);
+                  e.currentTarget.playbackRate = playbackSpeed;
+                  setAudioStatus("ready");
+                }}
+                onPlay={() => { setIsPlaying(true); setAudioStatus("ready"); }}
+                onPause={() => setIsPlaying(false)}
+                onEnded={() => setIsPlaying(false)}
+                onWaiting={() => setAudioStatus("loading")}
+                onPlaying={() => setAudioStatus("ready")}
+                onCanPlay={() => { if (audioStatus === "loading") setAudioStatus("ready"); }}
+                controlsList="nodownload"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  console.error("Erro no áudio:", target.error?.code, target.error?.message);
+                  if (!target.dataset.triedProxy) {
+                    target.dataset.triedProxy = "true";
+                    setAudioSource("proxy");
+                    setAudioStatus("loading");
+                    target.src = getProxyUrl(previewMaterial.link_2!);
+                    target.load();
+                    if (isPlaying) target.play().catch(() => {});
+                  } else {
+                    setCountdown(null);
+                    if (countdownTimerRef.current) {
+                      clearInterval(countdownTimerRef.current);
+                      countdownTimerRef.current = null;
+                    }
+                    setAudioStatus("error");
+                    setIsPlaying(false);
+                  }
+                }}
+              />
+            )}
+            {isHtmlPreview && previewMaterial?.link_2 && previewMaterial.link_2 !== "SEM AUDIO" && (
+              <section className="relative z-20 shrink-0 border-b border-accent/20 bg-gradient-to-r from-accent/10 via-card to-accent/5 px-4 py-3 shadow-sm sm:px-6">
+                <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold sm:text-base">🎧 Que tal ouvir um mini podcast sobre este assunto?</p>
+                    <p className="text-xs text-muted-foreground">Ouça a áudio-aula como alternativa ao resumo.</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-11 w-11 shrink-0 rounded-full bg-accent text-accent-foreground shadow-md hover:bg-accent/90"
+                      onClick={audioStatus === "error" ? retryAudio : togglePlay}
+                      aria-label={isPlaying ? "Pausar áudio-aula" : "Reproduzir áudio-aula"}
+                    >
+                      {audioStatus === "error" ? <RotateCcw className="h-5 w-5" /> : audioStatus === "loading" && !isPlaying ? <Loader2 className="h-5 w-5 animate-spin" /> : isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current" />}
+                    </Button>
+                    <div className="flex min-w-0 flex-1 items-center gap-2 sm:w-64 sm:flex-none">
+                      <span className="w-9 text-right text-[10px] tabular-nums text-muted-foreground">{formatTime(currentTime)}</span>
+                      <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={duration ? Math.round((currentTime / duration) * 100) : 0} aria-valuemin={0} aria-valuemax={100}>
+                        <div className="absolute inset-y-0 left-0 rounded-full bg-accent transition-[width]" style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }} />
+                      </div>
+                      <span className="w-9 text-[10px] tabular-nums text-muted-foreground">{formatTime(duration)}</span>
+                    </div>
+                    <Button variant="outline" size="sm" className="h-9 min-w-14 rounded-full font-bold" onClick={handleSpeedChange} aria-label="Alterar velocidade">
+                      {playbackSpeed}x
+                    </Button>
+                  </div>
+                </div>
+              </section>
+            )}
             {previewMaterial && (previewMaterial.resumo_html_url ? (
               <ResumoHtmlViewer
                 url={previewMaterial.resumo_html_url}
                 title={previewMaterial.nome}
+                className="min-h-0 flex-1"
               />
             ) : (
               <MaterialPdfViewer
@@ -1329,25 +1400,48 @@ export default function Materiais() {
               </Drawer>
             </div>}
             {isHtmlPreview && (
-              <Drawer open={showNotes} onOpenChange={(open) => {
-                if (!open) saveNote(true);
-                setShowNotes(open);
-              }}>
-                <DrawerContent className="fixed inset-y-0 right-0 left-auto mt-0 h-[100dvh] w-full max-w-md rounded-none border-l bg-[hsl(var(--background))] p-4 sm:p-6 flex flex-col gap-4 z-[200]">
-                  <DrawerHeader className="shrink-0 p-0">
-                    <DrawerTitle className="flex items-center gap-2 text-sm font-black uppercase tracking-wider">
-                      <MessageSquareText className="h-4 w-4" /> Minhas Anotações
-                    </DrawerTitle>
-                    <p className="truncate text-sm text-muted-foreground">{previewMaterial?.nome}</p>
-                  </DrawerHeader>
-                  <Textarea
-                    value={noteContent}
-                    onChange={(e) => setNoteContent(e.target.value)}
-                    placeholder="Digite suas anotações aqui..."
-                    className="min-h-0 flex-1 resize-none border-none bg-card/30 p-4 leading-relaxed"
-                  />
-                </DrawerContent>
-              </Drawer>
+              <>
+                <div className="fixed bottom-8 right-5 z-[170] flex flex-col items-end gap-3 sm:bottom-10 sm:right-8">
+                  {isPlaying && (
+                    <div className="flex items-center gap-1 rounded-full border border-border/60 bg-background/95 p-1 shadow-xl backdrop-blur">
+                      <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full" onClick={togglePlay} aria-label="Pausar áudio-aula">
+                        <Pause className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-9 min-w-12 rounded-full px-2 text-xs font-bold" onClick={handleSpeedChange} aria-label="Alterar velocidade">
+                        {playbackSpeed}x
+                      </Button>
+                    </div>
+                  )}
+                  <Button
+                    className="relative h-12 rounded-full px-4 shadow-xl sm:h-14 sm:px-5"
+                    onClick={() => setShowNotes(true)}
+                    aria-label="Abrir anotações"
+                  >
+                    <FileEdit className="h-5 w-5 sm:mr-2" />
+                    <span className="hidden sm:inline">Notas</span>
+                    {!!noteContent.trim() && <span className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-emerald-400" aria-label="Há anotações salvas" />}
+                  </Button>
+                </div>
+                <Drawer open={showNotes} onOpenChange={(open) => {
+                  if (!open) saveNote(true);
+                  setShowNotes(open);
+                }}>
+                  <DrawerContent className="fixed inset-y-0 right-0 left-auto mt-0 h-[100dvh] w-full max-w-md rounded-none border-l bg-[hsl(var(--background))] p-4 sm:p-6 flex flex-col gap-4 z-[200]">
+                    <DrawerHeader className="shrink-0 p-0">
+                      <DrawerTitle className="flex items-center gap-2 text-sm font-black uppercase tracking-wider">
+                        <MessageSquareText className="h-4 w-4" /> Minhas Anotações
+                      </DrawerTitle>
+                      <p className="truncate text-sm text-muted-foreground">{previewMaterial?.nome}</p>
+                    </DrawerHeader>
+                    <Textarea
+                      value={noteContent}
+                      onChange={(e) => setNoteContent(e.target.value)}
+                      placeholder="Digite suas anotações aqui..."
+                      className="min-h-0 flex-1 resize-none border-none bg-card/30 p-4 leading-relaxed"
+                    />
+                  </DrawerContent>
+                </Drawer>
+              </>
             )}
           </div>
         </DialogContent>
