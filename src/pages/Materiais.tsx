@@ -701,6 +701,7 @@ export default function Materiais() {
     const set = new Set(mats.map(m => m.especialidade));
     return Array.from(set).sort();
   }, [mats]);
+  const isHtmlPreview = !!previewMaterial?.resumo_html_url;
 
   return (
     <div className="min-h-full px-4 md:px-8 py-8 md:py-12 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -996,14 +997,19 @@ export default function Materiais() {
           setPreviewMaterial(null);
         }
       }}>
-        <DialogContent className="max-w-none w-screen h-[100dvh] sm:h-[95vh] sm:w-[95vw] sm:max-w-[1400px] flex flex-col p-0 overflow-hidden border-none sm:rounded-[2.5rem] bg-[hsl(var(--background))] shadow-2xl">
+        <DialogContent className={cn(
+          "max-w-none flex flex-col overflow-hidden border-none p-0 bg-[hsl(var(--background))] shadow-2xl",
+          isHtmlPreview
+            ? "fixed inset-0 left-0 top-0 m-0 h-[100dvh] w-screen max-w-none translate-x-0 translate-y-0 rounded-none [&>button:last-child]:hidden"
+            : "w-screen h-[100dvh] sm:h-[95vh] sm:w-[95vw] sm:max-w-[1400px] sm:rounded-[2.5rem]",
+        )}>
           <DialogHeader className="sr-only">
             <DialogTitle>{previewMaterial?.nome || "Material de estudo"}</DialogTitle>
-            <DialogDescription>Leitor nativo de PDF com áudio, zoom, grifos e anotações.</DialogDescription>
+            <DialogDescription>{isHtmlPreview ? "Resumo HTML com áudio e anotações." : "Leitor nativo de PDF com áudio, zoom, grifos e anotações."}</DialogDescription>
           </DialogHeader>
           {/* Header Minimalista */}
-          <header className="relative flex flex-col bg-card/40 backdrop-blur-xl shrink-0 z-20">
-            <div className="px-3 py-2 md:px-8 flex items-center justify-between border-b border-white/5 h-14 sm:h-16 relative">
+          <header className={cn("relative flex flex-col bg-card/40 backdrop-blur-xl shrink-0 z-20", isHtmlPreview && "[&>div:first-child]:h-11 [&>div:first-child]:px-2 [&>div:first-child]:py-0 [&>div:first-child]:gap-2 [&>div:first-child]:md:px-3 [&>div:first-child>div:first-child]:gap-1")}>
+            <div className={cn("px-3 py-2 md:px-8 flex items-center justify-between border-b border-white/5 h-14 sm:h-16 relative", isHtmlPreview && "h-11 sm:h-11")}>
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 {/* Botão de Voltar */}
                 <Button 
@@ -1027,10 +1033,15 @@ export default function Materiais() {
               </div>
               
               {/* Player Customizado (Direita) */}
-              <div className="flex items-center justify-end min-w-[40px]">
+              <div className="flex items-center justify-end min-w-[40px] gap-1">
+                {isHtmlPreview && (
+                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setShowNotes(true)} aria-label="Abrir anotações">
+                    <FileEdit className="h-4 w-4" />
+                  </Button>
+                )}
                 {previewMaterial?.link_2 && previewMaterial.link_2 !== "SEM AUDIO" && (
-                  <div className="flex items-center gap-1 sm:gap-3">
-                    <audio 
+                  <div className={cn("flex items-center gap-1 sm:gap-3", isHtmlPreview && "gap-1")}>
+                    <audio
                       ref={audioRef}
                       src={getDirectDownloadUrl(previewMaterial.link_2)}
                       onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
@@ -1078,9 +1089,9 @@ export default function Materiais() {
                     />
                     
                     <div className="flex items-center gap-1 bg-black/20 rounded-full px-1.5 py-0.5 border border-white/5 shadow-inner">
-                      <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-white/10" onClick={() => skip(-10)}>
+                      {!isHtmlPreview && <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-white/10" onClick={() => skip(-10)}>
                         <RotateCcw className="h-3.5 w-3.5" />
-                      </Button>
+                      </Button>}
                       
                       <Button
                         variant="ghost"
@@ -1112,11 +1123,11 @@ export default function Materiais() {
                         )}
                       </Button>
 
-                      <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-white/10" onClick={() => skip(10)}>
+                      {!isHtmlPreview && <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-white/10" onClick={() => skip(10)}>
                         <RotateCw className="h-3.5 w-3.5" />
-                      </Button>
+                      </Button>}
 
-                      <div className="hidden xs:flex flex-col items-center justify-center min-w-[55px] ml-1">
+                      <div className={cn("hidden xs:flex flex-col items-center justify-center min-w-[55px] ml-1", isHtmlPreview && "hidden")}>
                         <span className="text-[9px] font-bold text-white/70 tabular-nums">
                           {formatTime(currentTime)}
                         </span>
@@ -1137,7 +1148,7 @@ export default function Materiais() {
             </div>
 
             {/* Barra de Progresso Horizontal (Enchimento) */}
-            {previewMaterial?.link_2 && previewMaterial.link_2 !== "SEM AUDIO" && (
+            {previewMaterial?.link_2 && previewMaterial.link_2 !== "SEM AUDIO" && !isHtmlPreview && (
               <div className={cn(
                 "h-2.5 w-full bg-white/5 relative overflow-hidden transition-colors duration-500",
                 audioStatus === "error" && "bg-red-500/10"
@@ -1183,7 +1194,7 @@ export default function Materiais() {
             )}
 
             {/* Mensagem de erro + botão de tentar novamente */}
-            {previewMaterial?.link_2 && previewMaterial.link_2 !== "SEM AUDIO" && audioStatus === "error" && (
+            {previewMaterial?.link_2 && previewMaterial.link_2 !== "SEM AUDIO" && !isHtmlPreview && audioStatus === "error" && (
               <div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-red-500/5 border-t border-red-500/30">
                 <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-red-400 animate-pulse-slow flex items-center gap-1.5">
                   <AlertCircle className="h-3 w-3" /> Falha ao carregar o áudio
@@ -1200,7 +1211,7 @@ export default function Materiais() {
             )}
 
             {/* Indicador discreto de carregamento (loading) */}
-            {previewMaterial?.link_2 && previewMaterial.link_2 !== "SEM AUDIO" && audioStatus === "loading" && (
+            {previewMaterial?.link_2 && previewMaterial.link_2 !== "SEM AUDIO" && !isHtmlPreview && audioStatus === "loading" && (
               <div className="flex items-center justify-center gap-2 px-3 py-1 bg-accent/5 border-t border-accent/20">
                 <Loader2 className="h-3 w-3 animate-spin text-accent" />
                 <span className="text-[9px] font-bold uppercase tracking-wider text-accent/80">
@@ -1278,7 +1289,7 @@ export default function Materiais() {
             ))}
 
             {/* Ícones Flutuantes no Canto Inferior */}
-            <div className="absolute bottom-8 right-8 z-30 flex flex-col items-end gap-3">
+            {!isHtmlPreview && <div className="absolute bottom-8 right-8 z-30 flex flex-col items-end gap-3">
               <Drawer open={showNotes} onOpenChange={(open) => {
                 if (!open) saveNote(true);
                 setShowNotes(open);
@@ -1316,7 +1327,28 @@ export default function Materiais() {
                   </div>
                 </DrawerContent>
               </Drawer>
-            </div>
+            </div>}
+            {isHtmlPreview && (
+              <Drawer open={showNotes} onOpenChange={(open) => {
+                if (!open) saveNote(true);
+                setShowNotes(open);
+              }}>
+                <DrawerContent className="fixed inset-y-0 right-0 left-auto mt-0 h-[100dvh] w-full max-w-md rounded-none border-l bg-[hsl(var(--background))] p-4 sm:p-6 flex flex-col gap-4 z-[200]">
+                  <DrawerHeader className="shrink-0 p-0">
+                    <DrawerTitle className="flex items-center gap-2 text-sm font-black uppercase tracking-wider">
+                      <MessageSquareText className="h-4 w-4" /> Minhas Anotações
+                    </DrawerTitle>
+                    <p className="truncate text-sm text-muted-foreground">{previewMaterial?.nome}</p>
+                  </DrawerHeader>
+                  <Textarea
+                    value={noteContent}
+                    onChange={(e) => setNoteContent(e.target.value)}
+                    placeholder="Digite suas anotações aqui..."
+                    className="min-h-0 flex-1 resize-none border-none bg-card/30 p-4 leading-relaxed"
+                  />
+                </DrawerContent>
+              </Drawer>
+            )}
           </div>
         </DialogContent>
       </Dialog>
