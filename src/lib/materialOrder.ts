@@ -20,16 +20,7 @@ export function compareMaterialsByTierAndOrder(a: MaterialOrderItem, b: Material
   const tierB = b.tier ?? Number.MAX_SAFE_INTEGER;
   const orderA = a.ordem_incidencia ?? Number.MAX_SAFE_INTEGER;
   const orderB = b.ordem_incidencia ?? Number.MAX_SAFE_INTEGER;
-  return tierA - tierB || orderA - orderB || a.id.localeCompare(b.id);
-}
-
-export function distributeRegularMaterials<T extends MaterialOrderItem>(materials: T[], maxTier: number, weeks: number, reserve = 4): Record<string, number> {
-  const eligible = filterRegularMaterialsByTier(materials, maxTier).sort(compareMaterialsByTierAndOrder);
-  const usefulWeeks = Math.max(1, Math.floor(weeks) - Math.min(Math.max(0, reserve), Math.max(0, Math.floor(weeks) - 1)));
-  return Object.fromEntries(eligible.map((material, index) => [
-    material.id,
-    Math.min(usefulWeeks - 1, Math.floor((index * usefulWeeks) / Math.max(1, eligible.length))),
-  ]));
+  return tierA - tierB || orderA - orderB;
 }
 
 export function filterRegularMaterialsByTier<T extends MaterialOrderItem>(materials: T[], maxTier: number): T[] {

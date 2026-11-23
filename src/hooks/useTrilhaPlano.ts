@@ -277,7 +277,6 @@ export function useTrilhaPlano() {
 
       const raw = (us?.settings as any)?.trilha;
       const merged = raw ? { ...TRILHA_DEFAULT, ...raw } : TRILHA_DEFAULT;
-      const idsValidos = new Set<string>();
       currentSettings = {
         ...merged,
         plano_overrides: Object.fromEntries(
@@ -663,8 +662,10 @@ export function useTrilhaPlano() {
       }
     });
 
+    const regularInput = { ...res };
+    manualExtraIds.forEach((id) => delete regularInput[id]);
     const normalizado = normalizarSemanas(
-      res,
+      regularInput,
       elegiveis,
       completosSet,
       capacidadeFixa,
@@ -744,8 +745,6 @@ export function useTrilhaPlano() {
     return () => clearTimeout(timer);
   }, [settings, aulas.length, currentWeekIndex, currentWeekIds, planoSemanaPorAula, materialOrderSignature, materialFilterSignature, salvarSettings]);
 
-
-
   const aulasPorIndice = (wk: number) =>
     aulas
       .filter((a) =>
@@ -807,7 +806,7 @@ export function useTrilhaPlano() {
       return { ...resultado, excessoUltimaSemana: resultado.excesso, alreadyInWeek: resultado.alreadyInWeek };
     }
     const destino = Math.max(0, Math.min(semanaDestino, totalSemanas - 1));
-    const resultado = await inserirAulaNaFila(planoSemanaPorAula, aulaId, destino, totalSemanas, completosSet, limiteMateriasSemana);
+    const resultado = inserirAulaNaFila(planoSemanaPorAula, aulaId, destino, totalSemanas, completosSet, limiteMateriasSemana);
     if (!resultado.alreadyInWeek) {
       await salvarSettings({ ...settings, planos_semanais: Object.entries(resultado.distribuicao).reduce<Record<string, string[]>>((acc, [id, week]) => { (acc[String(week)] ??= []).push(id); return acc; }, {}), plano_overrides: { ...(settings.plano_overrides ?? {}), [aulaId]: destino }, plano_cache: undefined });
     }
@@ -846,7 +845,6 @@ export function useTrilhaPlano() {
     studiedThisWeek,
     deficitAnterior,
     semanaIsoAtual,
-    // novos:
     currentWeekIndex,
     totalSemanas,
     aulasSemanaAtual,
