@@ -523,7 +523,7 @@ export default function TrilhaEstrategica() {
             aulasSemanaAtual={aulasSemanaAtual}
             espLabel={espLabel}
             getRodizioForWeek={getRodizioForWeek}
-            totalAulas={baseAulas.length}
+            totalAulas={aulas.length}
             analiseEstrategica={analiseEstrategica}
           />
         )}

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSettings } from "@/contexts/SettingsContext";
-import { compareTrilhaMaterials, getTrilhaEligibleMaterials, isExtraMaterial } from "@/lib/materialOrder";
+import { compareMaterialsByOrder } from "@/lib/materialOrder";
 
 export type TrilhaPerfil = "medico" | "interno_4" | "interno_geral";
 
@@ -106,7 +106,7 @@ export interface AulaPlano {
 }
 
 export function compareAulasByNumero(a: AulaPlano, b: AulaPlano): number {
-  return compareTrilhaMaterials(a, b);
+  return compareMaterialsByOrder(a, b);
 }
 
 export function calcularLimiteMateriasSemana(
@@ -184,6 +184,8 @@ export function limparDadosDerivados(settings: TrilhaSettings): TrilhaSettings {
   return {
     ...settings,
     planos_semanais: {},
+    plano_overrides: {},
+    perdidos: [],
     redistribuidos: [],
     plano_cache: undefined,
   };
@@ -522,9 +524,9 @@ export function useTrilhaPlano() {
   const focoIds = new Set(focoAulas.map((a) => a.id));
   
   // A cobertura inclui materiais sem OQs; a disponibilidade controla apenas o estudo.
-  const tierMax = maxTierFor(settings.foco_incidencia);
-  const aulasRegulares = aulas.filter((a) => !isExtraMaterial(a));
-  const baseAulas = aulasRegulares.filter((a) => a.tier <= tierMax);
+  const baseAulas = aulas.filter(
+    (a) => a.tier <= 3 && !focoIds.has(a.id),
+  );
 
   const diasAtivos = settings.disponibilidade.dias.filter(Boolean).length;
   const metaSemana = Math.max(10, dailyGoal * diasAtivos);
@@ -586,36 +588,47 @@ export function useTrilhaPlano() {
   }, [settings.completos, aulaStatsGlobal, aulas]);
   const overrides = settings.plano_overrides ?? {};
 
+  const tierMax = maxTierFor(settings.foco_incidencia);
+
   const { planoSemanaPorAula, baselinePlano, pendenciasIds, currentWeekIds } = useMemo(() => {
     if (!aulas.length || !settings.setup_done) {
       return { planoSemanaPorAula: {}, baselinePlano: {}, pendenciasIds: new Set<string>(), currentWeekIds: [] as string[] };
     }
 
-    const elegiveis = getTrilhaEligibleMaterials(aulas, tierMax, new Set(Object.keys(overrides)))
-      .filter((a) => !perdidosSet.has(a.id));
-    const regularesElegiveis = elegiveis.filter((a) => !isExtraMaterial(a));
+    const elegiveis = aulas
+      .filter((a) => a.tier <= tierMax && !perdidosSet.has(a.id))
+      .sort(compareAulasByNumero);
     const idsValidos = new Set(elegiveis.map((a) => a.id));
+    const snapshots = settings.planos_semanais ?? {};
+    const maiorSemanaPersistida = Math.max(
+      -1,
+      ...Object.keys(snapshots).map(Number).filter(Number.isInteger),
+    );
     const maiorSemanaRemapeada = Math.max(
       -1,
       ...Object.values(overrides).filter((week) => Number.isInteger(week)),
     );
-    const semanas = Math.max(1, totalSemanas, maiorSemanaRemapeada + 1);
-    const capacidadeFixa = Math.max(1, settings.limite_materias_semana ?? Math.floor((settings.disponibilidade.horas * settings.disponibilidade.dias.filter(Boolean).length) / 1.8));
+    const semanas = Math.max(1, totalSemanas, maiorSemanaPersistida + 1, maiorSemanaRemapeada + 1);
+    const capacidadeFixa = settings.limite_materias_semana ?? Math.max(1, Math.floor((settings.disponibilidade.horas * settings.disponibilidade.dias.filter(Boolean).length) / 1.8));
     const baseline: Record<string, number> = distribuirEquilibrado(
-      regularesElegiveis.map((aula) => aula.id),
+      elegiveis.map((aula) => aula.id),
       semanas,
       4,
     );
     const res: Record<string, number> = { ...baseline };
 
-    // A sequência corrente substitui os snapshots antigos; overrides explícitos do aluno permanecem.
+
+    Object.entries(snapshots).forEach(([weekKey, ids]) => {
+      const week = Number(weekKey);
+      if (!Number.isInteger(week) || week < 0) return;
+      ids.filter((id) => idsValidos.has(id)).forEach((id) => {
+        res[id] = week;
+      });
+    });
+
+    // Um remapeamento explícito tem precedência sobre o baseline e o snapshot.
     Object.entries(overrides).forEach(([id, week]) => {
       if (idsValidos.has(id) && Number.isInteger(week) && week >= 0) {
-        res[id] = week;
-      }
-    });
-    Object.entries(settings.completos_semana ?? {}).forEach(([id, week]) => {
-      if (idsValidos.has(id) && completosSet.has(id) && Number.isInteger(week) && week >= 0) {
         res[id] = week;
       }
     });
@@ -631,10 +644,14 @@ export function useTrilhaPlano() {
     Object.assign(res, normalizado.distribuicao);
 
     const pendSet = new Set<string>();
-    Object.entries(overrides).forEach(([id, week]) => {
-      if (week < currentWeekIndex && idsValidos.has(id) && !completosSet.has(id)) {
-        pendSet.add(id);
-      }
+    Object.entries(snapshots).forEach(([weekKey, ids]) => {
+      const week = Number(weekKey);
+      if (week >= currentWeekIndex) return;
+      ids.forEach((id) => {
+        if (idsValidos.has(id) && !completosSet.has(id) && (overrides[id] === undefined || overrides[id] >= currentWeekIndex)) {
+          pendSet.add(id);
+        }
+      });
     });
 
     const currentWeekIds = Object.entries(res)
@@ -645,23 +662,23 @@ export function useTrilhaPlano() {
   }, [
     aulas,
     settings.setup_done,
+    settings.planos_semanais,
     settings.rodizio_atual,
     settings.proximos_rodizios,
     currentWeekIndex,
     totalSemanas,
     overrides,
-    settings.completos_semana,
     completosSet,
     perdidosSet,
     tierMax,
   ]);
 
-  // Atualiza o snapshot da semana corrente ao reconstruir a distribuição com materiais atuais.
+  // Congela a composição da semana assim que ela é apresentada. A virada semanal
+  // passa a usar esse snapshot, em vez de reconstruir retroativamente o passado.
   useEffect(() => {
     if (!settings.setup_done || currentWeekIds.length === 0) return;
     const key = String(currentWeekIndex);
-    const previous = settings.planos_semanais?.[key] ?? [];
-    if (previous.length === currentWeekIds.length && previous.every((id, index) => id === currentWeekIds[index])) return;
+    if (settings.planos_semanais?.[key]) return;
     const timer = setTimeout(() => {
       salvarSettings({
         ...settings,
@@ -675,18 +692,20 @@ export function useTrilhaPlano() {
 
 
   const aulasPorIndice = (wk: number) =>
-    aulas.filter((a) =>
-      !perdidosSet.has(a.id) &&
-      planoSemanaPorAula[a.id] === wk &&
-      (!isExtraMaterial(a) && a.tier <= tierMax || isExtraMaterial(a) && Object.prototype.hasOwnProperty.call(overrides, a.id))
-    ).sort(compareAulasByNumero);
+    aulas
+      .filter((a) =>
+        !perdidosSet.has(a.id) &&
+        a.tier <= tierMax &&
+        planoSemanaPorAula[a.id] === wk,
+      )
+      .sort(compareAulasByNumero);
 
   const aulasSemanaAtual = aulasPorIndice(currentWeekIndex);
 
   // Pendências só podem ser declaradas quando a semana de origem foi persistida.
   // Sem snapshot não inventamos uma composição histórica.
   const pendenciasAulas = aulas.filter(
-    (a) => !isExtraMaterial(a) && a.total_oqs > 0 &&
+    (a) => a.total_oqs > 0 &&
       pendenciasIds.has(a.id) &&
       !perdidosSet.has(a.id) &&
       !completosSet.has(a.id) &&
@@ -703,22 +722,16 @@ export function useTrilhaPlano() {
     return slots;
   }
 
-  const perdidosAulas = aulas.filter((a) => perdidosSet.has(a.id) && !isExtraMaterial(a));
+  const perdidosAulas = aulas.filter((a) => perdidosSet.has(a.id));
   const limiteMateriasSemana = settings.limite_materias_semana ?? Math.max(1, Math.floor((settings.disponibilidade.horas * diasAtivos) / 1.8));
 
   const inserirAulaNaSemanaAtual = useCallback(async (aulaId: string): Promise<InsercaoFilaResult> => {
-    const aula = aulas.find((item) => item.id === aulaId);
-    if (!aula || totalSemanas < 1) {
+    if (!aulas.some((aula) => aula.id === aulaId) || totalSemanas < 1) {
       return { distribuicao: planoSemanaPorAula, deslocamentos: [], excesso: [], alreadyInWeek: false };
     }
-    const atual = planoSemanaPorAula[aulaId] === undefined && isExtraMaterial(aula)
-      ? { ...planoSemanaPorAula, [aulaId]: currentWeekIndex + 1 }
-      : planoSemanaPorAula;
-    const resultado = inserirAulaNaFila(atual, aulaId, currentWeekIndex, totalSemanas, completosSet, limiteMateriasSemana);
+    const resultado = inserirAulaNaFila(planoSemanaPorAula, aulaId, currentWeekIndex, totalSemanas, completosSet, limiteMateriasSemana);
     if (resultado.alreadyInWeek) return resultado;
     const snapshots = Object.entries(resultado.distribuicao).reduce<Record<string, string[]>>((acc, [id, week]) => {
-      if (isExtraMaterial(aulas.find((aula) => aula.id === id)!)) return acc;
-      (acc[String(week)] ??= []).push(id);
       (acc[String(week)] ??= []).push(id);
       return acc;
     }, {});
@@ -726,7 +739,6 @@ export function useTrilhaPlano() {
       ...settings,
       planos_semanais: snapshots,
       plano_overrides: { ...(settings.plano_overrides ?? {}), [aulaId]: currentWeekIndex },
-      planos_semanais: snapshots,
       perdidos: (settings.perdidos ?? []).filter((id) => id !== aulaId),
       plano_cache: undefined,
     });
@@ -739,24 +751,12 @@ export function useTrilhaPlano() {
       return { ...resultado, excessoUltimaSemana: resultado.excesso, alreadyInWeek: resultado.alreadyInWeek };
     }
     const destino = Math.max(0, Math.min(semanaDestino, totalSemanas - 1));
-    const aula = aulas.find((item) => item.id === aulaId);
-    if (!aula) {
-      return { distribuicao: planoSemanaPorAula, deslocamentos: [], excesso: [], excessoUltimaSemana: [], alreadyInWeek: false };
-    }
-    const atual = planoSemanaPorAula[aulaId] === undefined && isExtraMaterial(aula)
-      ? { ...planoSemanaPorAula, [aulaId]: destino + 1 }
-      : planoSemanaPorAula;
-    const resultado = inserirAulaNaFila(atual, aulaId, destino, totalSemanas, completosSet, limiteMateriasSemana);
+    const resultado = await inserirAulaNaFila(planoSemanaPorAula, aulaId, destino, totalSemanas, completosSet, limiteMateriasSemana);
     if (!resultado.alreadyInWeek) {
-      const snapshots = Object.entries(resultado.distribuicao).reduce<Record<string, string[]>>((acc, [id, week]) => {
-        if (isExtraMaterial(aulas.find((item) => item.id === id)!)) return acc;
-        (acc[String(week)] ??= []).push(id);
-        return acc;
-      }, {});
-      await salvarSettings({ ...settings, planos_semanais: snapshots, plano_overrides: { ...(settings.plano_overrides ?? {}), [aulaId]: destino }, plano_cache: undefined });
+      await salvarSettings({ ...settings, planos_semanais: Object.entries(resultado.distribuicao).reduce<Record<string, string[]>>((acc, [id, week]) => { (acc[String(week)] ??= []).push(id); return acc; }, {}), plano_overrides: { ...(settings.plano_overrides ?? {}), [aulaId]: destino }, plano_cache: undefined });
     }
     return { ...resultado, excessoUltimaSemana: resultado.excesso, alreadyInWeek: resultado.alreadyInWeek };
-  }, [currentWeekIndex, inserirAulaNaSemanaAtual, totalSemanas, planoSemanaPorAula, completosSet, limiteMateriasSemana, settings, salvarSettings, aulas]);
+  }, [currentWeekIndex, inserirAulaNaSemanaAtual, totalSemanas, planoSemanaPorAula, completosSet, limiteMateriasSemana, settings, salvarSettings]);
 
   // Compatibilidade: déficit "antigo" baseado em meta semanal
   const deficitAnterior = Math.max(0, metaSemana - studiedLastWeek);
@@ -766,12 +766,12 @@ export function useTrilhaPlano() {
 
   // Cálculo de puxadas e redistribuições para a análise
   const analiseEstrategica = useMemo(() => {
-    const puxadas = aulas.filter(a => !isExtraMaterial(a) &&
-      planoSemanaPorAula[a.id] === currentWeekIndex &&
+    const puxadas = aulas.filter(a => 
+      planoSemanaPorAula[a.id] === currentWeekIndex && 
       baselinePlano[a.id] > currentWeekIndex
     );
-    const redistribuidas = aulas.filter(a => !isExtraMaterial(a) &&
-      baselinePlano[a.id] === currentWeekIndex &&
+    const redistribuidas = aulas.filter(a => 
+      baselinePlano[a.id] === currentWeekIndex && 
       planoSemanaPorAula[a.id] > currentWeekIndex
     );
     return { puxadas, redistribuidas };
