@@ -20,6 +20,7 @@ import { Plus, Trash2, ShieldCheck, CalendarClock, Target, AlertTriangle, Sparkl
 import type { TrilhaSettings, RodizioItem, AulaPlano, FocoIncidencia } from "@/hooks/useTrilhaPlano";
 import { calcularLimiteMateriasSemana, limparDadosDerivados, maxTierFor, calcularSemanasUteis } from "@/hooks/useTrilhaPlano";
 import { ESPECIALIDADE_LABEL } from "@/lib/oq";
+import { countRegularMaterialsByTier } from "@/lib/materialOrder";
 import { cn } from "@/lib/utils";
 
 const DIAS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
@@ -34,9 +35,9 @@ interface Props {
 }
 
 const FOCO_OPCOES: { value: FocoIncidencia; label: string; desc: string; tone: string }[] = [
-  { value: "todas", label: "Cobertura total", desc: "Todos os materiais cadastrados (Alta + Média + Baixa)", tone: "from-primary/15 to-primary/5 border-primary/40" },
-  { value: "alta_media", label: "Estratégico", desc: "Foco em Alta + Média incidência", tone: "from-amber-500/15 to-amber-500/5 border-amber-500/40" },
-  { value: "alta", label: "Essencial", desc: "Apenas Alta incidência", tone: "from-emerald-500/15 to-emerald-500/5 border-emerald-500/40" },
+  { value: "todas", label: "Preparação completa", desc: "Tiers 1, 2 e 3 — temas regulares", tone: "from-primary/15 to-primary/5 border-primary/40" },
+  { value: "alta_media", label: "Tier 1 + Tier 2", desc: "Cobertura dos temas regulares dos tiers 1 e 2", tone: "from-amber-500/15 to-amber-500/5 border-amber-500/40" },
+  { value: "alta", label: "Tier 1", desc: "Cobertura dos temas regulares do tier 1", tone: "from-emerald-500/15 to-emerald-500/5 border-emerald-500/40" },
 ];
 
 function todayIsoStr() {
@@ -76,21 +77,14 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
 
 
   // ===== Cálculos de cronograma e recomendações =====
-  const aulasValidas = useMemo(() => aulas, [aulas]);
-  const countByTier = useMemo(() => {
-    const c = { 1: 0, 2: 0, 3: 0 };
-    for (const a of aulasValidas) {
-      if (a.tier === 1) c[1]++;
-      else if (a.tier === 2) c[2]++;
-      else if (a.tier === 3) c[3]++;
-    }
-    return c;
-  }, [aulasValidas]);
+  const aulasValidas = useMemo(() => aulas.filter((a) => !/aula\s+extra/i.test(a.nome)), [aulas]);
+  const countByTier = useMemo(() => countRegularMaterialsByTier(aulasValidas), [aulasValidas]);
   const totalPorFoco = (f: FocoIncidencia) => {
     if (f === "alta") return countByTier[1];
     if (f === "alta_media") return countByTier[1] + countByTier[2];
     return countByTier[1] + countByTier[2] + countByTier[3];
   };
+  const extrasCount = aulas.length - aulasValidas.length;
 
   const semanasAteProva = useMemo(() => {
     if (!s.prova_data) return null;
@@ -202,7 +196,7 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
                 <Label className="text-sm font-bold">Estratégia de preparação</Label>
               </div>
               <p className="text-xs text-muted-foreground -mt-1">
-                Escolha a profundidade da sua cobertura. Quanto menos tempo, mais focado deve ser.
+                Escolha a profundidade da cobertura dos temas regulares. Aulas extras não entram na distribuição automática.
               </p>
               <div className="grid gap-2">
                 {FOCO_OPCOES.map((op) => {
@@ -238,7 +232,7 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
                           </div>
                           <div className="text-xs text-muted-foreground">{op.desc}</div>
                           <div className="flex items-center gap-3 mt-1.5 text-[11px] font-semibold">
-                            <span className="tabular-nums">{total} matérias</span>
+                            <span className="tabular-nums">{op.value === "alta" ? `Tier 1 (${total} temas regulares)` : op.value === "alta_media" ? `Tier 1 + Tier 2 (${total} temas regulares)` : `Preparação completa (${total} temas regulares)`}</span>
                             {matsWk !== null && (
                               <span className={cn(
                                 "tabular-nums px-1.5 py-0.5 rounded",
@@ -254,6 +248,9 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
                   );
                 })}
               </div>
+              {extrasCount > 0 && (
+                <p className="text-[10px] text-muted-foreground">{extrasCount} aulas extras disponíveis na página Materiais não fazem parte dos totais desta estratégia.</p>
+              )}
 
               {semanasAteProva !== null && matsPorSemana !== null && excede && (
                 <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-3">
