@@ -20,6 +20,7 @@ import { Plus, Trash2, ShieldCheck, CalendarClock, Target, AlertTriangle, Sparkl
 import type { TrilhaSettings, RodizioItem, AulaPlano, FocoIncidencia } from "@/hooks/useTrilhaPlano";
 import { calcularLimiteMateriasSemana, limparDadosDerivados, maxTierFor, calcularSemanasUteis } from "@/hooks/useTrilhaPlano";
 import { ESPECIALIDADE_LABEL } from "@/lib/oq";
+import { countRegularMaterialsByTier } from "@/lib/materialOrder";
 import { cn } from "@/lib/utils";
 
 const DIAS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
@@ -34,7 +35,7 @@ interface Props {
 }
 
 const FOCO_OPCOES: { value: FocoIncidencia; label: string; desc: string; tone: string }[] = [
-  { value: "todas", label: "Cobertura total", desc: "Todos os materiais cadastrados (Alta + Média + Baixa)", tone: "from-primary/15 to-primary/5 border-primary/40" },
+  { value: "todas", label: "Cobertura total", desc: "Todos os temas regulares (Alta + Média + Baixa)", tone: "from-primary/15 to-primary/5 border-primary/40" },
   { value: "alta_media", label: "Estratégico", desc: "Foco em Alta + Média incidência", tone: "from-amber-500/15 to-amber-500/5 border-amber-500/40" },
   { value: "alta", label: "Essencial", desc: "Apenas Alta incidência", tone: "from-emerald-500/15 to-emerald-500/5 border-emerald-500/40" },
 ];
@@ -76,16 +77,8 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
 
 
   // ===== Cálculos de cronograma e recomendações =====
-  const aulasValidas = useMemo(() => aulas, [aulas]);
-  const countByTier = useMemo(() => {
-    const c = { 1: 0, 2: 0, 3: 0 };
-    for (const a of aulasValidas) {
-      if (a.tier === 1) c[1]++;
-      else if (a.tier === 2) c[2]++;
-      else if (a.tier === 3) c[3]++;
-    }
-    return c;
-  }, [aulasValidas]);
+  const aulasValidas = useMemo(() => aulas.filter((aula) => !isExtraMaterial(aula)), [aulas]);
+  const countByTier = useMemo(() => countRegularMaterialsByTier(aulas), [aulas]);
   const totalPorFoco = (f: FocoIncidencia) => {
     if (f === "alta") return countByTier[1];
     if (f === "alta_media") return countByTier[1] + countByTier[2];
@@ -237,8 +230,8 @@ export default function SetupDialog({ open, onOpenChange, initial, onSave, aulas
                             )}
                           </div>
                           <div className="text-xs text-muted-foreground">{op.desc}</div>
-                          <div className="flex items-center gap-3 mt-1.5 text-[11px] font-semibold">
-                            <span className="tabular-nums">{total} matérias</span>
+                                  <div className="flex items-center gap-3 mt-1.5 text-[11px] font-semibold">
+                                    <span className="tabular-nums">{total} temas regulares</span>
                             {matsWk !== null && (
                               <span className={cn(
                                 "tabular-nums px-1.5 py-0.5 rounded",

@@ -18,7 +18,7 @@ import {
 import { Stethoscope, Shuffle, Check, X, Trash2, Sparkles, Search } from "lucide-react";
 import { ESPECIALIDADE_LABEL, normalize } from "@/lib/oq";
 import type { TrilhaSettings, RodizioItem, AulaPlano } from "@/hooks/useTrilhaPlano";
-import { compareMaterialsByOrder } from "@/lib/materialOrder";
+import { compareMaterialsByTierAndOrder, isExtraMaterial } from "@/lib/materialOrder";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 
@@ -87,7 +87,7 @@ export default function RodizioRapido({ settings, onSave, aulas = [] }: Props) {
         const hay = normalize(`${a.nome} ${a.key_words ?? ""} ${a.especialidade}`);
         return tokens.some((t) => hay.includes(t));
       })
-      .sort((a, b) => a.tier - b.tier || compareMaterialsByOrder(a, b));
+      .sort(compareMaterialsByTierAndOrder);
   }, [draftCustomNome, aulas]);
 
   const toggleCustomId = (id: string) => {
