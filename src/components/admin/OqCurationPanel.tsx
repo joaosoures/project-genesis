@@ -41,7 +41,7 @@ export function OqCurationPanel({ aula, oldCards, onCommitted }: Props) {
   const iaById = verdicts;
   const counts = { old: oldCards.length, delete: excluded.size, add: keptNew.length, total: keptOld.length + keptNew.length };
   const specialtyCode = getJudgeSpecialtyCode(`${aula?.especialidade ?? ""}|${aula?.nome ?? ""}`);
-  const specialtyLensLabel: Record<string, string> = { CM: "Clínica Médica", CG: "Cirurgia Geral", GO: "Ginecologia e Obstetrícia", PED: "Pediatria", PREV: "Medicina Preventiva, SUS e APS" };
+  const specialtyLensLabel: Record<string, string> = { CM: "Clínica Médica", CG: "Cirurgia Geral", GO: "Ginecologia e Obstetrícia", PED: "Pediatria", PREV: "Medicina Preventiva, SUS e APS", SM: "Saúde Mental" };
 
   useEffect(() => {
     setStaged([]); setManualExcluded(new Set()); setManualRestored(new Set()); setAiExcluded(new Set()); setVerdicts({}); setHtmlText(""); setHtmlError("");

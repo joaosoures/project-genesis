@@ -29,11 +29,15 @@ Sua missão é auditar 100% dos OQs (antigos e novos) e devolver um veredito ind
   ]
 }`;
 
-export const SPECIALTY_JUDGE_LENSES: Record<"CM" | "CG" | "GO" | "PED" | "PREV", string> = {
-  CM: `### LENTE DE ESPECIALIDADE: CLÍNICA MÉDICA (E SAÚDE MENTAL)
-Referências: Diretrizes brasileiras atualizadas (SBC, SBPT, SBD, SBN, SBI, MS/PCDT, ACLS, DSM-5-TR/ABP).
-- VALORIZE E MANTENHA cards que cobrem: pontos de corte exatos e escores (ex: CURB-65, CHA2DS2-VASc, Child-Pugh, MELD, Wells, Light, qSOFA), drogas de 1ª linha vs. contraindicações por comorbidade, manejo tempo-dependente de emergências (IAM, AVC, Sepse, CAD, distúrbios ácido-base/eletrolíticos), exames padrão-ouro e critérios diagnósticos/psicofarmacologia de 1ª linha (em temas de SM).
+export const SPECIALTY_JUDGE_LENSES: Record<"CM" | "CG" | "GO" | "PED" | "PREV" | "SM", string> = {
+  CM: `### LENTE DE ESPECIALIDADE: CLÍNICA MÉDICA
+Referências: Diretrizes brasileiras atualizadas (SBC, SBPT, SBD, SBN, SBI, MS/PCDT, ACLS).
+- VALORIZE E MANTENHA cards que cobrem: pontos de corte exatos e escores (ex: CURB-65, CHA2DS2-VASc, Child-Pugh, MELD, Wells, Light, qSOFA), drogas de 1ª linha vs. contraindicações por comorbidade, manejo tempo-dependente de emergências (IAM, AVC, Sepse, CAD, distúrbios ácido-base/eletrolíticos) e exames padrão-ouro.
 - EXCLUA COM RIGOR: condutas ou metas obsoletas (ex: esquemas antigos de IC, TB, HIV ou DM desatualizados frente às diretrizes brasileiras), casos clínicos excessivamente extensos que repetem dados irrelevantes, e lacunas que escondem sintomas genéricos (ex: "dispneia", "febre") em vez do marcador diagnóstico, dose ou critério decisório.`,
+  SM: `### LENTE DE ESPECIALIDADE: SAÚDE MENTAL (PSIQUIATRIA)
+Referências: DSM-5-TR, CID-11, diretrizes da ABP, Política Nacional de Saúde Mental / RAPS (MS) e Lei 10.216/2001.
+- VALORIZE E MANTENHA cards que cobrem: critérios temporais exatos que diferenciam transtornos irmãos (ex: esquizofrenia vs. esquizofreniforme vs. psicótico breve; mania vs. hipomania), psicofármacos de 1ª linha vs. contraindicações (ex: risco de virada maníaca, monitorização de lítio/clozapina, síndromes neuroléptica maligna e serotoninérgica), manejo de emergências (risco de suicídio, agitação psicomotora, intoxicação vs. abstinência de substâncias/delirium tremens), psicopatologia descritiva precisa e modalidades legais de internação / fluxo na RAPS.
+- EXCLUA COM RIGOR: confusões entre transtornos vizinhos por critério temporal incorreto, prescrições perigosas apresentadas como corretas (ex: antidepressivo em monoterapia na depressão bipolar ou antipsicótico isolado no delirium tremens), questões vagas de senso comum sem rigor diagnóstico/farmacológico, e lacunas que ocultam palavras genéricas ("tristeza", "ansiedade", "terapia") em vez do critério decisório.`,
   CG: `### LENTE DE ESPECIALIDADE: CIRURGIA GERAL
 Referências: ATLS atualizado, Sabiston, protocolos brasileiros de trauma, abdome agudo, perioperatório (ASA/ERAS) e oncologia cirúrgica.
 - VALORIZE E MANTENHA cards que cobrem: prioridades do XABCDE no trauma, decisão entre manejo cirúrgico imediato vs. conservador baseada em estabilidade hemodinâmica, escolha de exame no trauma (FAST vs. TC), classificações cirúrgicas clássicas (ex: Hinchey, Tokyo, Atlanta, Nyhus, classificação de choque hemorrágico), complicações pós-operatórias por tempo de PO e indicações absolutas de laparotomia.
@@ -62,7 +66,7 @@ export function getJudgeSpecialtyCode(especialidadeOuTitulo: string): keyof type
     if (/^(CIRURGIA GERAL|CG)$/.test(value)) return "CG";
     if (/^(GINECOLOGIA E OBSTETRICIA|OBSTETRICIA E GINECOLOGIA|GINECOLOGIA OBSTETRICIA|GO)$/.test(value)) return "GO";
     if (/^(MEDICINA PREVENTIVA(?: E SOCIAL)?|PREV|MFC|SAUDE COLETIVA|SUS|APS)$/.test(value)) return "PREV";
-    if (/^(SAUDE MENTAL|SM|PSIQUIATRIA)$/.test(value)) return "CM";
+    if (/^(SAUDE MENTAL|SM|PSIQUIATRIA)$/.test(value)) return "SM";
     if (/^(CLINICA MEDICA|CLINICA|CM)$/.test(value)) return "CM";
     return null;
   };
