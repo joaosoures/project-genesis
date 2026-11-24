@@ -9,10 +9,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { OqJsonImport } from "@/components/admin/OqJsonImport";
 import { OqStagingCard, stagingToDisplay, type OqJudgeResult } from "@/components/admin/OqStagingCard";
-import { oqCuratorJudgePrompt } from "@/prompts/oqCuratorJudgePrompt";
 import { sanitizeHtmlToCleanText } from "@/lib/sanitizeHtmlToCleanText";
 import { toCardImportPayload, type ImportedOq } from "@/lib/oq-import";
-import type { CardRow, Especialidade } from "@/lib/oq";
+import { ESPECIALIDADE_LABEL, type CardRow, type Especialidade } from "@/lib/oq";
+import { Badge } from "@/components/ui/badge";
+import { getJudgeSpecialtyCode } from "../../../supabase/functions/_shared/oqCuratorJudgePrompt";
 
 type Aula = { id: string; nome: string; especialidade: Especialidade; resumo_html_url: string | null };
 type Staged = { id: string; oq: ImportedOq };
@@ -39,6 +40,8 @@ export function OqCurationPanel({ aula, oldCards, onCommitted }: Props) {
   const keptNew = staged.filter(item => !excluded.has(item.id));
   const iaById = verdicts;
   const counts = { old: oldCards.length, delete: excluded.size, add: keptNew.length, total: keptOld.length + keptNew.length };
+  const specialtyCode = getJudgeSpecialtyCode(`${aula?.especialidade ?? ""}|${aula?.nome ?? ""}`);
+  const specialtyLensLabel: Record<string, string> = { CM: "Clínica Médica", CG: "Cirurgia Geral", GO: "Ginecologia e Obstetrícia", PED: "Pediatria", PREV: "Medicina Preventiva, SUS e APS" };
 
   useEffect(() => {
     setStaged([]); setManualExcluded(new Set()); setManualRestored(new Set()); setAiExcluded(new Set()); setVerdicts({}); setHtmlText(""); setHtmlError("");
@@ -82,20 +85,34 @@ export function OqCurationPanel({ aula, oldCards, onCommitted }: Props) {
     setJudging(true);
     try {
       const oldOqs = oldCards.map(card => ({ id: card.id, modo: card.modo, comando: card.comando, explicacao: card.explicacao, respostas: [card.alternativa_a, card.alternativa_b, card.alternativa_c, card.alternativa_d, card.alternativa_e, card.info_1, card.info_2, card.info_3, card.info_4, card.info_5].filter(Boolean), gabarito: card.alternativa_correta }));
-      const newOqs = staged.map(({ id, oq }) => ({ id, ...oq }));
-      const { data, error } = await supabase.functions.invoke("curar-oqs-aula", { body: { model: model.trim(), prompt: oqCuratorJudgePrompt, oldOqs, newOqs } });
+      const newOqs = staged.map(({ id, oq }) => ({ temp_id: id, modo: oq.modo, comando: oq.comando, explicacao: oq.explicacao, respostas: oq.respostas, variacoes: oq.variacoes, gabarito: oq.gabarito }));
+      const { data, error } = await supabase.functions.invoke("curar-oqs-aula", { body: { model: model.trim(), tituloTema: aula.nome, especialidade: ESPECIALIDADE_LABEL[aula.especialidade], oldOqs, newOqs } });
       if (error) throw new Error(error.message || "Falha ao chamar curadoria IA.");
       if (data?.error) throw new Error(data.error);
-      const received = data?.verdicts;
-      if (!Array.isArray(received) || received.length !== staged.length) throw new Error("A resposta não contém vereditos completos.");
-      const nextVerdicts: Record<string, OqJudgeResult> = {};
-      for (const item of received) {
-        if (!item || typeof item.id !== "string" || !staged.some(stage => stage.id === item.id) || nextVerdicts[item.id] || !["keep", "delete"].includes(item.decision) || typeof item.reason !== "string") throw new Error("A IA retornou IDs ou decisões inválidos.");
-        nextVerdicts[item.id] = { decision: item.decision, reason: item.reason };
+      const receivedOld = data?.vereditos_antigos;
+      const receivedNew = data?.vereditos_novos;
+      if (!Array.isArray(receivedOld) || receivedOld.length !== oldCards.length || !Array.isArray(receivedNew) || receivedNew.length !== staged.length) throw new Error("A resposta não contém vereditos completos.");
+      const oldIds = new Set<string>();
+      for (const item of receivedOld) {
+        if (!item || typeof item.id !== "string" || !oldCards.some(card => card.id === item.id) || oldIds.has(item.id) || !["MANTER", "EXCLUIR"].includes(item.decisao) || typeof item.motivo !== "string") throw new Error("A IA retornou vereditos inválidos para OQs antigos.");
+        oldIds.add(item.id);
       }
-      if (Object.keys(nextVerdicts).length !== staged.length) throw new Error("Vereditos incompletos ou repetidos.");
-      setAiExcluded(new Set(Object.entries(nextVerdicts).filter(([, verdict]) => verdict.decision === "delete").map(([id]) => id)));
-      setVerdicts(nextVerdicts);
+      if (oldIds.size !== oldCards.length) throw new Error("Vereditos antigos incompletos ou repetidos.");
+      const nextVerdicts: Record<string, OqJudgeResult> = {};
+      for (const item of receivedNew) {
+        if (!item || typeof item.temp_id !== "string" || !staged.some(stage => stage.id === item.temp_id) || nextVerdicts[item.temp_id] || !["MANTER", "EXCLUIR"].includes(item.decisao) || typeof item.motivo !== "string") throw new Error("A IA retornou IDs ou decisões inválidos para OQs novos.");
+        nextVerdicts[item.temp_id] = { decision: item.decisao === "MANTER" ? "keep" : "delete", reason: item.motivo };
+      }
+      if (Object.keys(nextVerdicts).length !== staged.length) throw new Error("Vereditos novos incompletos ou repetidos.");
+      const aiExcludedIds = new Set(Object.entries(nextVerdicts).filter(([, verdict]) => verdict.decision === "delete").map(([id]) => id));
+      const allVerdicts = { ...nextVerdicts };
+      receivedOld.forEach(item => {
+        const decision = item.decisao === "MANTER" ? "keep" : "delete";
+        allVerdicts[item.id] = { decision, reason: item.motivo };
+        if (decision === "delete") aiExcludedIds.add(item.id);
+      });
+      setAiExcluded(aiExcludedIds);
+      setVerdicts(allVerdicts);
       toast.success("Sugestões da IA aplicadas ao staging. Revise antes de confirmar.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Falha na curadoria IA.");
@@ -129,11 +146,11 @@ export function OqCurationPanel({ aula, oldCards, onCommitted }: Props) {
     <OqJsonImport specialty={aula?.especialidade} onLoad={loadStage}/>
 
     <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-      <section className="min-w-0 space-y-3"><div className="flex items-center justify-between"><h3 className="font-bold">OQs existentes</h3><span className="text-xs text-muted-foreground">{oldCards.length} · {keptOld.length} mantidos</span></div>{oldCards.length ? <div className="max-h-[65vh] space-y-3 overflow-y-auto pr-1">{oldCards.map(card => <OqStagingCard key={card.id} item={card} title="Banco" excluded={excluded.has(card.id)} onToggle={() => toggle(card.id)}/>)}</div> : <Card className="p-6 text-center text-sm text-muted-foreground">Nenhum OQ existente nesta aula.</Card>}</section>
+      <section className="min-w-0 space-y-3"><div className="flex items-center justify-between"><h3 className="font-bold">OQs existentes</h3><span className="text-xs text-muted-foreground">{oldCards.length} · {keptOld.length} mantidos</span></div>{oldCards.length ? <div className="max-h-[65vh] space-y-3 overflow-y-auto pr-1">{oldCards.map(card => <OqStagingCard key={card.id} item={card} title="Banco" excluded={excluded.has(card.id)} judge={iaById[card.id]} onToggle={() => toggle(card.id)}/>)}</div> : <Card className="p-6 text-center text-sm text-muted-foreground">Nenhum OQ existente nesta aula.</Card>}</section>
       <section className="min-w-0 space-y-3"><div className="flex items-center justify-between"><h3 className="font-bold">Novos OQs em staging</h3><span className="text-xs text-muted-foreground">{staged.length} · {keptNew.length} para inserir</span></div>{staged.length ? <div className="max-h-[65vh] space-y-3 overflow-y-auto pr-1">{staged.map(({ id, oq }) => <OqStagingCard key={id} item={stagingToDisplay(oq, id)} title="Temporário" excluded={excluded.has(id)} judge={iaById[id]} onToggle={() => toggle(id)}/>)}</div> : <Card className="p-6 text-center text-sm text-muted-foreground">Carregue um JSON para comparar OQs novos com os existentes.</Card>}</section>
     </div>
 
-    <Card className="space-y-4 p-5"><div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-accent"/><div><h3 className="font-bold">4. Curadoria opcional com IA</h3><p className="text-xs text-muted-foreground">A IA sugere; nenhuma alteração é gravada sem sua confirmação.</p></div></div><div className="flex flex-col gap-2 sm:flex-row"><Input value={model} onChange={event => setModel(event.target.value)} placeholder="provider/model" aria-label="Modelo OpenRouter"/><Button onClick={judge} disabled={!aula || !staged.length || judging || committing}>{judging ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4"/>}{judging ? "Analisando..." : "Curar OQs com IA"}</Button><Button variant="outline" onClick={undoAi} disabled={!Object.keys(verdicts).length}>Desfazer marcações da IA</Button></div><p className="text-[11px] text-muted-foreground">As sugestões aparecem nos cards e podem ser sobrescritas manualmente.</p></Card>
+    <Card className="space-y-4 p-5"><div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-accent"/><div><h3 className="font-bold">4. Curadoria opcional com IA</h3><p className="text-xs text-muted-foreground">A IA sugere; nenhuma alteração é gravada sem sua confirmação.</p></div></div><div className="flex flex-col gap-2 sm:flex-row sm:items-center"><Input value={model} onChange={event => setModel(event.target.value)} placeholder="provider/model" aria-label="Modelo OpenRouter"/><Button onClick={judge} disabled={!aula || !staged.length || judging || committing}>{judging ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4"/>}{judging ? "Analisando..." : "Curar OQs com IA"}</Button><Badge variant="secondary" className="w-fit whitespace-nowrap">Lente ativa: {specialtyLensLabel[specialtyCode]}</Badge><Button variant="outline" onClick={undoAi} disabled={!Object.keys(verdicts).length}>Desfazer marcações da IA</Button></div><p className="text-[11px] text-muted-foreground">As sugestões aparecem nos cards e podem ser sobrescritas manualmente.</p></Card>
 
     <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 backdrop-blur sm:px-6"><div className="mx-auto flex max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs font-semibold">Manter {keptOld.length} antigos · Excluir {oldCards.length - keptOld.length} antigos · Inserir {keptNew.length} novos · Total final {counts.total}</p><Button onClick={() => setConfirmOpen(true)} disabled={!aula || committing || (!excluded.size && !keptNew.length)}>Revisar e confirmar</Button></div></div>
 
