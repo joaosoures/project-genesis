@@ -19,6 +19,45 @@ export async function getDailyProgress(userId: string): Promise<number> {
   return (data as number) || 0;
 }
 
+export async function getOnboardingQueueState(userId: string) {
+  const { data: onboardingCards, error: cardsError } = await supabase
+    .from("cards")
+    .select("id, onboarding_order")
+    .not("onboarding_order", "is", null)
+    .order("onboarding_order", { ascending: true });
+  if (cardsError) throw cardsError;
+
+  const cardIds = (onboardingCards ?? []).map((item) => item.id);
+  const { data: performances, error: performanceError } = await supabase
+    .from("desempenho_cards")
+    .select("card_id, contador_vezes, cards!inner(aula_id, onboarding_order)")
+    .eq("usuario_id", userId);
+  if (performanceError) throw performanceError;
+
+  const onboardingIdSet = new Set(cardIds);
+  const onboardingPerformances = (performances ?? []).filter((item) => onboardingIdSet.has(item.card_id));
+  const answeredIds = new Set(onboardingPerformances.filter((item) => item.contador_vezes > 0).map((item) => item.card_id));
+  const regularQueueTotal = (performances ?? []).filter((item) => {
+    const card = item.cards as unknown as { aula_id: string | null; onboarding_order: number | null };
+    return card.aula_id !== null && card.onboarding_order === null;
+  }).length;
+  const { data: settingsRow, error: settingsError } = await supabase
+    .from("user_settings")
+    .select("settings")
+    .eq("usuario_id", userId)
+    .maybeSingle();
+  if (settingsError) throw settingsError;
+  const trilha = (settingsRow?.settings as { trilha?: { data_inicio_plano?: string | null; prova_data?: string | null } } | null)?.trilha;
+
+  return {
+    onboardingTotal: cardIds.length,
+    onboardingAnswered: answeredIds.size,
+    regularQueueTotal,
+    dataInicioPlano: trilha?.data_inicio_plano ?? null,
+    provaData: trilha?.prova_data ?? null,
+  };
+}
+
 
 export type QueueFilter =
   | { tipo: "todas" }
@@ -32,13 +71,14 @@ export type QueueFilter =
   | { tipo: "aula"; aulaId: string }
   | { tipo: "baralho"; baralho: string };
 
-const CARD_FIELDS = "id, modo, especialidade, comando, alternativa_a, alternativa_b, alternativa_c, alternativa_d, alternativa_e, alternativa_correta, info_1, var_1, info_2, var_2, info_3, var_3, info_4, var_4, info_5, var_5, peso_importancia, origem, verificado, criado_por_usuario_id, aula_id, baralho";
+const CARD_FIELDS = "id, modo, especialidade, comando, alternativa_a, alternativa_b, alternativa_c, alternativa_d, alternativa_e, alternativa_correta, info_1, var_1, info_2, var_2, info_3, var_3, info_4, var_4, info_5, var_5, peso_importancia, origem, verificado, criado_por_usuario_id, aula_id, baralho, onboarding_order, criado_em";
 const FETCH_PAGE_SIZE = 1000;
 
 type QueuePerformance = {
   card_id: string;
   score_prioridade: number;
   proxima_revisao: string | null;
+  contador_vezes: number;
 };
 
 async function fetchQueuePerformances(userId: string, mode: StudyQueueMode): Promise<QueuePerformance[]> {
@@ -46,7 +86,7 @@ async function fetchQueuePerformances(userId: string, mode: StudyQueueMode): Pro
   for (let from = 0; ; from += FETCH_PAGE_SIZE) {
     let query = supabase
       .from("desempenho_cards")
-      .select("card_id, score_prioridade, proxima_revisao")
+      .select("card_id, score_prioridade, proxima_revisao, contador_vezes")
       .eq("usuario_id", userId)
       .order(mode === "overdue" ? "proxima_revisao" : "score_prioridade", { ascending: mode === "overdue" })
       .range(from, from + FETCH_PAGE_SIZE - 1);
@@ -115,10 +155,17 @@ export async function buscarPool(userId: string, filter: QueueFilter, studyMode?
     const cards = await fetchCardsByIds(activePerformances.map((item) => item.card_id));
     const filteredCards = await applyQueueFilter(userId, cards, filter);
     const cardMap = new Map(filteredCards.map((card) => [card.id, card]));
-    return activePerformances.flatMap((item) => {
+    const orderedPerformances = activePerformances.flatMap((item) => {
       const card = cardMap.get(item.card_id);
-      return card ? [card] : [];
+      return card ? [{ item, card }] : [];
     });
+    const unreviewedOnboarding = filter.tipo === "todas" && studyMode === "overdue"
+      ? orderedPerformances.filter(({ item, card }) => card.onboarding_order != null && item.contador_vezes === 0)
+        .sort((a, b) => a.card.onboarding_order! - b.card.onboarding_order!)
+      : [];
+    const onboardingIds = new Set(unreviewedOnboarding.map(({ card }) => card.id));
+    const remaining = orderedPerformances.filter(({ card }) => !onboardingIds.has(card.id));
+    return [...unreviewedOnboarding, ...remaining].map(({ card }) => card);
   }
 
   // FAST PATH: modo retrógrado — só OQs já realizados, scoring direto do desempenho
@@ -175,12 +222,16 @@ export async function buscarPool(userId: string, filter: QueueFilter, studyMode?
     cards.push(...(data as CardRow[]));
     if (data.length < FETCH_PAGE_SIZE) break;
   }
+  if (filter.tipo === "aula") {
+    cards.sort((a, b) => (a.criado_em ?? "").localeCompare(b.criado_em ?? "") || a.id.localeCompare(b.id));
+  }
 
 
   // 1.1 Filtrar cards excluídos pelo usuário
   const { data: excluded } = await supabase.from("user_excluded_cards").select("card_id").eq("user_id", userId);
   const excludedIds = new Set((excluded ?? []).map(e => e.card_id));
   const activeCards = cards.filter(c => !excludedIds.has(c.id));
+  if (filter.tipo === "aula") return activeCards;
 
 
   // 2. Carrega desempenhos do usuário

@@ -3,11 +3,12 @@ import { processSyncQueue } from "@/lib/sync";
 
 import { useSettings } from "@/contexts/SettingsContext";
 import { createPortal } from "react-dom";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { CardRow, Especialidade, calcularNota, ESPECIALIDADE_LABEL, MODO_LABEL } from "@/lib/oq";
-import { buscarPool, registrarDesempenho, QueueFilter, getDailyProgress, StudyQueueMode } from "@/lib/queue";
+import { buscarPool, registrarDesempenho, QueueFilter, getDailyProgress, getOnboardingQueueState, StudyQueueMode } from "@/lib/queue";
+import { getOnboardingCompletionState, OnboardingCompletionState } from "@/lib/onboarding";
 import { supabase } from "@/integrations/supabase/client";
 import { ModoHandle } from "@/types/modo";
 
@@ -20,6 +21,7 @@ import { AdminEditCardBtn } from "@/components/oq/AdminEditCardBtn";
 import ScrollWheel from "@/components/console/ScrollWheel";
 import NeonHintLamp from "@/components/console/NeonHintLamp";
 import TactileButton from "@/components/console/TactileButton";
+import { OnboardingCompletionDialog } from "@/components/oq/OnboardingCompletionDialog";
 import NeonProgressBar from "@/components/console/NeonProgressBar";
 import Starburst from "@/components/console/Starburst";
 import { ensureAudio } from "@/lib/sensory";
@@ -35,6 +37,7 @@ export default function Estudo() {
   const settings = useSettings();
   const { reduceMotion } = settings;
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const [pool, setPool] = useState<CardRow[]>([]);
   const [idx, setIdx] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -42,6 +45,8 @@ export default function Estudo() {
   const [queueMode, setQueueMode] = useState<StudyQueueMode>("overdue");
   const [reviewTotal, setReviewTotal] = useState(0);
   const [showPriorityAlert, setShowPriorityAlert] = useState(false);
+  const [onboardingCompletion, setOnboardingCompletion] = useState<OnboardingCompletionState>(null);
+  const [completionDialogDismissed, setCompletionDialogDismissed] = useState(false);
   
   // Progress tracking
   const [progressoDiario, setProgressoDiario] = useState(0);
@@ -109,10 +114,14 @@ export default function Estudo() {
     }
 
     const progresso = await getDailyProgress(user.id);
+    const onboardingState = filtro.tipo === "todas" ? await getOnboardingQueueState(user.id) : null;
+    const completionState = onboardingState ? getOnboardingCompletionState(onboardingState) : null;
+    setCompletionDialogDismissed(false);
 
     setQueueMode(initialMode);
     setReviewTotal(atrasados.length);
-    setShowPriorityAlert(filtro.tipo !== "aula" && initialMode === "priority" && p.length > 0);
+    setOnboardingCompletion(completionState);
+    setShowPriorityAlert(filtro.tipo !== "aula" && initialMode === "priority" && p.length > 0 && !completionState);
     setProgressoDiario(progresso);
     setPool(p);
     setIdx(0);
@@ -140,7 +149,7 @@ export default function Estudo() {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Enter") {
         // Se estiver em um modal ou coffee break, ignore
-        if (showCoffeeBreak) return;
+        if (showCoffeeBreak || onboardingCompletion) return;
         
         // Se já finalizou (vendo explicação), Enter passa para o próximo
         if (modoState.finalized) {
@@ -154,7 +163,7 @@ export default function Estudo() {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [modoState.finalized, modoState.canConfirm, card?.modo, showCoffeeBreak]);
+  }, [modoState.finalized, modoState.canConfirm, card?.modo, showCoffeeBreak, onboardingCompletion]);
 
   useEffect(() => {
     setModoState({ hintsUsed: 0, canConfirm: false, finalized: false, canSkip: false, showDontKnow: false });
@@ -199,6 +208,10 @@ export default function Estudo() {
     }
 
     if (queueMode === "overdue" && user) {
+      const onboardingState = filtro.tipo === "todas" ? await getOnboardingQueueState(user.id) : null;
+      const completionState = onboardingState ? getOnboardingCompletionState(onboardingState) : null;
+      setOnboardingCompletion(completionState);
+      if (completionState) return;
       setShowPriorityAlert(true);
       return;
     }
@@ -332,8 +345,8 @@ export default function Estudo() {
         {!loading && card && (
           <>
             <div className="min-h-0 flex-1 flex flex-col overflow-hidden relative isolate">
-
-            {/* Header section (Progress bar and metadata) */}
+  
+              {/* Header section (Progress bar and metadata) */}
             <div className="shrink-0 pt-2 mb-4 px-12 md:px-0">
               <div className="mb-4 flex items-center gap-3">
                 <span className="text-xs font-mono text-muted-foreground tabular-nums">
@@ -738,6 +751,11 @@ export default function Estudo() {
           </>
         )}
       </div>
+      <OnboardingCompletionDialog
+        state={completionDialogDismissed ? null : onboardingCompletion}
+        onOpenChange={(open) => { if (!open) setCompletionDialogDismissed(true); }}
+        onNavigate={(path) => navigate(path)}
+      />
     </div>
   );
 }

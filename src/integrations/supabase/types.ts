@@ -116,6 +116,7 @@ export type Database = {
           info_5: string | null
           modo: Database["public"]["Enums"]["modo_oq"]
           origem: Database["public"]["Enums"]["origem_card"]
+          onboarding_order: number | null
           peso_importancia: number
           var_1: string | null
           var_2: string | null
@@ -146,6 +147,7 @@ export type Database = {
           info_4?: string | null
           info_5?: string | null
           modo: Database["public"]["Enums"]["modo_oq"]
+          onboarding_order?: number | null
           origem?: Database["public"]["Enums"]["origem_card"]
           peso_importancia?: number
           var_1?: string | null
@@ -177,6 +179,7 @@ export type Database = {
           info_4?: string | null
           info_5?: string | null
           modo?: Database["public"]["Enums"]["modo_oq"]
+          onboarding_order?: number | null
           origem?: Database["public"]["Enums"]["origem_card"]
           peso_importancia?: number
           var_1?: string | null
@@ -1513,6 +1516,7 @@ export type Database = {
       }
     }
     Functions: {
+      seed_onboarding_queue: { Args: { p_user_id: string }; Returns: undefined }
       admin_commit_oq_curation: { Args: { p_aula_id: string; p_delete_ids: string[]; p_new_cards: Json }; Returns: Json }
       castigo_publicar: { Args: { p_original: string; p_posicao: number | null; p_lote: Json }; Returns: undefined }
       castigo_arquivar: { Args: { p_filha: string }; Returns: undefined }

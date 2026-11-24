@@ -1,0 +1,222 @@
+{
+  "oqs": [
+    {
+      "especialidade": "Clínica Médica",
+      "modo": "ABCDE",
+      "comando": "Homem, 68 anos, com doença renal crônica, apresenta fraqueza e potássio de 7,2 mEq/L.\nECG com ondas T apiculadas e alargamento do QRS. Qual intervenção deve ser iniciada imediatamente?",
+      "alternativa_a": "Administrar insulina regular com glicose por via intravenosa.",
+      "alternativa_b": "Administrar salbutamol em dose elevada por via inalatória.",
+      "alternativa_c": "Administrar gluconato de cálcio por via intravenosa.",
+      "alternativa_d": "Administrar furosemida em dose elevada por via intravenosa.",
+      "alternativa_e": "Administrar bicarbonato de sódio por via intravenosa.",
+      "gabarito": "C",
+      "explicacao": "O cálcio intravenoso estabiliza a membrana miocárdica diante de alterações eletrocardiográficas da hipercalemia, mas não reduz o potássio sérico. Redistribuição com insulina e glicose e medidas de eliminação devem ser providenciadas prontamente, sem atrasar a proteção cardíaca."
+    },
+    {
+      "especialidade": "Pediatria",
+      "modo": "Lacuna",
+      "comando": "Na fase prodrômica do sarampo, os pontos branco-azulados com halo eritematoso na mucosa jugal recebem o nome de ____.",
+      "info_1": "Manchas de Koplik",
+      "var_1": "Koplik; manchas de Koplik; sinal de Koplik; manchas Koplik; enantema de Koplik; pontos de Koplik",
+      "explicacao": "As manchas de Koplik são consideradas patognomônicas do sarampo e costumam anteceder o exantema. Sua ausência não exclui a doença, pois são transitórias."
+    },
+    {
+      "especialidade": "Medicina Preventiva",
+      "modo": "OQ Falta",
+      "comando": "Princípios doutrinários do Sistema Único de Saúde (3 itens)",
+      "info_1": "Universalidade",
+      "var_1": "universalidade; universalidade do acesso; acesso universal; universalidade de acesso; universalidade da assistência; universalidade da assistencia",
+      "info_2": "Integralidade",
+      "var_2": "integralidade; integralidade da assistência; integralidade da assistencia; atenção integral; atencao integral; cuidado integral",
+      "info_3": "Equidade",
+      "var_3": "equidade; equidade em saúde; equidade em saude; equidade na assistência; equidade na assistencia; princípio da equidade",
+      "explicacao": "Universalidade garante acesso a todos, integralidade articula as necessidades de cuidado e equidade orienta a atenção conforme necessidades distintas. Descentralização, regionalização e hierarquização pertencem ao grupo dos princípios organizativos."
+    },
+    {
+      "especialidade": "Cirurgia Geral",
+      "modo": "ABCDE",
+      "comando": "Homem, 27 anos, após trauma torácico, apresenta dispneia, PA de 70/40 mmHg e murmúrio vesicular abolido à direita.\nHá desvio traqueal para a esquerda. Qual a conduta imediata?",
+      "alternativa_a": "Realizar descompressão torácica imediata, seguida de drenagem.",
+      "alternativa_b": "Solicitar radiografia torácica urgente, seguida de drenagem.",
+      "alternativa_c": "Solicitar tomografia torácica urgente, seguida de drenagem.",
+      "alternativa_d": "Iniciar ventilação com pressão positiva, seguida de radiografia.",
+      "alternativa_e": "Realizar pericardiocentese imediata, seguida de ecocardiograma.",
+      "gabarito": "A",
+      "explicacao": "Pneumotórax hipertensivo é um diagnóstico clínico e exige descompressão imediata, sem aguardar imagem, seguida de drenagem torácica definitiva. A ventilação com pressão positiva antes da descompressão pode agravar o choque obstrutivo."
+    },
+    {
+      "especialidade": "Ginecologia e Obstetrícia",
+      "modo": "Lacuna",
+      "comando": "Na gestante com sífilis sem acometimento neurológico, ocular ou otológico, o tratamento com eficácia documentada para prevenir sífilis congênita utiliza ____.",
+      "info_1": "Penicilina G benzatina",
+      "var_1": "penicilina benzatina; benzilpenicilina benzatina; penicilina G benzatina; penicilina benzatínica; penicilina benzatinica; benzilpenicilina benzatinica",
+      "explicacao": "A benzilpenicilina benzatina deve ser administrada conforme o estágio da sífilis, pois tratamentos alternativos não são considerados adequados para prevenir transmissão vertical. Em alergia confirmada, indica-se dessensibilização em ambiente preparado e tratamento com penicilina."
+    },
+    {
+      "especialidade": "Clínica Médica",
+      "modo": "OQ Falta",
+      "comando": "Pilares farmacológicos modificadores de prognóstico na ICFEr (4 itens)",
+      "info_1": "INRA / IECA / BRA",
+      "var_1": "INRA; ARNI; sacubitril valsartana; sacubitril/valsartana; IECA; inibidor da ECA; BRA; bloqueador do receptor de angiotensina",
+      "info_2": "Betabloqueadores",
+      "var_2": "betabloqueadores; betabloqueador; beta bloqueadores; BB; carvedilol; bisoprolol; succinato de metoprolol; metoprolol succinato",
+      "info_3": "Antagonistas da aldosterona",
+      "var_3": "antagonistas da aldosterona; antagonista da aldosterona; antagonistas do receptor mineralocorticoide; antagonista mineralocorticoide; ARM; espironolactona; eplerenona",
+      "info_4": "Inibidores de SGLT2",
+      "var_4": "iSGLT2; inibidores de SGLT2; inibidores do SGLT2; inibidor de SGLT2; gliflozinas; dapagliflozina; empagliflozina",
+      "explicacao": "Os quatro pilares reduzem morbimortalidade na ICFEr; sacubitril/valsartana é preferencial quando indicado e tolerado, com IECA ou BRA como alternativas nesse mesmo pilar, sem associação entre eles. Os betabloqueadores com benefício comprovado são carvedilol, bisoprolol e succinato de metoprolol; diuréticos de alça aliviam congestão, mas não substituem os pilares."
+    },
+    {
+      "especialidade": "Pediatria",
+      "modo": "ABCDE",
+      "comando": "Lactente, 10 meses, com diarreia aquosa sem sangue, apresenta irritabilidade, olhos fundos e sede intensa.\nBebe avidamente, tem prega cutânea com retorno lento e perfusão preservada. Qual a conduta inicial?",
+      "alternativa_a": "Instituir Plano A, com líquidos e SRO no domicílio.",
+      "alternativa_b": "Instituir Plano C, com cristaloide intravenoso na unidade.",
+      "alternativa_c": "Prescrever antibiótico oral e reavaliar após 48 horas.",
+      "alternativa_d": "Prescrever loperamida oral e manter hidratação habitual.",
+      "alternativa_e": "Instituir Plano B, com SRO supervisionada na unidade.",
+      "gabarito": "E",
+      "explicacao": "Há desidratação sem sinais de gravidade e com capacidade de ingerir líquidos, indicando Plano B com solução de reidratação oral e reavaliação na unidade. Plano A é destinado à ausência de desidratação, Plano C à desidratação grave, e antibiótico ou antidiarreico não são indicados rotineiramente."
+    },
+    {
+      "especialidade": "Cirurgia Geral",
+      "modo": "Lacuna",
+      "comando": "Segundo o ATLS 10ª edição, em adulto com queimadura térmica extensa, o volume inicial estimado de Ringer lactato nas primeiras 24 horas é de ____ por kg por percentual de superfície corporal queimada.",
+      "info_1": "2 mL",
+      "var_1": "2; 2 mL; 2ml; 2,0 mL; 2.0 mL; dois mililitros; 2 mL/kg/%SCQ",
+      "explicacao": "No ATLS 10ª edição, utiliza-se inicialmente 2 mL por kg por percentual de SCQ, com metade nas primeiras 8 horas contadas da queimadura e o restante nas 16 horas seguintes. O volume é ajustado à resposta clínica e à diurese; 4 mL corresponde à fórmula clássica de Parkland."
+    },
+    {
+      "especialidade": "Ginecologia e Obstetrícia",
+      "modo": "OQ Falta",
+      "comando": "Causas de hemorragia pós-parto pela regra dos 4 Ts (4 itens)",
+      "info_1": "Tônus",
+      "var_1": "tônus; tonus; atonia uterina; atonia; hipotonia uterina; perda do tônus uterino",
+      "info_2": "Trauma",
+      "var_2": "trauma; trauma genital; trauma do canal de parto; lesão do canal de parto; lesao do canal de parto; lacerações do trajeto",
+      "info_3": "Tecido",
+      "var_3": "tecido; retenção tecidual; retencao tecidual; retenção placentária; retencao placentaria; restos placentários; restos placentarios",
+      "info_4": "Trombina",
+      "var_4": "trombina; coagulopatia; coagulopatias; distúrbio da coagulação; disturbio da coagulacao; alteração da coagulação",
+      "explicacao": "A atonia uterina é a causa mais frequente, mas trauma, retenção de tecido e coagulopatia devem ser investigados concomitantemente ao controle do sangramento. Útero contraído com hemorragia persistente direciona a busca especialmente para trauma do canal de parto."
+    },
+    {
+      "especialidade": "Medicina Preventiva",
+      "modo": "ABCDE",
+      "comando": "Pesquisadores selecionam adultos sem câncer, classificam-nos em fumantes e não fumantes e acompanham novos casos por dez anos.\nQual o delineamento e sua medida clássica de associação?",
+      "alternativa_a": "Estudo caso-controle; odds ratio.",
+      "alternativa_b": "Estudo de coorte; risco relativo.",
+      "alternativa_c": "Estudo de coorte; odds ratio.",
+      "alternativa_d": "Estudo caso-controle; risco relativo.",
+      "alternativa_e": "Estudo transversal; razão de prevalências.",
+      "gabarito": "B",
+      "explicacao": "A seleção pela exposição e o acompanhamento da incidência caracterizam uma coorte, cuja medida clássica é o risco relativo. No caso-controle, a seleção parte do desfecho e a medida clássica é a odds ratio; a direção da seleção é mais importante que simplesmente chamar o estudo de retrospectivo ou prospectivo."
+    },
+    {
+      "especialidade": "Clínica Médica",
+      "modo": "Lacuna",
+      "comando": "No AVC isquêmico com início conhecido e sem contraindicações, a janela temporal padrão para iniciar trombólise intravenosa com alteplase é de até ____ após o início dos sintomas.",
+      "info_1": "4,5 horas",
+      "var_1": "4,5 horas; 4.5 horas; 4,5; 4.5; 4h30; 4 horas e 30 minutos; 270 minutos; quatro horas e meia",
+      "explicacao": "A janela padrão é de 4 horas e 30 minutos desde o início dos sintomas, e não desde a chegada ao hospital. Situações de início desconhecido ou janela estendida exigem seleção específica por imagem e não alteram esse limite convencional."
+    },
+    {
+      "especialidade": "Cirurgia Geral",
+      "modo": "OQ Falta",
+      "comando": "Tríade de Beck no tamponamento cardíaco (3 itens)",
+      "info_1": "Hipotensão arterial",
+      "var_1": "hipotensão arterial; hipotensao arterial; hipotensão; hipotensao; pressão arterial baixa; pressao arterial baixa",
+      "info_2": "Turgência jugular",
+      "var_2": "turgência jugular; turgencia jugular; turgência de jugulares; distensão jugular; distensao jugular; ingurgitamento jugular",
+      "info_3": "Abafamento de bulhas",
+      "var_3": "abafamento de bulhas; bulhas abafadas; bulhas cardíacas abafadas; bulhas cardiacas abafadas; hipofonese de bulhas; bulhas hipofonéticas",
+      "explicacao": "O tamponamento compromete o enchimento cardíaco e pode produzir choque obstrutivo. A tríade completa tem baixa sensibilidade, e a turgência jugular pode faltar no traumatizado hipovolêmico, portanto sua ausência não exclui o diagnóstico."
+    },
+    {
+      "especialidade": "Ginecologia e Obstetrícia",
+      "modo": "ABCDE",
+      "comando": "Gestante, 32 semanas, com pré-eclâmpsia, apresenta PA persistente de 170/115 mmHg, cefaleia, escotomas e epigastralgia.\nAlém do controle pressórico urgente, qual fármaco deve ser administrado para prevenir eclâmpsia?",
+      "alternativa_a": "Administrar diazepam por via intravenosa.",
+      "alternativa_b": "Administrar fenitoína por via intravenosa.",
+      "alternativa_c": "Administrar hidralazina por via intravenosa.",
+      "alternativa_d": "Administrar sulfato de magnésio por via intravenosa.",
+      "alternativa_e": "Administrar nifedipino por via oral.",
+      "gabarito": "D",
+      "explicacao": "O sulfato de magnésio é a primeira escolha para prevenção de convulsões na pré-eclâmpsia com sinais de gravidade. Hidralazina e nifedipino tratam a hipertensão, mas não substituem a profilaxia anticonvulsivante; diazepam e fenitoína não são opções de primeira linha."
+    },
+    {
+      "especialidade": "Pediatria",
+      "modo": "Lacuna",
+      "comando": "Segundo o calendário vigente do PNI, em criança com vacinação atrasada, a idade máxima para administrar a primeira dose da vacina oral contra rotavírus humano é ____.",
+      "info_1": "11 meses e 29 dias",
+      "var_1": "11 meses e 29 dias; 11 meses 29 dias; 11m29d; 11m 29d; onze meses e vinte e nove dias; 11 meses e vinte e nove dias",
+      "explicacao": "O PNI ampliou o limite da primeira dose para 11 meses e 29 dias, mantendo a aplicação de rotina aos 2 meses. O antigo limite de 3 meses e 15 dias está desatualizado e não deve orientar a recuperação de esquemas no calendário vigente."
+    },
+    {
+      "especialidade": "Medicina Preventiva",
+      "modo": "OQ Falta",
+      "comando": "Atributos essenciais da Atenção Primária à Saúde segundo Starfield (4 itens)",
+      "info_1": "Acesso de primeiro contato",
+      "var_1": "acesso de primeiro contato; acesso ao primeiro contato; primeiro contato; primeiro contacto; atenção de primeiro contato; porta de entrada; acesso; acessibilidade",
+      "info_2": "Longitudinalidade",
+      "var_2": "longitudinalidade; cuidado longitudinal; atenção longitudinal; atencao longitudinal; acompanhamento longitudinal; vínculo longitudinal",
+      "info_3": "Integralidade",
+      "var_3": "integralidade; cuidado integral; atenção integral; atencao integral; integralidade do cuidado; integralidade da atenção",
+      "info_4": "Coordenação do cuidado",
+      "var_4": "coordenação do cuidado; coordenacao do cuidado; coordenação da atenção; coordenacao da atencao; coordenação; coordenacao",
+      "explicacao": "Os atributos essenciais combinam entrada preferencial, vínculo ao longo do tempo, atendimento abrangente e integração do cuidado entre serviços. Orientação familiar, orientação comunitária e competência cultural são atributos derivados."
+    },
+    {
+      "especialidade": "Cirurgia Geral",
+      "modo": "ABCDE",
+      "comando": "Mulher, 64 anos, com febre, icterícia e dor no hipocôndrio direito evolui com confusão e PA de 80/50 mmHg.\nUltrassom mostra dilatação biliar e cálculo no colédoco. Após iniciar suporte hemodinâmico, qual a conduta?",
+      "alternativa_a": "Iniciar antibiótico intravenoso e aguardar resolução clínica.",
+      "alternativa_b": "Iniciar antibiótico oral e programar CPRE eletiva.",
+      "alternativa_c": "Iniciar antibiótico intravenoso e realizar CPRE urgente.",
+      "alternativa_d": "Iniciar antibiótico intravenoso e realizar colecistostomia urgente.",
+      "alternativa_e": "Iniciar antibiótico intravenoso e realizar colecistectomia isolada.",
+      "gabarito": "C",
+      "explicacao": "A pêntade de Reynolds indica colangite grave, exigindo antibiótico intravenoso e drenagem urgente da via biliar, preferencialmente por CPRE, associadas ao suporte clínico. Antibiótico isolado não resolve a obstrução infectada, e tratar apenas a vesícula não garante descompressão do colédoco."
+    },
+    {
+      "especialidade": "Clínica Médica",
+      "modo": "Lacuna",
+      "comando": "No IAM com supradesnivelamento de ST admitido diretamente em hospital com hemodinâmica, a meta clássica máxima de tempo porta-balão para angioplastia primária é ____.",
+      "info_1": "90 minutos",
+      "var_1": "90 minutos; 90; 90 min; 90min; noventa minutos; 1h30; 1 hora e 30 minutos; uma hora e meia",
+      "explicacao": "A meta clássica de tempo porta-balão é de até 90 minutos para quem chega diretamente ao serviço com angioplastia disponível, embora diretrizes mais recentes também destaquem o alvo de até 60 minutos entre o ECG diagnóstico e a passagem do fio-guia em centros com hemodinâmica. Não se deve confundir esse indicador com os intervalos usados para decidir a estratégia de reperfusão quando há necessidade de transferência."
+    },
+    {
+      "especialidade": "Pediatria",
+      "modo": "OQ Falta",
+      "comando": "Perguntas iniciais do fluxograma de reanimação neonatal do PRN-SBP (3 itens)",
+      "info_1": "Gestação de 34 semanas ou mais",
+      "var_1": "gestação maior ou igual a 34 semanas; gestacao maior ou igual a 34 semanas; idade gestacional de pelo menos 34 semanas; IG de pelo menos 34 semanas; gestação de 34 semanas ou mais; 34 semanas ou mais; 34 semanas; IG 34 semanas; idade gestacional",
+      "info_2": "Respirando ou chorando?",
+      "var_2": "respirando ou chorando; respira ou chora; respiração regular ou choro; respiracao regular ou choro; respiração espontânea regular; respiracao espontanea regular",
+      "info_3": "Tônus muscular em flexão?",
+      "var_3": "tônus muscular em flexão; tonus muscular em flexao; tônus em flexão; tonus em flexao; bom tônus muscular; bom tonus muscular; membros em flexão",
+      "explicacao": "O fluxograma do PRN-SBP verifica idade gestacional de pelo menos 34 semanas, respiração ou choro e tônus em flexão para orientar a assistência inicial. A vitalidade deve ser avaliada imediatamente, sem aguardar o Apgar, e a presença de mecônio não constitui uma quarta pergunta desse conjunto."
+    },
+    {
+      "especialidade": "Ginecologia e Obstetrícia",
+      "modo": "ABCDE",
+      "comando": "Gestante, 33 semanas, apresenta sangramento vaginal vermelho vivo, indolor e recorrente.\nPA de 115/75 mmHg, útero normotônico e frequência cardíaca fetal de 145 bpm. Qual a hipótese principal e a abordagem diagnóstica?",
+      "alternativa_a": "Placenta prévia; localizar a placenta por ultrassom, sem toque digital.",
+      "alternativa_b": "Placenta prévia; avaliar a dilatação cervical por toque vaginal digital.",
+      "alternativa_c": "Descolamento placentário; localizar a placenta por ultrassom, sem toque digital.",
+      "alternativa_d": "Descolamento placentário; excluir o diagnóstico se o ultrassom for normal.",
+      "alternativa_e": "Trabalho de parto prematuro; avaliar dilatação por toque vaginal digital.",
+      "gabarito": "A",
+      "explicacao": "Sangramento indolor com útero normotônico sugere placenta prévia, cuja localização deve ser avaliada por ultrassonografia; o toque vaginal digital é contraindicado nessa suspeita. O descolamento prematuro de placenta costuma cursar com dor, hipertonia e comprometimento fetal, e um ultrassom normal não o exclui."
+    },
+    {
+      "especialidade": "Medicina Preventiva",
+      "modo": "Lacuna",
+      "comando": "Mantidas constantes a sensibilidade e a especificidade de um teste, o parâmetro populacional cuja elevação aumenta o VPP e reduz o VPN é a ____.",
+      "info_1": "Prevalência",
+      "var_1": "prevalência; prevalencia; prevalência da doença; prevalencia da doenca; prevalência populacional; prevalencia populacional",
+      "explicacao": "Quanto maior a prevalência, maior a probabilidade de um resultado positivo representar doença e menor a segurança de um resultado negativo. Essa relação pressupõe sensibilidade e especificidade constantes nas populações comparadas."
+    }
+  ]
+}

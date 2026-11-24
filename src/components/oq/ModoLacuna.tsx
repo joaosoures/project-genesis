@@ -77,18 +77,18 @@ function ModoLacuna({ card, onFinalizar, onState, renderInput }, ref) {
     finalized,
   }), [valor, nivelPista, finalized, tentativas]);
 
-  useEffect(() => { 
-    onState?.({ 
-      hintsUsed: nivelPista, 
-      canConfirm: !!valor.trim() && !finalized, 
+  useEffect(() => {
+    onState?.({
+      hintsUsed: nivelPista,
+      canConfirm: !!valor.trim() && !finalized,
       finalized,
       showDontKnow: nivelPista >= 3 && !finalized
-    }); 
+    });
   }, [valor, nivelPista, finalized, onState]);
 
   return (
     <div className="space-y-5">
-      <p className="text-lg leading-relaxed font-medium">{card.comando}</p>
+      <p className="text-lg leading-relaxed font-medium whitespace-pre-line">{card.comando}</p>
 
       {nivelPista > 0 && !finalized && (
         <p className="text-center text-2xl tracking-[0.4em] font-mono text-[hsl(var(--accent))]">

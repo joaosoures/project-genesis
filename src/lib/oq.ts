@@ -41,6 +41,8 @@ export interface CardRow {
   criado_por_usuario_id?: string | null;
   baralho?: string | null;
   aula_id?: string | null;
+  onboarding_order?: number | null;
+  criado_em?: string;
 }
 
 

@@ -108,7 +108,7 @@ const ModoABCDE = forwardRef<ModoHandle, ModoProps>(function ModoABCDE({
 
   return (
     <div className="space-y-5">
-      <p className="text-lg leading-relaxed font-medium">{card.comando}</p>
+      <p className="text-lg leading-relaxed font-medium whitespace-pre-line">{card.comando}</p>
       <div className="space-y-2">
         {alternativas.map((a) => {
           const isElim = eliminadas.includes(a.letra);
