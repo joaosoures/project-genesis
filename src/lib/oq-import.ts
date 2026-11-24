@@ -57,8 +57,15 @@ const get = (value: Record<string, unknown>, ...names: string[]) => {
 };
 const asText = (value: unknown) => typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
 
+function cleanMarkdownJson(source: string) {
+  return source
+    .replace(/&#x20;|&#32;|&nbsp;/gi, " ")
+    .replace(/\\\r?\n/g, "\n")
+    .replace(/(?<!\\)\\([_*#\-\[\]])/g, "$1");
+}
+
 function extractJson(source: string) {
-  const text = source.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "");
+  const text = cleanMarkdownJson(source).replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "");
   let quote: string | null = null;
   let escaped = false;
   let start = -1;

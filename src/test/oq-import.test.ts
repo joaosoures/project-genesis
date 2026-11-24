@@ -23,6 +23,14 @@ describe("parseOqsJson", () => {
     expect(toCardImportPayload(oq, "aula-1").comando).toBe("[___] ocorre");
   });
 
+  it("higieniza colagem Markdown do ChatGPT com barra de continuação, entidade de espaço e underscores escapados", () => {
+    const input = `[{\\\n&#x20;"modo":"Lacuna",&#x20;"comando":"Complete \\_\\_\\_\\_",&#x20;"resposta":"termo",&#x20;"variacoes":["sinônimo"]}]`;
+    const oq = parseOqsJson(input, "pediatria")[0];
+
+    expect(oq.comando).toBe("Complete ____");
+    expect(toCardImportPayload(oq, "aula-1").comando).toBe("Complete [___]");
+  });
+
   it("retorna erro com índice e campo quando um item é inválido", () => {
     expect(() => parseOqsJson(JSON.stringify([{ modo: "desconhecido", comando: "x" }]), "pediatria")).toThrow("Item 1: campo \"modo\"");
   });
