@@ -18,6 +18,27 @@ describe("parseOqsJson", () => {
     expect(payload).toMatchObject({ modo: "oq_falta", info_1: "A", var_1: "varA", info_2: "B", var_2: "varB", aula_id: "aula-1", origem: "admin", verificado: true });
   });
 
+  it("aceita nomes completos e sinônimos de Ginecologia e Saúde Mental", () => {
+    const cases = [
+      { target: "ginecologia_obstetricia", labels: ["Ginecologia e Obstetrícia"] },
+      { target: "saude_mental", labels: ["Saúde Mental", "Psiquiatria"] },
+    ] as const;
+
+    for (const { target, labels } of cases) {
+      for (const label of labels) {
+        const oq = parseOqsJson(JSON.stringify([{
+          modo: "Lacuna",
+          especialidade: label,
+          comando: "Complete ____",
+          resposta: "termo",
+          variacoes: ["sinônimo"],
+        }]), target)[0];
+
+        expect(oq.especialidade).toBe(target);
+      }
+    }
+  });
+
   it("converte marcador ____ em [___] explicitamente no payload", () => {
     const oq = parseOqsJson(JSON.stringify([{ modo: "Lacuna", comando: "____ ocorre", resposta: "x", variacoes: ["y"] }]), "pediatria")[0];
     expect(toCardImportPayload(oq, "aula-1").comando).toBe("[___] ocorre");

@@ -38,11 +38,12 @@ export type CardImportPayload = {
 };
 
 const specialtyLabels: Record<string, Especialidade> = {
-  clinicamedica: "clinica_medica", clinica: "clinica_medica", clinica_medica: "clinica_medica",
-  cirurgiageral: "cirurgia_geral", cirurgia: "cirurgia_geral", cirurgia_geral: "cirurgia_geral",
-  pediatria: "pediatria", ginecologiaobstetricia: "ginecologia_obstetricia", obstetriciaeginecologia: "ginecologia_obstetricia",
-  ginecologia_obstetricia: "ginecologia_obstetricia", medicinapreventivaesocial: "medicina_preventiva", medicina_preventiva: "medicina_preventiva",
-  saudemental: "saude_mental", saude_mental: "saude_mental",
+  clinicamedica: "clinica_medica", cm: "clinica_medica", clinica: "clinica_medica",
+  cirurgiageral: "cirurgia_geral", cg: "cirurgia_geral", cirurgia: "cirurgia_geral",
+  pediatria: "pediatria", ped: "pediatria",
+  ginecologiaobstetricia: "ginecologia_obstetricia", ginecologiaeobstetricia: "ginecologia_obstetricia", go: "ginecologia_obstetricia", ginecologia: "ginecologia_obstetricia", obstetricia: "ginecologia_obstetricia", ginecoobstetricia: "ginecologia_obstetricia",
+  medicinapreventiva: "medicina_preventiva", medicinapreventivaesocial: "medicina_preventiva", preventiva: "medicina_preventiva", saudecoletiva: "medicina_preventiva", mfc: "medicina_preventiva", mp: "medicina_preventiva", prev: "medicina_preventiva",
+  saudemental: "saude_mental", psiquiatria: "saude_mental", sm: "saude_mental",
 };
 
 const cleanKey = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
