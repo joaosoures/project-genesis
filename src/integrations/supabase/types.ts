@@ -1513,6 +1513,7 @@ export type Database = {
       }
     }
     Functions: {
+      admin_commit_oq_curation: { Args: { p_aula_id: string; p_delete_ids: string[]; p_new_cards: Json }; Returns: Json }
       castigo_publicar: { Args: { p_original: string; p_posicao: number | null; p_lote: Json }; Returns: undefined }
       castigo_arquivar: { Args: { p_filha: string }; Returns: undefined }
       castigo_restaurar: { Args: { p_filha: string }; Returns: undefined }
