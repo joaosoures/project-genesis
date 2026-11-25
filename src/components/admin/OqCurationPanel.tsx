@@ -38,8 +38,9 @@ export function OqCurationPanel({ aula, oldCards, onCommitted }: Props) {
   const excluded = useMemo(() => new Set([...manualExcluded, ...aiExcluded].filter(id => !manualRestored.has(id))), [manualExcluded, manualRestored, aiExcluded]);
   const keptOld = oldCards.filter(card => !excluded.has(card.id));
   const keptNew = staged.filter(item => !excluded.has(item.id));
+  const deleteIds = oldCards.filter(card => excluded.has(card.id)).map(card => card.id);
   const iaById = verdicts;
-  const counts = { old: oldCards.length, delete: excluded.size, add: keptNew.length, total: keptOld.length + keptNew.length };
+  const counts = { old: oldCards.length, delete: deleteIds.length, add: keptNew.length, total: keptOld.length + keptNew.length };
   const specialtyCode = getJudgeSpecialtyCode(`${aula?.especialidade ?? ""}|${aula?.nome ?? ""}`);
   const specialtyLensLabel: Record<string, string> = { CM: "Clínica Médica", CG: "Cirurgia Geral", GO: "Ginecologia e Obstetrícia", PED: "Pediatria", PREV: "Medicina Preventiva, SUS e APS", SM: "Saúde Mental" };
 
@@ -129,7 +130,7 @@ export function OqCurationPanel({ aula, oldCards, onCommitted }: Props) {
     setCommitting(true);
     try {
       const payload = keptNew.map(item => toCardImportPayload(item.oq, aula.id));
-      const { data, error } = await supabase.rpc("admin_commit_oq_curation", { p_aula_id: aula.id, p_delete_ids: Array.from(excluded).filter(id => oldCards.some(card => card.id === id)), p_new_cards: payload as never });
+      const { data, error } = await supabase.rpc("admin_commit_oq_curation", { p_aula_id: aula.id, p_delete_ids: deleteIds, p_new_cards: payload as never });
       if (error) throw error;
       if (!data || typeof data !== "object" || Number((data as Record<string, unknown>).deleted) !== counts.delete || Number((data as Record<string, unknown>).inserted) !== counts.add) throw new Error("O servidor confirmou contagens diferentes das exibidas; staging preservado para revisão.");
       setConfirmOpen(false); setStaged([]); setManualExcluded(new Set()); setManualRestored(new Set()); setAiExcluded(new Set()); setVerdicts({});
