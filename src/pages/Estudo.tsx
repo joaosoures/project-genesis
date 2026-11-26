@@ -32,6 +32,24 @@ import logo from "@/assets/oqmed-logo.png";
 import coffeeBreak from "@/assets/coffee-break.png";
 import { cn } from "@/lib/utils";
 
+type AulaStudySession = { cardIds: string[]; index: number };
+
+function getAulaSessionKey(userId: string, aulaId: string) {
+  return `oqmed.study-session.${userId}.${aulaId}`;
+}
+
+function readAulaSession(key: string): AulaStudySession | null {
+  try {
+    const value = localStorage.getItem(key);
+    if (!value) return null;
+    const session = JSON.parse(value) as AulaStudySession;
+    if (!Array.isArray(session.cardIds) || !session.cardIds.every((id) => typeof id === "string") || !Number.isInteger(session.index)) return null;
+    return session;
+  } catch {
+    return null;
+  }
+}
+
 export default function Estudo() {
   const { user, isAdmin } = useAuth();
   const settings = useSettings();
@@ -41,6 +59,7 @@ export default function Estudo() {
   const [pool, setPool] = useState<CardRow[]>([]);
   const [idx, setIdx] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [readyAulaSessionKey, setReadyAulaSessionKey] = useState<string | null>(null);
   const [favSet, setFavSet] = useState<Set<string>>(new Set());
   const [queueMode, setQueueMode] = useState<StudyQueueMode>("overdue");
   const [reviewTotal, setReviewTotal] = useState(0);
@@ -118,13 +137,31 @@ export default function Estudo() {
     const completionState = onboardingState ? getOnboardingCompletionState(onboardingState) : null;
     setCompletionDialogDismissed(false);
 
+    let restoredIndex = 0;
+    let sessionKey: string | null = null;
+    if (filtro.tipo === "aula") {
+      sessionKey = getAulaSessionKey(user.id, filtro.aulaId);
+      const saved = readAulaSession(sessionKey);
+      if (saved) {
+        const currentIds = new Set(p.map((item) => item.id));
+        const savedIds = saved.cardIds.filter((id) => currentIds.has(id));
+        const orderedCards = savedIds.map((id) => p.find((item) => item.id === id)).filter((item): item is CardRow => !!item);
+        const remainingCards = p.filter((item) => !savedIds.includes(item.id));
+        p = [...orderedCards, ...remainingCards];
+        const savedCurrentCardId = saved.cardIds[saved.index];
+        const matchingIndex = savedCurrentCardId ? orderedCards.findIndex((item) => item.id === savedCurrentCardId) : -1;
+        restoredIndex = matchingIndex >= 0 ? matchingIndex : Math.min(saved.index, Math.max(0, orderedCards.length - 1));
+      }
+    }
+
     setQueueMode(initialMode);
     setReviewTotal(atrasados.length);
     setOnboardingCompletion(completionState);
     setShowPriorityAlert(filtro.tipo !== "aula" && initialMode === "priority" && p.length > 0 && !completionState);
     setProgressoDiario(progresso);
     setPool(p);
-    setIdx(0);
+    setIdx(restoredIndex);
+    setReadyAulaSessionKey(sessionKey);
     const { data: favs } = await supabase.from("favoritos").select("card_id").eq("usuario_id", user.id);
     setFavSet(new Set((favs ?? []).map((f: any) => f.card_id)));
     setTimeout(() => setLoading(false), 600);
@@ -168,6 +205,13 @@ export default function Estudo() {
   useEffect(() => {
     setModoState({ hintsUsed: 0, canConfirm: false, finalized: false, canSkip: false, showDontKnow: false });
   }, [idx]);
+
+  useEffect(() => {
+    if (!readyAulaSessionKey || pool.length === 0) return;
+    try {
+      localStorage.setItem(readyAulaSessionKey, JSON.stringify({ cardIds: pool.map((item) => item.id), index: idx }));
+    } catch {}
+  }, [readyAulaSessionKey, pool, idx]);
 
   async function onFinalizar(r: { acertou: boolean; nivelPista: number; tentativas: number }) {
     if (!user || !card) return;
