@@ -445,10 +445,10 @@ export default function Admin() {
               <p className="text-center py-12 text-muted-foreground">Nenhum usuário encontrado.</p>
             ) : (
               filteredUsers.map((u) => (
-                <Collapsible key={u.id} className="group">
-                  <Card className="overflow-hidden bg-card/30 border-border/40 hover:border-primary/20 transition-all">
-                    <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div className="flex items-center gap-4">
+              <Collapsible key={u.id} className="group">
+                <Card className="relative overflow-visible bg-card/30 border-border/40 hover:border-primary/20 transition-all">
+                  <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center overflow-hidden">
                           {u.foto_url ? <img src={u.foto_url} alt="" className="w-full h-full object-cover" /> : <Users className="text-primary/40" />}
                         </div>
@@ -477,11 +477,11 @@ export default function Admin() {
                         <div className="flex items-center gap-2">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreVertical size={16} />
+                              <Button variant="ghost" size="icon" className="h-10 w-10 touch-manipulation" aria-label={`Ações para ${u.nome || u.email}`}>
+                                <MoreVertical size={18} />
                               </Button>
                             </DropdownMenuTrigger>
-                             <DropdownMenuContent align="end" className="glass w-64">
+                             <DropdownMenuContent side="bottom" align="end" collisionPadding={12} className="glass z-[100] w-64">
                               <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ações Rápidas</div>
                               <DropdownMenuItem onClick={() => handleExtendTrial(u.id)} className="gap-2 text-green-400">
                                 <Clock size={14}/> Dar +14 Dias Trial
