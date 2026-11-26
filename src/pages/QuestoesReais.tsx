@@ -29,7 +29,7 @@ export default function QuestoesReais() {
   const [history, setHistory] = useState<LaboratorioSession[]>([]);
 
   useEffect(() => { document.title = "Questões Reais — OQ MED"; }, []);
-  useEffect(() => { if (planLoading) return; if (plano !== "prata" && plano !== "ouro") { navigate("/meu-plano", { replace: true }); return; } Promise.all([questoesReaisApi.ativa(), questoesReaisApi.historico()]).then(([active, previous]) => { setState(active); setResumeOpen(Boolean(active)); setHistory(previous); }).catch((error) => toast.error(error.message)).finally(() => setLoading(false)); }, [planLoading, plano, navigate]);
+  useEffect(() => { if (planLoading) return; if (plano !== "trial" && plano !== "prata" && plano !== "ouro") { navigate("/meu-plano", { replace: true }); return; } Promise.all([questoesReaisApi.ativa(), questoesReaisApi.historico()]).then(([active, previous]) => { setState(active); setResumeOpen(Boolean(active)); setHistory(previous); }).catch((error) => toast.error(error.message)).finally(() => setLoading(false)); }, [planLoading, plano, navigate]);
 
   const item = state ? currentItem(state) : null; const type = state?.sessao.fase === "castigo" ? "castigo" : "base";
   const items = state?.itens.filter((entry) => entry.tipo === type) ?? []; const position = type === "base" ? state?.sessao.posicao_base ?? 0 : state?.sessao.posicao_castigo ?? 0;

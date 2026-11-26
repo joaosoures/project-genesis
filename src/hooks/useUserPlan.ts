@@ -59,7 +59,7 @@ const FEATURE_MAP: Record<Feature, PlanoEfetivo[]> = {
   gerar_oq_ia: ["trial", "ouro"],
   materiais: ["trial", "ouro"],
   trilha: ["trial", "ouro", "prata"],
-  questoes_reais: ["ouro", "prata"],
+  questoes_reais: ["trial", "ouro", "prata"],
 };
 
 export function useUserPlan(): UserPlanState {

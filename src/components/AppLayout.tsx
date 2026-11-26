@@ -41,7 +41,7 @@ function AppSidebar() {
   const { plano } = useUserPlan();
   const [overdueCounts, setOverdueCounts] = useState<Record<Especialidade | "total", number> | null>(null);
   const isAdmin = isAuthAdmin || user?.email === 'joaoresende2603@gmail.com';
-  const hasQuestoesReais = isAdmin || plano === "prata" || plano === "ouro";
+  const hasQuestoesReais = isAdmin || plano === "trial" || plano === "prata" || plano === "ouro";
   const isActive = (p: string) => pathname === p || pathname.startsWith(p + "/");
   const handleNav = () => {
     feedback("flip");
