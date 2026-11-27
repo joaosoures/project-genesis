@@ -31,6 +31,7 @@ import { toast } from "sonner";
 import logo from "@/assets/oqmed-logo.png";
 import coffeeBreak from "@/assets/coffee-break.png";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type AulaStudySession = { cardIds: string[]; index: number };
 
@@ -52,6 +53,7 @@ function readAulaSession(key: string): AulaStudySession | null {
 
 export default function Estudo() {
   const { user, isAdmin } = useAuth();
+  const isMobile = useIsMobile();
   const settings = useSettings();
   const { reduceMotion } = settings;
   const [params] = useSearchParams();
@@ -181,26 +183,55 @@ export default function Estudo() {
   }, [carregar]);
 
   const card = pool[idx];
+  const goalDialogOpen = progressoDiario > 0 && progressoDiario % settings.dailyGoal === 0 && progressoDiario !== lastGoalShown && modoState.finalized;
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      if (isMobile || !card || loading) return;
+      if (showCoffeeBreak || showPriorityAlert || goalDialogOpen || (!completionDialogDismissed && onboardingCompletion)) return;
+      if (document.querySelector('[role="dialog"], [role="alertdialog"], [aria-modal="true"], [data-vaul-drawer]')) return;
+
+      const target = e.target;
+      if (target instanceof HTMLElement) {
+        const isEditable = target.isContentEditable || target.matches("input, textarea, select");
+        if (isEditable && !target.closest("[data-study-answer-input]")) return;
+      }
+
+      if (e.key === "Tab") {
+        e.preventDefault();
+        if (document.activeElement instanceof HTMLElement && document.activeElement.matches("button")) document.activeElement.blur();
+        const mode = modoRef.current;
+        if (!e.repeat && !modoState.finalized && mode && (mode.hintsMax === undefined || (mode.hintsUsed ?? 0) < mode.hintsMax) && (card.modo !== "abcde" || !!card.alternativa_correta)) mode.hint();
+        return;
+      }
+
+      if (/^[1-5]$/.test(e.key) || /^Numpad[1-5]$/.test(e.code)) {
+        if (card.modo !== "abcde" || modoState.finalized) return;
+        e.preventDefault();
+        if (e.repeat) return;
+        const number = /^Numpad[1-5]$/.test(e.code) ? Number(e.code.slice(-1)) : Number(e.key);
+        modoRef.current?.selectAlternative?.("ABCDE"[number - 1]);
+        return;
+      }
+
       if (e.key === "Enter") {
-        // Se estiver em um modal ou coffee break, ignore
-        if (showCoffeeBreak || onboardingCompletion) return;
-        
-        // Se já finalizou (vendo explicação), Enter passa para o próximo
+        if (target instanceof HTMLElement && target.closest("button")) {
+          e.preventDefault();
+          target.closest("button")?.blur();
+          return;
+        }
         if (modoState.finalized) {
-          proximo();
-        } 
-        // Se não finalizou e é modo ABCDE (não tem input nativo no Enter), confirma a seleção
-        else if (card?.modo === "abcde" && modoState.canConfirm) {
+          e.preventDefault();
+          void proximo();
+        } else if (card.modo === "abcde" && modoState.canConfirm) {
+          e.preventDefault();
           modoRef.current?.confirm();
         }
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [modoState.finalized, modoState.canConfirm, card?.modo, showCoffeeBreak, onboardingCompletion]);
+  }, [isMobile, card, loading, showCoffeeBreak, showPriorityAlert, goalDialogOpen, completionDialogDismissed, onboardingCompletion, modoState.finalized, modoState.canConfirm]);
 
   useEffect(() => {
     setModoState({ hintsUsed: 0, canConfirm: false, finalized: false, canSkip: false, showDontKnow: false });
@@ -495,6 +526,7 @@ export default function Estudo() {
                                 <input
                                   autoFocus
                                   maxLength={300}
+                                  data-study-answer-input
                                   value={value}
                                   disabled={disabled}
                                   onChange={(e) => setValue(e.target.value)}
@@ -520,6 +552,7 @@ export default function Estudo() {
                                 <input
                                   autoFocus
                                   maxLength={300}
+                                  data-study-answer-input
                                   value={value}
                                   disabled={disabled}
                                   onChange={(e) => setValue(e.target.value)}

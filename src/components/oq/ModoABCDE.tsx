@@ -87,9 +87,16 @@ const ModoABCDE = forwardRef<ModoHandle, ModoProps>(function ModoABCDE({
     await loadExplanation();
   }
 
+  function selectAlternative(letter: string) {
+    const alternative = alternativas.find((item) => item.letra === letter);
+    if (!finalized && alternative && !eliminadas.includes(letter)) {
+      feedback("flip");
+      setSelecionada(letter);
+    }
+  }
 
   useImperativeHandle(ref, () => ({
-    confirm, hint, skip,
+    confirm, hint, skip, selectAlternative,
     hintsUsed: eliminadas.length,
     hintsMax: hintsDisabled ? 0 : 3,
     canConfirm: !!selecionada && !finalized,

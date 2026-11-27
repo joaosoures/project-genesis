@@ -1,6 +1,7 @@
 export interface ModoHandle {
   confirm: () => void;
   hint: () => void;
+  selectAlternative?: (letter: string) => void;
   skip?: () => void;
   hintsUsed?: number;
   hintsMax?: number;
